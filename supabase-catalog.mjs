@@ -52,6 +52,14 @@ export function createSupabaseCatalog(cloud) {
       if (activeOnly && !(await get(row.product_id)).active) throw fail("O produto deste arquivo foi arquivado.", 409);
       return { ...info(row), bytes: await request(objectUrl(row.storage_path), { binary: true }) };
     },
+    async signedFile(id) {
+      const rows = await request(`/rest/v1/zelo_product_files?id=eq.${encodeURIComponent(id)}&select=*`);
+      if (!rows.length) throw fail('Arquivo não encontrado.', 404);
+      const row = rows[0], path = row.storage_path.split('/').map(encodeURIComponent).join('/');
+      const signed = await request('/storage/v1/object/sign/zelo-materials/' + path, { method: 'POST', body: { expiresIn: 60 } });
+      if (!signed.signedURL?.startsWith('/object/sign/zelo-materials/')) throw fail('Não foi possível abrir este arquivo.', 502);
+      return cloud.origin + '/storage/v1' + signed.signedURL + (row.mime === 'application/pdf' ? '&download=' + encodeURIComponent(row.name) : '');
+    },
     async search(query) {
       const products = (await this.list()).filter(item => item.active);
       const words = [...new Set(normalize(query).split(/\W+/).filter(word => word.length > 2))];

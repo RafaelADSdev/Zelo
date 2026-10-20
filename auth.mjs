@@ -7,7 +7,7 @@ const digest = value => createHash("sha256").update(value).digest("hex");
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 function equal(a, b) { const x = Buffer.from(a || ""), y = Buffer.from(b || ""); return x.length === y.length && timingSafeEqual(x, y); }
 async function passwordHash(password, salt) { return (await scrypt(password, salt, 64, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 })).toString("hex"); }
-export async function createAuth(directory, { clock = Date.now, provider } = {}) {
+export async function createAuth(directory, { clock = Date.now, provider, bootstrapToken } = {}) {
   await mkdir(directory, { recursive: true });
   const file = join(directory, "auth.json"), setupFile = join(directory, "primeiro-acesso.txt");
   let account = null, creating = false, failures = 0, blockedUntil = 0;
@@ -15,7 +15,8 @@ export async function createAuth(directory, { clock = Date.now, provider } = {})
     account = JSON.parse(await readFile(file, "utf8"));
     if (typeof account.username !== "string" || (account.provider === "supabase" ? !provider || !/^[a-f0-9-]{36}$/.test(account.userId) : !/^[a-f0-9]{32}$/.test(account.salt) || !/^[a-f0-9]{128}$/.test(account.hash))) throw new Error("invalid auth");
   } catch (error) { if (error.code !== "ENOENT") throw new Error("Não foi possível ler a autenticação local. Verifique auth.json."); }
-  const setupToken = account ? "" : randomBytes(32).toString("hex");
+  if (bootstrapToken && !/^[a-f0-9]{64}$/.test(bootstrapToken)) throw new Error("Código de primeiro acesso inválido.");
+  const setupToken = account ? "" : bootstrapToken || randomBytes(32).toString("hex");
   const controlToken = randomBytes(32).toString("hex");
   await writeFile(join(directory, "control-token"), controlToken, { mode: 0o600 });
   if (setupToken) await writeFile(setupFile, `ZELO — PRIMEIRO ACESSO\n\nCódigo para criar o administrador (uso único):\n${setupToken}\n\nAbra http://127.0.0.1:4173/login e informe esse código, seu usuário e uma senha com pelo menos 12 caracteres.\n`, { mode: 0o600 });

@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultSchedule, validateSchedule } from "./reply-schedule.mjs";
 import { AI_PROVIDERS } from "./ai-providers.mjs";
+import { setTimeout as pause } from 'node:timers/promises';
 
 export function fail(message, status = 400) { return Object.assign(new Error(message), { status }); }
 
@@ -30,7 +31,11 @@ export async function createSettings(dataDir, seed = {}) {
   value.aiKeys ||= Object.entries(value.aiProfiles).filter(([, profile]) => profile.apiKey && profile.model).sort(([a], [b]) => Number(b === value.aiProvider) - Number(a === value.aiProvider)).map(([provider, profile]) => ({ id: randomUUID(), label: AI_PROVIDERS[provider].name, provider, model: profile.model, apiKey: profile.apiKey, enabled: true, cooldownUntil: 0, validatedAt: profile.validatedAt || 0 }));
   async function persist(next) {
     await writeFile(path + ".tmp", JSON.stringify(next, null, 2), { mode: 0o600 });
-    await rename(path + ".tmp", path);
+    // Windows antivirus can briefly lock a freshly restored settings file.
+    for (let attempt = 0; ; attempt++) {
+      try { await rename(path + '.tmp', path); break; }
+      catch (error) { if (process.platform !== 'win32' || !['EPERM','EBUSY'].includes(error.code) || attempt >= 10) throw error; await pause(100); }
+    }
     value = next;
   }
   await persist(value);

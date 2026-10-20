@@ -15,6 +15,7 @@ import { createWhatsAppQr } from "./whatsapp-qr.mjs";
 import { createTunnel } from "./tunnel.mjs";
 import { createAiModel } from "./ai.mjs";
 import { AI_PROVIDERS } from "./ai-providers.mjs";
+import { createUploads } from "./deployment/uploads.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js", "text/javascript"]], ["/reply-schedule.js", ["reply-schedule.js", "text/javascript"]], ["/style.css", ["style.css", "text/css"]]]);
@@ -47,8 +48,9 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const settings = await createSettings(dataDir, ai);
   const config = cloudConfig || (process.env.SUPABASE_URL ? { url: process.env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : null);
   const cloud = config ? createSupabase(config) : null;
-  const auth = await createAuth(dataDir, { provider: cloud ? createSupabaseAuth(cloud) : undefined });
+  const auth = await createAuth(dataDir, { provider: cloud ? createSupabaseAuth(cloud) : undefined, bootstrapToken: process.env.ZELO_SETUP_TOKEN });
   const runtime = await createRuntime(dataDir, settings, { fetchImpl: aiFetch || geminiFetch || ai.fetchImpl, cloud, backupKey: process.env.SUPABASE_BACKUP_KEY });
+  const uploads = createUploads(runtime.catalog);
   await runtime.memory.load("system:init");
   const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch });
   const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory });
@@ -81,6 +83,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const server = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store"); res.setHeader("X-Content-Type-Options", "nosniff"); res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    if (cloud && req.headers['x-zelo-remote'] === '1') res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: ${cloud.origin}; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`);
     const allowed = [`127.0.0.1:${server.address().port}`, `localhost:${server.address().port}`];
     if (!allowed.includes(req.headers.host) || Object.keys(req.headers).some(key => ["forwarded", "x-forwarded-for", "x-forwarded-host", "cf-connecting-ip"].includes(key)) || (req.headers.origin && !allowed.map(host => `http://${host}`).includes(req.headers.origin))) return json(res, 403, { error: "Painel disponível somente neste computador." });
     try {
@@ -92,6 +95,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
         const input = await body(req);
         if (url.pathname === "/api/auth/logout") { auth.logout(req); res.setHeader("Set-Cookie", auth.cookie()); return json(res, 200, { ok: true }); }
         const token = await (url.pathname.endsWith("setup") ? auth.setup(input) : auth.login(input));
+        if (url.pathname.endsWith('setup')) await runtime.flushBackup();
         res.setHeader("Set-Cookie", auth.cookie(token)); return json(res, 200, { ok: true });
       }
       const controlledShutdown = req.method === "POST" && url.pathname === "/api/shutdown" && auth.control(req.headers["x-zelo-control"]);
@@ -110,10 +114,13 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/ai/providers") return json(res, 200, AI_PROVIDERS);
       const fileMatch = url.pathname.match(/^\/api\/files\/([a-f0-9-]{36})$/);
       if (req.method === "GET" && fileMatch) {
+        if (cloud && req.headers['x-zelo-remote'] === '1') { res.writeHead(302, { Location: await runtime.catalog.signedFile(fileMatch[1]) }); return res.end(); }
         const file = await runtime.catalog.file(fileMatch[1]);
         res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
         res.writeHead(200, { "Content-Type": file.mime, "Content-Length": file.size, "Content-Disposition": `${file.mime === "application/pdf" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(file.name)}` }); return res.end(file.bytes);
       }
+      const uploadPart = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})$/);
+      if (req.method === 'POST' && uploadPart) return json(res, 200, uploads.append(uploadPart[1], auth.session(req).key, Number(req.headers['x-upload-offset']), await rawBody(req, 2 * 1024 * 1024)));
       const uploadMatch = url.pathname.match(/^\/api\/products\/([a-f0-9-]{36})\/files$/);
       if (req.method === "POST" && uploadMatch) {
         if (!["image/png", "image/jpeg", "image/webp", "application/pdf"].includes(req.headers["content-type"])) throw fail("Envie JPG, PNG, WebP ou PDF.", 415);
@@ -127,6 +134,9 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/templates") return json(res, 200, await whatsapp.templates());
       if (req.method === "POST") {
         const input = await body(req);
+        if (url.pathname === '/api/uploads') return json(res, 201, uploads.start(input, auth.session(req).key));
+        const finishUpload = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})\/finish$/);
+        if (finishUpload) return json(res, 201, await serial(() => uploads.finish(finishUpload[1], auth.session(req).key)));
         if (url.pathname === "/api/ai/keys") return json(res, 201, await settings.saveAiKey(input));
         if (url.pathname === "/api/ai/rotation") return json(res, 200, await settings.configureAiRotation(input));
         const aiKeyMatch = url.pathname.match(/^\/api\/ai\/keys\/([a-f0-9-]{36})(?:\/(verify|reset|remove))?$/);

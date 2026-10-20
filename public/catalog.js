@@ -81,8 +81,13 @@ export async function initCatalog() {
       editing = await request(editing ? `/api/products/${editing.id}` : "/api/products", { name: $("#product-name").value, description: $("#product-description").value, price: $("#product-price").value, active: $("#product-active").checked, links, ...(editing ? { revision: editing.revision } : {}) });
       while (pending.length) {
         const file = pending[0]; status(`Enviando ${file.name}…`);
-        const response = await fetch(`/api/products/${editing.id}/files`, { method: "POST", headers: { "Content-Type": file.type, "X-File-Name": encodeURIComponent(file.name) }, body: file });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || "Falha ao enviar arquivo.");
+        const upload = await request('/api/uploads', { productId: editing.id, name: file.name, mime: file.type, size: file.size });
+        for (let offset = 0; offset < file.size; offset += upload.chunkSize) {
+          status(`Enviando ${file.name}… ${Math.round(offset / file.size * 100)}%`);
+          const response = await fetch(`/api/uploads/${upload.id}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Upload-Offset': String(offset) }, body: file.slice(offset, offset + upload.chunkSize) });
+          const part = await response.json(); if (!response.ok) throw new Error(part.error || 'Falha ao enviar parte do arquivo.');
+        }
+        const result = await request(`/api/uploads/${upload.id}/finish`, {});
         pending.shift(); editing.files.push(result); editing.revision++; files();
       }
       $("#product-upload").value = ""; await refreshCatalog(); editing = products.find(product => product.id === editing.id);

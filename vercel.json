@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "node deployment/build.mjs",
+  "outputDirectory": "deployment/static",
+  "functions": { "api/index.mjs": { "maxDuration": 60 } },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "daemons": {
+    "whatsapp": { "root": ".", "entrypoint": "Dockerfile", "instances": { "iad1": 1 }, "resources": { "requests": { "memory": "1Gi" } }, "terminationGracePeriodSeconds": 90 }
+  }
+}

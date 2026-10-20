@@ -1,0 +1,4 @@
+const files = new Set(['/','/login','/login.js','/login.css','/app.js','/style.css','/catalog.js','/catalog.css','/ai-keys.js','/reply-schedule.js','/brand/logo.svg','/brand/logo-light.svg','/brand/icon.svg','/favicon.ico','/webhook']);
+export function allowedPath(path) {
+  return files.has(path) || /^\/api\/(?:health|auth\/(?:status|setup|login|logout)|products(?:\/[a-f0-9-]{36}(?:\/files(?:\/[a-f0-9-]{36}\/remove)?)?)?|files\/[a-f0-9-]{36}|uploads(?:\/[a-f0-9-]{36}(?:\/finish)?)?|ai\/(?:providers|keys(?:\/[a-f0-9-]{36}(?:\/(?:verify|reset|remove))?)?|rotation|verify)|dashboard|state|conversation|templates|settings|qr\/(?:connect|disconnect|logout)|gemini\/verify|whatsapp\/(?:verify|subscribe|send|retry)|tunnel\/(?:start|stop)|chat|knowledge|new)$/.test(path);
+}

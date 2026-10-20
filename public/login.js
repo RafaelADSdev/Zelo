@@ -1,4 +1,6 @@
 const $ = selector => document.querySelector(selector);
+document.querySelector('footer').textContent = 'Acesso protegido · A sessão expira após 12 horas.';
+if (location.protocol === 'https:') document.querySelector('#setup-fields .field-help').textContent = 'Use o código de primeiro acesso fornecido na configuração do Zelo.';
 let setup = false;
 const error = message => { $("#login-error").textContent = message; $("#login-error").hidden = !message; };
 try {

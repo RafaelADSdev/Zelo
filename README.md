@@ -20,7 +20,7 @@ O painel exige login, inclusive nas APIs, anexos, conversas e controles de IA/Wh
 
 A sessão usa cookie HttpOnly, SameSite=Strict e validade absoluta de 12 horas. Sair revoga a sessão. Reiniciar o servidor exige novo login. Após cinco tentativas inválidas, o login fica bloqueado por cinco minutos. Os dados existentes e a sessão do WhatsApp continuam preservados; sair do painel não desconecta o WhatsApp.
 
-O servidor atual aceita apenas HTTP em loopback neste computador. O cookie não usa Secure nesse ambiente HTTP local. Esta implementação não publica o painel na internet: a futura implantação em nuvem exigirá HTTPS/cookie Secure, domínio permitido e configuração do provedor de autenticação. O webhook separado continua validando assinaturas da Meta sem exigir login de navegador. `PARAR.cmd` usa um token local de controle, válido somente para encerrar esta instância, sem abrir acesso às demais APIs.
+O servidor local aceita apenas HTTP em loopback neste computador. O cookie não usa Secure nesse ambiente HTTP local. Na Vercel, `api/index.mjs` atende HTTPS com cookies Secure e origem permitida, enquanto um Daemon executa o atendimento continuamente e restaura o estado cifrado do Supabase. Veja [a configuração e os limites da hospedagem](docs/vercel.md). O webhook separado continua validando assinaturas da Meta sem exigir login de navegador. `PARAR.cmd` usa um token local de controle, válido somente para encerrar esta instância, sem abrir acesso às demais APIs.
 
 Aplicação local com configuração pelo navegador, conexão por QR Code ou WhatsApp Cloud API e respostas pelo provedor de IA selecionado. O código da aplicação não usa respostas por regras, pedidos fictícios ou um canal de WhatsApp imitado.
 

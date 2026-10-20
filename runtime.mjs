@@ -98,7 +98,7 @@ export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backu
     return next;
   }
   return {
-    client, memory, state, catalog,
+    client, memory, state, catalog, async flushBackup() { if (backup) { await backup.run(); await backup.run(); } },
     async saveKnowledge(value) {
       await writeFile(knowledgeFile + ".tmp", value, "utf8");
       await rename(knowledgeFile + ".tmp", knowledgeFile);

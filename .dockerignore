@@ -1,0 +1,12 @@
+node_modules
+.git
+.wappy
+.env
+.env.*
+materiais
+*.log
+*.png
+test
+.vercel
+.codex
+.cursor
