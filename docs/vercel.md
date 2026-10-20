@@ -1,6 +1,6 @@
 # Publicação na Vercel
 
-Para a implantação atual com múltiplas contas, seguir também [Ambientes privados por conta](workspaces.md). Aplicar as migrações `001` e `002`. O worker restaura um snapshot por login e aceita somente usuários da lista de autorização. Os detalhes de vínculo único de administrador abaixo descrevem a inicialização legada, preservada apenas para migrar o ambiente original.
+Para a implantação atual com múltiplas contas, seguir também [Ambientes privados por conta](workspaces.md). Aplicar as migrações `001`, `002` e `003`. O worker restaura um snapshot por login e aceita somente usuários da lista de autorização. Os detalhes de vínculo único de administrador abaixo descrevem a inicialização legada, preservada apenas para migrar o ambiente original.
 
 O projeto usa uma Function HTTP (`api/index.mjs`) e um Vercel Daemon (`deployment/worker.mjs`, uma instância de 1 GiB em iad1). Não executar `server.mjs` diretamente como Function: SQLite, sessões e o socket do WhatsApp precisam do processo contínuo.
 

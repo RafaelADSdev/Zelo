@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createWorkspaceAccess } from '../workspace-access.mjs';
-import { createWorkspaceManager, workspaceKey } from '../workspace-manager.mjs';
+import { createWorkspaceManager, workspaceKey, originalAccount } from '../workspace-manager.mjs';
+import { createStateBackup } from '../supabase-state.mjs';
 import { createWorkspaceRouter } from '../workspace-router.mjs';
 import { createSupabaseCatalog } from '../supabase-catalog.mjs';
 import { decodeSnapshot } from '../deployment/restore.mjs';
@@ -63,6 +64,20 @@ export function fixture() {
   return {cloud,cloudConfig,tables,calls,objects,provider,passwords,ids};
 }
 const password='test-only-workspace-password-2026';
+
+test('migração confere identidade original pela Auth Admin API antes de atribuir os dados',async()=>{
+  const f=fixture(), directory=await testDirectory(), key='c'.repeat(64), userId=randomUUID();
+  await writeFile(join(directory,'auth.json'),JSON.stringify({provider:'supabase',username:'owner@test.example',userId}));
+  const backup=createStateBackup({client:{execute:async()=>({rows:[]})},dataDir:directory,cloud:f.cloud,key});
+  await backup.run(); await backup.close();
+  let identity={id:userId,email:'another@test.example'};
+  const cloud={request:(path,options)=>path.startsWith('/auth/v1/admin/users/') ? identity : f.cloud.request(path,options)};
+  await assert.rejects(originalAccount(cloud,key),/Vínculo/);
+  assert.ok(!f.calls.some(call=>call.path.endsWith('zelo_claim_legacy')));
+  identity={id:userId,email:'OWNER@test.example'};
+  assert.equal((await originalAccount(cloud,key)).userId,userId);
+  assert.equal(f.calls.filter(call=>call.path.endsWith('zelo_claim_legacy')).length,1);
+});
 
 test('convites: uso único, expiração, senha, cadastro externo não autorizado e administrador protegido',async()=>{
   const f=fixture(); let now=100000;

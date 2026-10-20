@@ -15,6 +15,8 @@ export async function originalAccount(cloud, key) {
   if (!row) throw new Error('Backup do administrador não encontrado.');
   const auth = JSON.parse(decodeSnapshot(row, key).files?.['auth.json'] || 'null');
   if (!validOwner(auth?.userId) || auth.provider !== 'supabase' || !auth.username) throw new Error('Administrador original não identificado.');
+  const user = await cloud.request('/auth/v1/admin/users/' + auth.userId);
+  if (user?.id !== auth.userId || user.email?.toLowerCase() !== auth.username.toLowerCase()) throw new Error('Vínculo do administrador original inválido.');
   await cloud.request('/rest/v1/rpc/zelo_claim_legacy', { method: 'POST', body: { target_owner: auth.userId, target_email: auth.username } });
   return auth;
 }
