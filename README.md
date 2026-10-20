@@ -170,7 +170,7 @@ Testes automatizados não confirmam permissões, registro do número ou entrega 
 
 ## Contas e ambientes privados em produção
 
-Cada conta autorizada tem seu próprio WhatsApp, APIs, produtos, materiais, conversas e instruções. A conta original administra convites em **Conexões e IA → Contas e convites**. O link vale por 48 horas e é compartilhado manualmente; não há cadastro público. A pessoa escolhe sua própria senha. É possível suspender o acesso e pausar o WhatsApp sem apagar os dados. Consulte [a configuração e a migração de ambientes](docs/workspaces.md).
+Cada conta autorizada tem seu próprio WhatsApp, APIs, produtos, materiais, conversas e instruções. A conta original administra convites em **Gestão de acessos**, exclusiva da conta de administrador master. O link vale por 48 horas e é compartilhado manualmente; não há cadastro público. A pessoa escolhe sua própria senha. É possível suspender o acesso e pausar o WhatsApp sem apagar os dados. Consulte [a configuração e a migração de ambientes](docs/workspaces.md).
 
 ## Programação do atendimento automático
 

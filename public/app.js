@@ -4,7 +4,7 @@ import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
-let dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
+let workspace, dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
 let lastContacts = "", lastWaHistory = "", templates = [], sendIntent;
 let providers = {};
 const activeAi = () => dashboard?.settings.aiRotationEnabled ? dashboard.settings.aiLastUsed || dashboard.settings.aiKeys.find(key => key.enabled && key.cooldownUntil <= Date.now()) || {} : dashboard?.settings.aiListOnly ? dashboard.settings.aiKeys.find(key => key.enabled) || {} : { provider: dashboard?.settings.aiProvider, model: dashboard?.settings.model };
@@ -115,7 +115,7 @@ async function loadConversation() {
   if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa.")); container.scrollTop = container.scrollHeight;
 }
 function updatePage(next) {
-  const pages = { knowledge: ["Produtos e materiais", "Tudo que sua IA precisa saber, organizado em um só lugar.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], settings: ["Conexões e inteligência artificial", "Conecte seu WhatsApp e configure como seu assistente trabalha.", "Configurações"] };
+  const pages = { knowledge: ["Produtos e materiais", "Tudo que sua IA precisa saber, organizado em um só lugar.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e inteligência artificial", "Conecte seu WhatsApp e configure como seu assistente trabalha.", "Configurações"] };
   const [title, description, badge] = pages[next];
   $("#page-title").textContent = title; $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
   $(".mode-badge").textContent = badge;
@@ -127,9 +127,13 @@ function filterContacts() {
 }
 $("#contact-search").addEventListener("input", filterContacts);
 async function showView(next) {
+  if (next === "access" && !workspace?.isMaster) return;
   updatePage(next);
   view = next; $$(".view").forEach(item => { item.hidden = item.id !== "view-" + next; });
-  $document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
+  document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
+  history.replaceState(null, "", next === "access" ? "/admin/access" : "/");
+  $(".reply-control").hidden = next === "access";
+  $(".connection-notice").hidden = next === "access";
   try { if (next === "settings") await loadDashboard(true); if (next === "knowledge") await refreshCatalog(); if (next === "whatsapp") { await loadDashboard(); await loadConversation(); } } catch (failure) { error(failure.message); }
 }
 $$('[data-view]').forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
@@ -195,7 +199,8 @@ try {
   initAiKeys({ providers, api, changed: () => loadDashboard() });
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge;
   await initCatalog();
-  await initWorkspace({ api });
+  workspace = await initWorkspace({ api });
+  if (location.pathname === "/admin/access") await showView("access");
   updatePage(view);
 } catch (failure) { error("Não foi possível carregar o painel. " + failure.message); }
 setInterval(async () => {

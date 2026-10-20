@@ -122,6 +122,8 @@ test('duas contas: APIs, instruções, QR, memória, anexos e backups independen
   const send=(path,input,cookie='',headers={})=>fetch(router.url+path,{...(input===undefined?{}:{method:'POST',body:JSON.stringify(input)}),headers:{'Content-Type':'application/json',cookie,...headers},redirect:'manual'});
   try {
     assert.equal((await send('/api/products')).status,401);
+    const anonymousAdmin=await send('/admin/access');
+    assert.equal(anonymousAdmin.status,302); assert.equal(anonymousAdmin.headers.get('location'),'/login?next=%2Fadmin%2Faccess');
     const loginA=await send('/api/auth/login',{username:'owner@test.example',password}), cookieA=loginA.headers.get('set-cookie').split(';')[0];
     const loginB=await send('/api/auth/login',{username:'member@test.example',password}), cookieB=loginB.headers.get('set-cookie').split(';')[0];
     assert.equal(loginA.status,200); assert.equal(loginB.status,200);
@@ -146,6 +148,17 @@ test('duas contas: APIs, instruções, QR, memória, anexos e backups independen
     assert.equal((await qrB.state.keys.get('session',['contact'])).contact,null);
     await qrA.close(); await qrB.close();
     assert.equal((await send('/api/workspace/accounts',undefined,cookieB)).status,403);
+    assert.equal((await send('/admin/access',undefined,cookieB)).status,403);
+    assert.equal((await (await send('/api/workspace',undefined,cookieB)).json()).isMaster,false);
+    assert.equal((await (await send('/api/workspace',undefined,cookieA)).json()).isMaster,true);
+    assert.equal((await send('/admin/access',undefined,cookieA)).status,200);
+    assert.equal((await send('/admin/access',{},cookieA)).status,405);
+    // An owner label alone must never grant the original master's authority.
+    f.tables.get('zelo_workspaces').find(row=>row.user_id===member.user_id).role='owner';
+    assert.equal((await send('/admin/access',undefined,cookieB)).status,403);
+    assert.equal((await send('/api/workspace/accounts',undefined,cookieB)).status,403);
+    assert.equal((await send('/api/workspace/access',{email:'owner@test.example',enabled:false},cookieB)).status,403);
+    f.tables.get('zelo_workspaces').find(row=>row.user_id===member.user_id).role='member';
     assert.equal((await send('/api/workspace/invites',{email:'attacker@test.example',role:'owner'},cookieB)).status,403);
     assert.equal((await send('/api/workspace/accounts',undefined,cookieA)).status,200);
     assert.equal((await send('/api/settings',{assistantName:'evil'},cookieB,{Origin:'https://evil.test'})).status,403);

@@ -17,6 +17,7 @@ async function body(req) {
 }
 export async function createWorkspaceRouter({ access, manager, original, origin, clock = Date.now, port = 0 }) {
   const sessions = new Map(), attempts = new Map();
+  const isMaster = account => account?.role === 'owner' && account.user_id === original.userId;
   const cookie = token => `zelo_auth=${token || ''}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${token ? lifetime / 1000 : 0}`;
   function tokenKey(req) { const token = req.headers.cookie?.match(/(?:^|;\s*)zelo_auth=([A-Za-z0-9_-]{43})(?:;|$)/)?.[1]; return token ? hash(token) : ''; }
   async function session(req) {
@@ -87,12 +88,17 @@ export async function createWorkspaceRouter({ access, manager, original, origin,
       if (req.method === 'GET' && path === '/api/auth/status') return json(res,200,{configured:true,authenticated:Boolean(current),provider:'supabase',inviteOnly:true});
       if (req.method === 'POST' && path === '/api/auth/logout') { await body(req); sessions.delete(tokenKey(req)); res.setHeader('Set-Cookie',cookie()); return json(res,200,{ok:true}); }
       if (!current) {
-        if (req.method === 'GET' && path === '/') { res.writeHead(302,{Location:'/login'}); return res.end(); }
+        if (req.method === 'GET' && ['/', '/admin/access'].includes(path)) { res.writeHead(302,{Location:path === '/admin/access' ? '/login?next=%2Fadmin%2Faccess' : '/login'}); return res.end(); }
         throw fail('Entre na sua conta para acessar seu ambiente.',401);
       }
-      if (req.method === 'GET' && path === '/api/workspace') return json(res,200,{ email:current.email, role:current.role, userId:current.user_id, webhookUrl:origin+'/w/'+current.user_id+'/webhook' });
+      if (req.method === 'GET' && path === '/api/workspace') return json(res,200,{ email:current.email, role:current.role, isMaster:isMaster(current), userId:current.user_id, webhookUrl:origin+'/w/'+current.user_id+'/webhook' });
+      if (path === '/admin/access') {
+        if (!isMaster(current)) throw fail('Esta página é exclusiva do administrador master.',403);
+        if (req.method !== 'GET') throw fail('Método não permitido.',405);
+        return forward(req,res,await manager.get(current.user_id),'/',current);
+      }
       if (path.startsWith('/api/workspace/')) {
-        if (current.role !== 'owner') throw fail('Apenas o administrador pode gerenciar acessos.',403);
+        if (!isMaster(current)) throw fail('Apenas o administrador master pode gerenciar acessos.',403);
         if (req.method === 'GET' && path === '/api/workspace/accounts') return json(res,200,await access.accounts());
         if (req.method === 'POST') {
           const input = await body(req);

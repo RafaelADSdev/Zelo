@@ -1,3 +1,4 @@
+const destination = new URLSearchParams(location.search).get('next') === '/admin/access' ? '/admin/access' : '/';
 const $ = selector => document.querySelector(selector);
 document.querySelector('footer').textContent = 'Acesso protegido · A sessão expira após 12 horas.';
 if (location.protocol === 'https:') document.querySelector('#setup-fields .field-help').textContent = 'Use o código de primeiro acesso fornecido na configuração do Zelo.';
@@ -7,7 +8,7 @@ try {
   const response = await fetch("/api/auth/status", { signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error("Não foi possível verificar o acesso. Atualize a página.");
   const status = await response.json();
-  if (status.authenticated) location.replace("/");
+  if (status.authenticated) location.replace(destination);
   setup = !status.configured;
   if (status.inviteOnly && !invitationToken) document.querySelector('#login-description').textContent = 'Entre no seu ambiente privado. Novas contas precisam de um convite do administrador.';
   if (status.provider === "supabase") {
@@ -46,6 +47,6 @@ $("#login-form").onsubmit = async event => {
     const response = await fetch(invitationToken ? "/api/auth/accept" : setup ? "/api/auth/setup" : "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: $("#username").value, password: $("#password").value, ...(invitationToken ? { token: invitationToken } : {}), ...(setup ? { setupToken: $("#setup-token").value } : {}) }), signal: AbortSignal.timeout(55000) });
     const result = await response.json(); if (!response.ok) throw new Error(result.error || "Não foi possível entrar.");
     $("#password").value = $("#confirm-password").value = $("#setup-token").value = "";
-    location.replace("/");
+    location.replace(destination);
   } catch (failure) { error(failure.message); $("#login-submit").disabled = false; $("#login-submit").textContent = invitationToken ? "Ativar meu ambiente" : setup ? "Criar conta e entrar" : "Entrar no Zelo"; }
 };
