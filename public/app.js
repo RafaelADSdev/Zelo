@@ -1,3 +1,4 @@
+import { initWorkspace } from "/workspace.js";
 import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
@@ -194,6 +195,7 @@ try {
   initAiKeys({ providers, api, changed: () => loadDashboard() });
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge;
   await initCatalog();
+  await initWorkspace({ api });
   updatePage(view);
 } catch (failure) { error("Não foi possível carregar o painel. " + failure.message); }
 setInterval(async () => {

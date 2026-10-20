@@ -13,10 +13,10 @@ export function decodeSnapshot(row,key) {
   if(createHash('sha256').update(plaintext).digest('hex')!==row.sha256)throw new Error('Backup sem integridade.');
   const snapshot=JSON.parse(plaintext);if(snapshot.version!==1 || !Array.isArray(snapshot.tables))throw new Error('Backup inválido.');return snapshot;
 }
-export async function restoreState({cloud,key,directory}) {
+export async function restoreState({cloud,key,directory,snapshotId="primary",allowMissing=false}) {
   await mkdir(directory,{recursive:true});
   try {await access(join(directory,'wappy.db'));throw new Error('Restauração exige um diretório vazio.');}catch(error){if(error.code!=='ENOENT')throw error;}
-  const row=await readRecord(cloud,'primary');if(!row)throw new Error('Backup inicial não encontrado. Migre os dados antes de publicar.');
+  const row=await readRecord(cloud,snapshotId);if(!row && allowMissing)return null;if(!row)throw new Error('Backup inicial não encontrado. Migre os dados antes de publicar.');
   const snapshot=decodeSnapshot(row,key), client=createClient({url:pathToFileURL(join(directory,'wappy.db')).href});
   const quote=value=>'"'+String(value).replaceAll('"','""')+'"';
   const value=item=>item?.$bytes ? Buffer.from(item.$bytes,'base64') : item?.$bigint ? BigInt(item.$bigint) : item;

@@ -168,6 +168,10 @@ Testes automatizados não confirmam permissões, registro do número ou entrega 
 - [Gemini generateContent](https://ai.google.dev/api/generate-content)
 - [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
 
+## Contas e ambientes privados em produção
+
+Cada conta autorizada tem seu próprio WhatsApp, APIs, produtos, materiais, conversas e instruções. A conta original administra convites em **Conexões e IA → Contas e convites**. O link vale por 48 horas e é compartilhado manualmente; não há cadastro público. A pessoa escolhe sua própria senha. É possível suspender o acesso e pausar o WhatsApp sem apagar os dados. Consulte [a configuração e a migração de ambientes](docs/workspaces.md).
+
 ## Programação do atendimento automático
 
 O controle no topo de todas as telas vale para QR Code e Cloud API. **Ligar agora** ativa continuamente e desativa a programação. **Desligar** pausa até nova ação. Em **Programar horário**, escolha dias da semana, início/fim ou dia inteiro e, opcionalmente, datas inicial/final inclusivas. Clique em **Salvar e ativar programação**. O fuso é America/Sao_Paulo, independentemente do fuso do computador. Uma faixa 22:00–02:00 pertence ao dia de início, inclusive no limite da data final.

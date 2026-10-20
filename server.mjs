@@ -19,6 +19,7 @@ import { createUploads } from "./deployment/uploads.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js", "text/javascript"]], ["/reply-schedule.js", ["reply-schedule.js", "text/javascript"]], ["/style.css", ["style.css", "text/css"]]]);
+assets.set("/workspace.js", ["workspace.js", "text/javascript"]);
 assets.set("/catalog.js", ["catalog.js", "text/javascript"]);
 assets.set("/catalog.css", ["catalog.css", "text/css"]);
 assets.set("/ai-keys.js", ["ai-keys.js", "text/javascript"]);
@@ -43,13 +44,13 @@ function sameToken(a, b) { const x = Buffer.from(a || ""); const y = Buffer.from
 async function listen(server, port) { await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); }); }
 async function closeServer(server) { await new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); }); }
 
-export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, onShutdown, cloudConfig } = {}) {
+export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, onShutdown, cloudConfig, authDelegate, ownerId, snapshotId, backupKey } = {}) {
   const instanceId = randomUUID();
   const settings = await createSettings(dataDir, ai);
   const config = cloudConfig || (process.env.SUPABASE_URL ? { url: process.env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : null);
   const cloud = config ? createSupabase(config) : null;
-  const auth = await createAuth(dataDir, { provider: cloud ? createSupabaseAuth(cloud) : undefined, bootstrapToken: process.env.ZELO_SETUP_TOKEN });
-  const runtime = await createRuntime(dataDir, settings, { fetchImpl: aiFetch || geminiFetch || ai.fetchImpl, cloud, backupKey: process.env.SUPABASE_BACKUP_KEY });
+  const auth = authDelegate || await createAuth(dataDir, { provider: cloud ? createSupabaseAuth(cloud) : undefined, bootstrapToken: process.env.ZELO_SETUP_TOKEN });
+  const runtime = await createRuntime(dataDir, settings, { fetchImpl: aiFetch || geminiFetch || ai.fetchImpl, cloud, backupKey: backupKey || process.env.SUPABASE_BACKUP_KEY, ownerId, snapshotId });
   const uploads = createUploads(runtime.catalog);
   await runtime.memory.load("system:init");
   const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch });
@@ -90,7 +91,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       const url = new URL(req.url, "http://localhost");
       if (req.method === "GET" && url.pathname === "/api/health") return json(res, 200, { app: "wappy", instanceId });
       if (req.method === "GET" && url.pathname === "/api/auth/status") return json(res, 200, { configured: auth.configured(), authenticated: Boolean(auth.session(req)), provider: auth.provider() });
-      if (req.method === "POST" && ["/api/auth/setup", "/api/auth/login", "/api/auth/logout"].includes(url.pathname)) {
+      if (!authDelegate && req.method === "POST" && ["/api/auth/setup", "/api/auth/login", "/api/auth/logout"].includes(url.pathname)) {
         // Login and logout require the same Origin checks as administrative writes.
         const input = await body(req);
         if (url.pathname === "/api/auth/logout") { auth.logout(req); res.setHeader("Set-Cookie", auth.cookie()); return json(res, 200, { ok: true }); }

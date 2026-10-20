@@ -3,7 +3,7 @@ import { gzipSync } from "node:zlib";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 const encode = value => value instanceof ArrayBuffer || value instanceof Uint8Array ? { $bytes: Buffer.from(value instanceof ArrayBuffer ? new Uint8Array(value) : value).toString("base64") } : typeof value === "bigint" ? { $bigint: value.toString() } : value;
-export function createStateBackup({ client, dataDir, cloud, key }) {
+export function createStateBackup({ client, dataDir, cloud, key, snapshotId = "primary" }) {
   if (!/^[a-f0-9]{64}$/.test(key || "")) throw new Error("Configure SUPABASE_BACKUP_KEY com 32 bytes hexadecimais.");
   let working, stopped = false, lastHash = "";
   async function save() {
@@ -24,7 +24,7 @@ export function createStateBackup({ client, dataDir, cloud, key }) {
     const iv = randomBytes(12), cipher = createCipheriv("aes-256-gcm", Buffer.from(key, "hex"), iv);
     const encrypted = Buffer.concat([cipher.update(gzipSync(plaintext)), cipher.final()]);
     const updated = Date.now();
-    await cloud.request("/rest/v1/zelo_runtime_snapshots?on_conflict=id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: { id: "primary", version: 1, ciphertext: encrypted.toString("base64"), iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), sha256, updated } });
+    await cloud.request("/rest/v1/zelo_runtime_snapshots?on_conflict=id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: { id: snapshotId, version: 1, ciphertext: encrypted.toString("base64"), iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), sha256, updated } });
     lastHash = sha256;
     await writeFile(join(dataDir, "last-cloud-backup.json"), JSON.stringify({ updated, tables: tables.length, rows: tables.reduce((sum,table)=>sum+table.rows.length,0), sha256, encryptedBytes: encrypted.length }), { mode: 0o600 });
   }

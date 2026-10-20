@@ -12,12 +12,12 @@ import { createCatalog } from "./catalog.mjs";
 import { createSupabaseCatalog } from "./supabase-catalog.mjs";
 import { createStateBackup } from "./supabase-state.mjs";
 
-export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backupKey } = {}) {
+export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backupKey, ownerId, snapshotId } = {}) {
   await mkdir(dataDir, { recursive: true });
   const client = createClient({ url: pathToFileURL(join(dataDir, "wappy.db")).href });
   const memory = createLibsqlMemory({ client });
   const localCatalog = await createCatalog(client);
-  const catalog = cloud ? createSupabaseCatalog(cloud) : localCatalog;
+  const catalog = cloud ? createSupabaseCatalog(cloud, ownerId) : localCatalog;
   const profiles = createLibsqlSessionProfileStore({ client });
   const knowledge = createKnowledge({ client });
   const knowledgeFile = join(dataDir, "base.txt");
@@ -32,7 +32,7 @@ export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backu
     document = value;
   }
   await indexDocument(document);
-  const backup = cloud ? createStateBackup({ client, dataDir, cloud, key: backupKey }) : null;
+  const backup = cloud ? createStateBackup({ client, dataDir, cloud, key: backupKey, snapshotId }) : null;
   backup?.run().catch(() => {});
   async function state(contactId) {
     const config = settings.get();

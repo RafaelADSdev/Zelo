@@ -4,12 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as pause } from 'node:timers/promises';
 import { createSupabase } from '../supabase-client.mjs';
-import { startServer } from '../server.mjs';
+import { createSupabaseAuth } from '../supabase-auth.mjs';
+import { createWorkspaceAccess } from '../workspace-access.mjs';
+import { createWorkspaceManager, originalAccount } from '../workspace-manager.mjs';
+import { createWorkspaceRouter } from '../workspace-router.mjs';
 import { createTunnel } from '../tunnel.mjs';
 import { createBridge } from './bridge.mjs';
 import { encryptRecord,saveRecord } from './records.mjs';
 import { createLease } from './lease.mjs';
-import { restoreState } from './restore.mjs';
 
 const cloud=createSupabase({url:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY,publishableKey:process.env.SUPABASE_PUBLISHABLE_KEY});
 const key=process.env.SUPABASE_BACKUP_KEY, lease=createLease(cloud,key);
@@ -30,11 +32,16 @@ try {
     catch{owned=false;console.error('Zelo: conexão de controle perdida; encerrando para evitar duplicidade.');await stop(1);}finally{renewing=false;}
   },10000);
   const directory=await mkdtemp(join(tmpdir(),'zelo-runtime-'));
-  stage='restore';
-  await restoreState({cloud,key,directory});
-  stage='runtime';
-  app=await startServer({port:0,webhookPort:0,dataDir:directory,onShutdown:()=>stop(),cloudConfig:{url:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY,publishableKey:process.env.SUPABASE_PUBLISHABLE_KEY}});
-  if(process.env.ZELO_PUBLIC_ORIGIN)await app.settings.update({publicUrl:process.env.ZELO_PUBLIC_ORIGIN});
+  stage='workspaces';
+  const original=await originalAccount(cloud,key);
+  const origin=process.env.ZELO_PUBLIC_ORIGIN;
+  if(!origin || new URL(origin).protocol!=='https:')throw new Error('public origin');
+  const cloudConfig={url:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY,publishableKey:process.env.SUPABASE_PUBLISHABLE_KEY};
+  const access=createWorkspaceAccess(cloud,createSupabaseAuth(cloud));
+  const manager=createWorkspaceManager({directory,cloud,cloudConfig,key,original,origin});
+  // Keep every authorized WhatsApp connection alive even when its owner logs out.
+  for(const member of await access.list())if(member.enabled && member.user_id)await manager.get(member.user_id);
+  app=await createWorkspaceRouter({access,manager,original,origin});
   const secret=randomBytes(32).toString('hex');
   stage='bridge';
   bridge=await createBridge({target:app.url,webhookTarget:app.webhookUrl,secret});
