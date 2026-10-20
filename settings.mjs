@@ -127,7 +127,7 @@ export async function createSettings(dataDir, seed = {}) {
         if (input.apiKey !== undefined && typeof input.apiKey !== "string") throw fail("Chave inválida.");
         const apiKey = imported?.apiKey || input.apiKey?.trim() || (before?.provider === provider ? before.apiKey : "");
         if (!apiKey || apiKey.length > 512 || /[\x00-\x20\x7f]/.test(apiKey)) throw fail("Informe uma chave de API válida para este provedor.");
-        if (next.aiKeys.some(item => item.id !== id && item.provider === provider && item.apiKey === apiKey)) throw fail("Esta chave já está na lista deste provedor. Edite o cadastro existente.", 409);
+        if (next.aiKeys.some(item => item.id !== id && item.provider === provider && item.model === model && item.apiKey === apiKey)) throw fail("Esta chave e este modelo já estão na lista. Edite o cadastro existente.", 409);
         if (input.enabled !== undefined && typeof input.enabled !== "boolean") throw fail("Situação da chave inválida.");
         const item = { ...before, id: id || randomUUID(), label: label.trim(), provider, model, apiKey, enabled: input.enabled ?? before?.enabled ?? true };
         if (!before || before.apiKey !== apiKey || before.model !== model || before.provider !== provider) { item.cooldownUntil = 0; item.validatedAt = 0; item.lastError = ""; }

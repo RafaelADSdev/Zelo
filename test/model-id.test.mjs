@@ -18,3 +18,14 @@ test('cadastro Gemini aceita ID real, remove espaços e prefixo da API, e explic
     await assert.rejects(settings.saveAiKey({provider:'gemini',model:'https://invalid.example/key',apiKey:'test-invalid-model'}),/modelo/);
   }finally{await releaseDirectory(directory);}
 });
+
+test('a mesma chave pode usar modelos diferentes, mas não duplicar o mesmo modelo',async()=>{
+  const directory=await testDirectory();
+  try{
+    const settings=await createSettings(directory);
+    await settings.saveAiKey({provider:'gemini',model:'gemini-3.5-flash-lite',apiKey:'same-test-only-key'});
+    await settings.saveAiKey({provider:'gemini',model:'gemini-3.8-flash',apiKey:'same-test-only-key'});
+    assert.equal(settings.get().aiKeys.length,2);
+    await assert.rejects(settings.saveAiKey({provider:'gemini',model:'gemini-3.8-flash',apiKey:'same-test-only-key'}),error=>error.status===409);
+  }finally{await releaseDirectory(directory);}
+});
