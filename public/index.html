@@ -52,7 +52,7 @@
           <form id="ai-key-form">
             <label for="ai-key-label">Nome para identificar esta chave</label><input id="ai-key-label" maxlength="80" required placeholder="Ex.: Gemini principal, GPT reserva">
             <div class="form-grid"><div><label for="ai-key-provider">Provedor</label><select id="ai-key-provider"></select></div><div><label for="ai-key-model">ID do modelo</label><input id="ai-key-model" maxlength="100" required></div></div>
-            <label for="ai-key-secret">Chave de API</label><input id="ai-key-secret" type="password" autocomplete="new-password" maxlength="512"><p class="hint">O segredo fica salvo somente no servidor local. Não é exibido depois de salvar.</p>
+            <label for="ai-key-secret">Chave de API</label><input id="ai-key-secret" type="password" autocomplete="new-password" maxlength="512"><p class="hint">A chave fica protegida no servidor e não é exibida depois de salvar. Na nuvem, uma cópia criptografada é mantida no Supabase.</p>
             <a id="ai-key-console" target="_blank" rel="noreferrer">Abrir painel de chaves do provedor ↗</a>
             <label class="checkbox-row"><input id="ai-key-enabled" type="checkbox" checked> Chave ativa na lista</label>
             <div class="button-row"><button class="primary-button">Salvar chave</button><button id="ai-key-cancel" class="secondary-button" type="button">Cancelar</button></div>

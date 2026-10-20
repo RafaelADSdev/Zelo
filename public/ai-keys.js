@@ -15,13 +15,15 @@ function edit(key = null) {
   $("#ai-key-form").reset(); $("#ai-key-editor").hidden = false;
   $("#ai-key-title").textContent = key ? `Editar ${key.label}` : "Adicionar chave";
   $("#ai-key-label").value = key?.label || ""; $("#ai-key-provider").value = key?.provider || "gemini";
-  $("#ai-key-model").value = key?.model || ""; $("#ai-key-enabled").checked = key?.enabled ?? true;
+  $("#ai-key-model").value = key?.model || providers[$('#ai-key-provider').value].defaultModel || ""; $("#ai-key-enabled").checked = key?.enabled ?? true;
   $("#ai-key-secret").placeholder = key ? "Deixe vazio para manter esta chave" : "Cole a chave de API";
   $("#ai-key-secret").required = !key; providerInfo(); $("#ai-key-label").focus();
 }
 function providerInfo() {
   const id = $("#ai-key-provider").value, info = providers[id];
   $("#ai-key-model").placeholder = info.example; $("#ai-key-console").href = info.console;
+  $('#ai-key-model-help').textContent = id === 'gemini' ? `Use o ID completo, por exemplo ${info.example}. “Gemini” sozinho é o nome do provedor. A disponibilidade depende da sua conta Google.` : `Informe o ID exato do modelo disponível na sua conta. ${info.defaultModel ? 'Sugestão: ' + info.defaultModel + '.' : info.example + '.'}`;
+  $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid');
   $("#ai-key-secret").required = !editing || editing.provider !== id;
 }
 export function renderAiKeys(settings) {
@@ -70,6 +72,8 @@ export function renderAiKeys(settings) {
 }
 export function initAiKeys(options) {
   ({ providers, api, changed } = options);
+  const modelHelp = el('p', 'hint'); modelHelp.id = 'ai-key-model-help'; $('#ai-key-model').after(modelHelp); $('#ai-key-model').setAttribute('aria-describedby', modelHelp.id);
+  $('#ai-key-model').addEventListener('input', () => { $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid'); });
   $("#ai-key-provider").replaceChildren(...Object.entries(providers).map(([id, info]) => new Option(info.name, id)));
   $("#ai-rotation-enabled").addEventListener("change", event => {
     const enabled = event.target.checked;
@@ -80,6 +84,15 @@ export function initAiKeys(options) {
   $("#ai-key-provider").addEventListener("change", () => { $("#ai-key-secret").value = ""; $("#ai-key-model").value = providers[$("#ai-key-provider").value].defaultModel || ""; providerInfo(); });
   $("#ai-key-form").addEventListener("submit", event => {
     event.preventDefault();
+    const modelInput = $('#ai-key-model');
+    modelInput.value = modelInput.value.trim();
+    if ($('#ai-key-provider').value === 'gemini') {
+      modelInput.value = modelInput.value.replace(/^models\//, '');
+      if (!/^gemini-[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(modelInput.value)) {
+        modelInput.setCustomValidity('Use o ID completo, por exemplo ' + providers.gemini.defaultModel + '.');
+        modelInput.setAttribute('aria-invalid', 'true'); modelInput.reportValidity(); return;
+      }
+    }
     run(async () => {
       await api(editing ? `/api/ai/keys/${editing.id}` : "/api/ai/keys", { label: $("#ai-key-label").value, provider: $("#ai-key-provider").value, model: $("#ai-key-model").value, apiKey: $("#ai-key-secret").value, enabled: $("#ai-key-enabled").checked, revision });
       $("#ai-key-secret").value = ""; $("#ai-key-editor").hidden = true; return "Chave salva na lista. Use Subir e Descer para definir a prioridade.";

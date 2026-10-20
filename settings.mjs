@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultSchedule, validateSchedule } from "./reply-schedule.mjs";
-import { AI_PROVIDERS } from "./ai-providers.mjs";
+import { AI_PROVIDERS, normalizeModelId } from "./ai-providers.mjs";
 import { setTimeout as pause } from 'node:timers/promises';
 
 export function fail(message, status = 400) { return Object.assign(new Error(message), { status }); }
@@ -83,9 +83,9 @@ export async function createSettings(dataDir, seed = {}) {
       if ("replySchedule" in input) next.replySchedule = validateSchedule(input.replySchedule);
       if ("autoReply" in input) { if (typeof input.autoReply !== "boolean") throw fail("Resposta automática inválida."); next.autoReply = input.autoReply; }
       for (const key of ["phoneNumberId", "businessAccountId"]) if (next[key] && !/^\d{5,30}$/.test(next[key])) throw fail(`${key} deve conter somente o ID numérico da Meta.`);
-      if (next.model && !/^[a-zA-Z0-9][a-zA-Z0-9._:/@+-]{0,149}$/.test(next.model) || !/^v\d{2}\.0$/.test(next.graphVersion)) throw fail("Modelo ou versão da API inválidos.");
+      if (next.model) next.model = normalizeModelId(next.aiProvider, next.model);
+      if (!/^v\d{2}\.0$/.test(next.graphVersion)) throw fail("Versão da API inválida.");
       if (next.apiKey && !next.model) throw fail("Informe o ID do modelo para a chave cadastrada.");
-      if (next.aiProvider === "gemini" && next.model && !/^[\w.-]+$/.test(next.model)) throw fail("Informe apenas o ID do modelo Gemini, sem URL ou prefixo.");
       if (/[\x00-\x20\x7f]/.test(next.apiKey)) throw fail("A chave de API não pode conter espaços ou quebras de linha.");
       if (!next.assistantName || !next.instructions || !/^[a-zA-Z0-9_-]{16,128}$/.test(next.verifyToken)) throw fail("Informe nome, instruções e um token de verificação com pelo menos 16 caracteres.");
       if (next.publicUrl) {
@@ -121,8 +121,7 @@ export async function createSettings(dataDir, seed = {}) {
         const imported = input.importCurrent === true ? { provider: next.aiProvider, ...next.aiProfiles[next.aiProvider] } : null;
         const provider = imported?.provider || input.provider;
         if (typeof provider !== "string" || !Object.hasOwn(AI_PROVIDERS, provider)) throw fail("Provedor de IA inválido.");
-        const model = imported?.model || input.model;
-        if (typeof model !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._:/@+-]{0,99}$/.test(model) || provider === "gemini" && !/^[\w.-]+$/.test(model)) throw fail("Informe um ID de modelo válido.");
+        const model = normalizeModelId(provider, imported?.model || input.model);
         const label = input.label ?? AI_PROVIDERS[provider].name;
         if (typeof label !== "string" || !label.trim() || label.length > 80 || /[\x00-\x1f]/.test(label)) throw fail("Dê um nome à chave, com até 80 caracteres.");
         if (input.apiKey !== undefined && typeof input.apiKey !== "string") throw fail("Chave inválida.");
