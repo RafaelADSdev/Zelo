@@ -1,0 +1,31 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { defaultSchedule, validateSchedule, replyStatus, automaticAllowed, assertAutomatic } from "../reply-schedule.mjs";
+const at = text => Date.parse(text + "-03:00");
+test("programação: limites, fuso de São Paulo, dias, datas e faixa noturna", () => {
+  const config = { autoReply: true, replySchedule: { ...defaultSchedule(), enabled: true } };
+  const active = text => replyStatus(config, at(text)).active;
+  assert.equal(active("2026-10-20T07:59:59"), false);
+  assert.equal(active("2026-10-20T08:00:00"), true);
+  assert.equal(active("2026-10-20T18:00:00"), false);
+  assert.equal(active("2026-10-24T10:00:00"), false);
+  config.replySchedule = validateSchedule({ ...config.replySchedule, days: [7], start: "22:00", end: "02:00", fromDate: "2026-10-25", untilDate: "2026-10-25" });
+  assert.equal(active("2026-10-25T22:00:00"), true);
+  assert.equal(active("2026-10-26T01:59:00"), true);
+  assert.equal(active("2026-10-26T02:00:00"), false);
+  assert.equal(active("2026-11-01T22:00:00"), false);
+  config.replySchedule.allDay = true;
+  assert.equal(active("2026-10-25T00:00:00"), true);
+  assert.equal(active("2026-10-26T01:00:00"), false);
+  config.autoReply = false; assert.equal(active("2026-10-25T12:00:00"), false);
+  config.autoReply = true; config.replySchedule.enabled = false;
+  assert.equal(active("2026-11-01T03:00:00"), true);
+});
+test("programação: validação e bloqueio da fila fora do horário, inclusive após gerar resposta", () => {
+  const schedule = { ...defaultSchedule(), enabled: true };
+  for (const patch of [{ days: [] }, { days: [8] }, { start: "25:00" }, { start: "18:00" }, { fromDate: "2026-02-30" }, { fromDate: "2026-10-22", untilDate: "2026-10-20" }]) assert.throws(() => validateSchedule({ ...schedule, ...patch }));
+  const config = { autoReply: true, replySchedule: schedule };
+  assert.equal(automaticAllowed(config, at("2026-10-20T07:59:00"), at("2026-10-20T08:01:00")), false);
+  assert.equal(automaticAllowed(config, at("2026-10-20T17:59:00"), at("2026-10-20T18:01:00")), false);
+  assert.throws(() => assertAutomatic(config, at("2026-10-20T17:59:00"), at("2026-10-20T18:01:00")), error => error.replyPaused);
+});

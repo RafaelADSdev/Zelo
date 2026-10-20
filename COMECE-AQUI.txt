@@ -1,0 +1,16 @@
+ZELO — ATENDIMENTO COM IA
+
+Pasta principal: C:\Users\Usuario\Documents\Zelo
+
+1. Abra INICIAR.cmd.
+2. Acesse http://127.0.0.1:4173 no navegador.
+   No primeiro acesso, crie o administrador com o código em .wappy/primeiro-acesso.txt.
+   Escolha seu usuário e uma senha exclusiva de pelo menos 12 caracteres.
+3. Para encerrar, abra PARAR.cmd.
+
+public/brand — logos vetoriais em roxo, branco e preto.
+materiais/sopro — imagens, PDF e modelos 3D do Sopro.
+.wappy — dados, configurações e sessão do WhatsApp.
+
+Os produtos e as configurações anteriores foram preservados nesta cópia local.
+O computador e o servidor precisam permanecer ligados para atender.

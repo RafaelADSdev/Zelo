@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zelo · Atendimento com IA</title><meta name="theme-color" content="#7041DB"><link rel="icon" href="/brand/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/catalog.css"><script type="module" src="/app.js"></script></head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a href="/" class="brand" aria-label="Zelo — início"><img src="/brand/logo.svg" alt="Zelo" width="143" height="45"></a>
+    <div class="workspace"><span class="avatar">A</span><div><strong id="assistant-name">Assistente</strong><small>Seu espaço de trabalho</small></div></div>
+    <div class="nav-label">Seu espaço</div><nav aria-label="Navegação principal"><button class="nav-button active" data-view="knowledge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z"/><path d="m3 8 9 5 9-5M12 13v8M7.5 5.5l9 5"/></svg><span>Produtos e materiais</span><svg class="icon nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button><button class="nav-button" data-view="whatsapp"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8m-8 4h5"/></svg><span>Conversas</span></button><button class="nav-button" data-view="settings"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="16" cy="17" r="3" fill="currentColor" stroke="none"/></svg><span>Conexões e IA</span></button></nav>
+    <section class="connection"><h2>Integrações</h2><div><span id="ai-provider-name">IA</span><span id="gemini-status">Carregando</span></div><div><span>WhatsApp</span><span id="whatsapp-status">Não configurado</span></div><div><span>Webhook</span><span id="webhook-status">Aguardando</span></div></section>
+    <div class="sidebar-bottom"><span class="local-label"><span class="status-dot"></span>Ambiente local</span><p>Suas configurações ficam neste computador. As conversas são processadas pela IA selecionada.</p><button type="button" id="logout" class="logout-button">Sair da conta</button></div>
+  </aside>
+  <main><div class="main-topbar"><div class="breadcrumb"><span>Meu espaço</span><span>/</span><strong id="page-breadcrumb">Produtos e materiais</strong></div><span class="local-pill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Painel local</span></div><div class="main-content">
+    <header class="page-heading"><div><h1 id="page-title">Produtos e materiais</h1><p id="page-description">Tudo que sua IA precisa saber, organizado em um só lugar.</p></div><span class="mode-badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Base de conhecimento</span></header>
+    <div class="connection-notice"><span class="notice-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p id="connection-summary">Verificando configuração…</p></div>
+    <p id="global-error" class="error" role="alert" hidden></p>
+
+    <section id="view-whatsapp" class="view" hidden>
+      <div class="section-toolbar"><div><h2>Conversas do WhatsApp</h2><p class="hint">Mensagens recebidas no número conectado e respostas enviadas pelo WhatsApp.</p></div><button class="secondary-button" id="refresh-inbox">Atualizar</button></div>
+      <div class="inbox-layout">
+        <aside class="contacts-panel"><h3>Suas conversas</h3><label class="sr-only" for="contact-search">Buscar contato</label><input type="search" class="contact-search" id="contact-search" placeholder="Buscar conversa…"><div id="contacts"><p class="hint">Nenhuma mensagem recebida.</p></div></aside>
+        <section class="chat-panel"><header class="chat-header"><div><h2 id="wa-contact">Selecione um contato</h2><span class="hint" id="wa-window">Ou informe um número abaixo para enviar um template aprovado.</span></div></header><div class="messages" id="wa-messages" role="log" aria-label="Mensagens do WhatsApp"><div class="conversation-empty"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8m-8 4h5"/></svg><h3>Escolha uma conversa</h3><p>Selecione um contato para acompanhar o atendimento ou enviar uma mensagem.</p></div></div>
+          <form id="wa-send-form" class="panel-form">
+            <label for="wa-to">Destinatário com DDI e DDD ou contato selecionado</label><input id="wa-to" required maxlength="50" placeholder="Somente dígitos, com DDI e DDD">
+            <label for="wa-kind">Tipo de mensagem</label><select id="wa-kind"><option value="text">Texto · dentro da janela de 24 horas</option><option value="template">Template aprovado pela Meta</option></select>
+            <div id="text-fields"><label for="wa-text">Mensagem</label><textarea id="wa-text" rows="3" maxlength="4000"></textarea></div>
+            <div id="template-fields" hidden>
+              <button type="button" class="secondary-button" id="load-templates">Carregar templates aprovados</button><label for="approved-template">Template da conta</label><select id="approved-template"><option value="">Selecione ou preencha abaixo</option></select>
+              <div class="form-grid"><div><label for="template-name">Nome do template</label><input id="template-name" placeholder="Nome exato cadastrado na Meta"></div><div><label for="template-language">Idioma</label><input id="template-language" value="pt_BR"></div></div>
+              <label for="template-params">Variáveis do corpo · uma por linha</label><textarea id="template-params" rows="3" placeholder="Valor da variável 1&#10;Valor da variável 2"></textarea><p class="hint">Para variáveis nomeadas, use nome=valor em cada linha.</p>
+              <details><summary>Componentes avançados do template</summary><label for="template-components">JSON de componentes (substitui as variáveis acima)</label><textarea id="template-components" rows="4" placeholder="Array JSON para cabeçalho, corpo e botões"></textarea></details>
+              <pre id="template-preview" class="hint"></pre>
+            </div>
+            <div class="dialog-footer"><span id="wa-send-status" role="status"></span><button id="wa-send" class="primary-button">Enviar pelo WhatsApp</button></div>
+          </form>
+        </section>
+      </div>
+      <details class="settings-card activity-panel"><summary>Fila e ocorrências<span class="activity-count" id="activity-count"></span></summary><div id="jobs"></div><div id="events"></div></details>
+    </section>
+
+    <section id="view-settings" class="view" hidden><nav class="settings-nav" aria-label="Seções das configurações"><a href="#provider-settings">Provedores de IA</a><a href="#assistant-settings">Assistente</a><a href="#whatsapp-settings">WhatsApp</a></nav>
+      <section id="provider-settings" class="settings-card ai-rotation-card">
+        <div class="ai-heading"><div><h2>Prioridade das chaves de IA</h2><p class="hint">Cadastre várias chaves, inclusive do mesmo provedor, e escolha a ordem de uso.</p></div><button id="add-ai-key" type="button" class="primary-button">+ Adicionar chave</button></div>
+        <label class="checkbox-row"><input id="ai-rotation-enabled" type="checkbox"> Trocar automaticamente quando atingir limite ou créditos</label>
+        <p id="ai-rotation-summary" class="hint" role="status"></p>
+        <p class="hint">A primeira chave ativa e liberada é tentada primeiro. Ao receber limite ou falta de créditos, o assistente segue para a próxima. A chave fica em espera pelo prazo da API ou, quando não informado, por 5 minutos. Chaves do mesmo projeto podem compartilhar a mesma cota.</p>
+        <div id="ai-key-list" class="ai-key-list"></div>
+        <p class="hint">A troca pode enviar o contexto da conversa aos provedores da sua lista. Chaves inválidas, modelo incorreto e falhas de rede são mostrados para correção; não disparam troca automática. O botão Validar faz uma chamada real e pode consumir créditos.</p>
+        <p id="ai-keys-status" class="hint" role="status" aria-live="polite"></p>
+        <div id="ai-key-editor" class="ai-key-editor" hidden>
+          <h3 id="ai-key-title">Adicionar chave</h3>
+          <form id="ai-key-form">
+            <label for="ai-key-label">Nome para identificar esta chave</label><input id="ai-key-label" maxlength="80" required placeholder="Ex.: Gemini principal, GPT reserva">
+            <div class="form-grid"><div><label for="ai-key-provider">Provedor</label><select id="ai-key-provider"></select></div><div><label for="ai-key-model">ID do modelo</label><input id="ai-key-model" maxlength="100" required></div></div>
+            <label for="ai-key-secret">Chave de API</label><input id="ai-key-secret" type="password" autocomplete="new-password" maxlength="512"><p class="hint">O segredo fica salvo somente no servidor local. Não é exibido depois de salvar.</p>
+            <a id="ai-key-console" target="_blank" rel="noreferrer">Abrir painel de chaves do provedor ↗</a>
+            <label class="checkbox-row"><input id="ai-key-enabled" type="checkbox" checked> Chave ativa na lista</label>
+            <div class="button-row"><button class="primary-button">Salvar chave</button><button id="ai-key-cancel" class="secondary-button" type="button">Cancelar</button></div>
+          </form>
+        </div>
+      </section>
+
+      <form id="settings-form">
+        <section class="settings-card" id="assistant-settings"><h2>Instruções do assistente</h2><p class="hint">O nome e as instruções abaixo são usados por todas as chaves e provedores da lista, inclusive após uma troca automática.</p><label for="assistantName">Nome do assistente</label><input name="assistantName" id="assistantName" required maxlength="80"><label for="instructions">Instruções globais do assistente</label><textarea name="instructions" id="instructions" rows="7" required maxlength="6000"></textarea><div class="button-row"><button type="button" id="save-global-instructions" class="primary-button">Salvar instruções globais</button></div><p id="global-instructions-status" role="status" class="hint"></p></section>
+        <section class="settings-card" id="whatsapp-settings"><h2>Conectar seu WhatsApp</h2>
+          <label for="whatsappMode">Modo de conexão</label><select name="whatsappMode" id="whatsappMode"><option value="qr">QR Code · vincular meu WhatsApp</option><option value="cloud">Cloud API · API oficial da Meta</option></select>
+          <div id="qr-section" hidden>
+            <div class="qr-layout"><div class="qr-frame"><img id="qr-image" alt="QR Code para vincular seu WhatsApp" width="320" height="320" hidden><p id="qr-placeholder">Clique em Gerar QR Code para começar.</p></div><div><h3>Escaneie pelo seu celular</h3><ol><li>Abra o WhatsApp no celular.</li><li>Entre em <strong>Aparelhos conectados</strong>.</li><li>Toque em <strong>Conectar aparelho</strong> e aponte a câmera para o código.</li></ol><p id="qr-status" role="status" class="hint">Desconectado</p><p class="hint">A sessão fica salva neste computador. Mantenha o aplicativo em execução para receber mensagens. Este modo usa uma integração não oficial com o WhatsApp Web.</p></div></div>
+            <div class="button-row"><button type="button" class="primary-button" id="qr-connect">Gerar QR Code</button><button type="button" class="secondary-button" id="qr-disconnect">Pausar conexão</button><button type="button" class="secondary-button" id="qr-logout">Desvincular e apagar sessão</button></div>
+          </div>
+        </section>
+        <section class="settings-card cloud-only"><h2>WhatsApp Cloud API</h2><p class="hint">No <a href="https://developers.facebook.com/apps/" target="_blank" rel="noreferrer">Meta for Developers</a>, abra seu aplicativo com o produto WhatsApp. Use um token com acesso ao número e à conta WhatsApp Business.</p>
+          <label for="accessToken">Token de acesso da Meta</label><input type="password" name="accessToken" id="accessToken" autocomplete="new-password" maxlength="4096">
+          <div class="form-grid"><div><label for="phoneNumberId">Phone Number ID</label><input name="phoneNumberId" id="phoneNumberId" inputmode="numeric" maxlength="30"></div><div><label for="businessAccountId">WhatsApp Business Account ID · WABA</label><input name="businessAccountId" id="businessAccountId" inputmode="numeric" maxlength="30"></div></div>
+          <div class="form-grid"><div><label for="appSecret">App Secret</label><input type="password" name="appSecret" id="appSecret" autocomplete="new-password" maxlength="512"><p class="hint">Configurações do aplicativo → Básico → Chave secreta.</p></div><div><label for="graphVersion">Versão da Graph API</label><input name="graphVersion" id="graphVersion" required maxlength="12"></div></div>
+          <div class="button-row"><button type="button" id="verify-whatsapp" class="secondary-button">Salvar e validar número na Meta</button><button type="button" id="subscribe-whatsapp" class="secondary-button">Inscrever aplicativo na WABA</button></div><p id="meta-result" role="status" class="hint"></p>
+        </section>
+        <section class="settings-card cloud-only"><h2>Webhook público</h2><p class="hint">Use seu endereço HTTPS estável ou gere uma URL temporária para conectar este computador. Só o receptor de mensagens é exposto pelo túnel.</p>
+          <label for="publicUrl">URL pública base</label><input name="publicUrl" id="publicUrl" type="url" placeholder="https://seu-dominio.com"><label for="verifyToken">Token de verificação do webhook</label><input name="verifyToken" id="verifyToken" type="password" autocomplete="new-password" required minlength="16" maxlength="128"><div class="button-row"><button type="button" id="copy-token" class="secondary-button">Copiar token de verificação</button></div>
+          <div class="button-row"><button type="button" id="start-tunnel" class="secondary-button">Gerar URL pública temporária</button><button type="button" id="stop-tunnel" class="secondary-button">Encerrar túnel</button></div><p class="hint" id="tunnel-result" role="status"></p>
+          <div class="webhook-copy"><strong>Copie para a configuração de Webhooks na Meta:</strong><label for="callback-url">URL de callback</label><input id="callback-url" readonly><p class="hint">Use o token de verificação acima. Depois clique em “Verificar e salvar” na Meta e assine o campo <strong>messages</strong>.</p></div><p class="hint" id="webhook-result"></p>
+        </section>
+        <div class="dialog-footer"><span id="settings-status" role="status"></span><button id="save-settings" class="primary-button">Salvar configurações</button></div>
+      </form>
+    </section>
+
+    <section id="view-knowledge" class="view">
+      <section class="settings-card catalog-library">
+        <div class="catalog-toolbar"><div><h2>Catálogo de produtos</h2><p class="hint">Uma ficha para cada imóvel, serviço ou produto, com seus próprios materiais.</p><p id="catalog-count" class="hint"></p></div><button type="button" id="new-product" class="primary-button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo produto</button></div>
+        <div class="catalog-tools"><div class="catalog-search-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><label for="product-search" class="sr-only">Buscar produto</label><input id="product-search" class="catalog-search" type="search" placeholder="Buscar produtos pelo nome ou descrição…"></div><p class="catalog-summary" id="catalog-summary" aria-live="polite"></p></div>
+        <div id="product-list" class="product-grid"></div>
+      </section>
+      <section id="product-editor" class="settings-card" hidden>
+        <div class="product-editor-heading"><h2 id="product-editor-title">Novo produto</h2><button id="close-product" class="quiet-button" type="button">Fechar ficha</button></div>
+        <form id="product-form">
+          <div class="form-grid"><div><label for="product-name">Nome do produto</label><input id="product-name" required maxlength="120" placeholder="Ex.: Sopro"></div><div><label for="product-price">Preço ou condições de referência</label><input id="product-price" maxlength="160" placeholder="Ex.: A partir de R$ 319.900, sujeito a confirmação"></div></div>
+          <label for="product-description">Informações que o assistente deve conhecer</label><textarea id="product-description" rows="8" maxlength="12000" placeholder="Descreva características, localização, benefícios, condições e perguntas frequentes deste produto."></textarea>
+          <label class="checkbox-row"><input type="checkbox" id="product-active" checked> Produto ativo · disponível para consulta da IA</label><p class="hint">Desmarque e salve para arquivar sem perder a ficha e os materiais.</p>
+          <div class="editor-section"><h3>Links e endereços</h3><p class="hint">Adicione site, galeria, vídeo ou PDF hospedado. A IA pode enviar esses endereços ao cliente. Use links HTTPS acessíveis ao público.</p><div id="product-links"></div><button id="add-product-link" type="button" class="secondary-button">+ Adicionar link</button>
+          </div><div class="editor-section"><h3>Imagens e documentos</h3><label for="product-upload">Adicionar imagens e PDFs</label><input id="product-upload" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf"><p class="hint">Até 100 arquivos por produto. Imagens de até 10 MB e PDFs de até 50 MB. Na Cloud API, imagens devem ser JPG/PNG de até 5 MB.</p>
+          <p class="hint product-help">A IA usa a descrição acima para responder. Ela pode enviar os arquivos quando o cliente pedir, mas não lê automaticamente o conteúdo dos PDFs nem interpreta as imagens. Os anexos ficam neste computador; não precisam de um link público para envio pelo WhatsApp.</p>
+          <p id="product-pending" class="hint"></p><div id="product-files" class="product-files"></div></div>
+          <div class="dialog-footer"><span id="product-status" role="status" aria-live="polite"></span><button id="save-product" class="primary-button">Salvar produto e anexos</button></div>
+        </form>
+      </section>
+      <details class="settings-card general-knowledge"><summary>Informações gerais do negócio</summary><p class="hint">Informações compartilhadas por todos os produtos, como atendimento, políticas e formas de contato. Os dados já cadastrados continuam preservados aqui.</p><form id="knowledge-form"><label for="knowledge">Base geral de informações</label><textarea id="knowledge" rows="14" maxlength="20000"></textarea><div class="dialog-footer"><span id="knowledge-status" role="status"></span><button class="primary-button">Salvar informações gerais</button></div></form></details>
+    </section>
+    <footer class="page-footer"><span>Zelo · Conversas que conectam.</span><span>WhatsApp + Inteligência artificial</span></footer>
+  </div></main>
+</div>
+</body></html>
