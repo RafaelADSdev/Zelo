@@ -46,6 +46,9 @@ test('Vercel rejeita CSRF e caminhos de controle antes de alcançar o servidor',
     assert.equal(called,0);
     const response = await fetch(url+'/api/auth/status'); assert.equal(response.status,503);
     assert.ok(!(await response.text()).includes('offline'));
+    // Opening a link from another website must still reach the login page.
+    assert.equal((await fetch(url+'/login',{headers:{'Sec-Fetch-Site':'cross-site'}})).status,503);
+    assert.equal(called,2);
   } finally { await new Promise(resolve=>server.close(resolve)); }
 });
 

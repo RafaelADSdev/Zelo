@@ -10,7 +10,7 @@ export function createProxy({origin,gateway,fetchImpl=fetch}) {
     const url = new URL(req.url,trusted);
     if (!allowedPath(url.pathname)) return json(404,'Página não encontrada.');
     if (!['GET','HEAD','POST'].includes(req.method)) return json(405,'Método não permitido.');
-    if (url.pathname!=='/webhook' && ((req.headers.origin && req.headers.origin!==trusted) || req.headers['sec-fetch-site']==='cross-site')) return json(403,'Origem da solicitação não permitida.');
+    if (req.method==='POST' && url.pathname!=='/webhook' && ((req.headers.origin && req.headers.origin!==trusted) || req.headers['sec-fetch-site']==='cross-site')) return json(403,'Origem da solicitação não permitida.');
     try {
       const remote = await gateway();
       if (!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(remote.url) || !/^[a-f0-9]{64}$/.test(remote.secret)) throw new Error('gateway');
