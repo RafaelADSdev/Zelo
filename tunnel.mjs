@@ -4,7 +4,15 @@ import { mkdir, readFile, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { fail } from "./settings.mjs";
 
-export function createTunnel({ dataDir, port, settings }) {
+// Official Cloudflare release asset digests, verified against GitHub on 2026-10-21.
+// Pinning avoids GitHub release-discovery rate limits and surprise binary upgrades.
+const release = '2026.10.3';
+const digests = {
+  'cloudflared-linux-amd64': '053b80b0a23031a038fdbf3c073f59f82b8f1f152aa67971d7383ffafc0dbab0',
+  'cloudflared-linux-arm64': '89297ebfb9e8c99c0dc013a1140601453cf3798d8306c5591651f4a3f5210be8',
+  'cloudflared-windows-amd64.exe': '76b2805253d0d6ffacb092a7acfbee99e7af6917835c0c5410e23f3ef5052da2',
+};
+export function createTunnel({ dataDir, port, settings, fetchImpl = fetch }) {
   let child, starting, error = "", url = "", generation = 0;
   async function binary() {
     const name = process.platform === "win32" ? "cloudflared-windows-amd64.exe" : `cloudflared-linux-${process.arch === "arm64" ? "arm64" : "amd64"}`;
@@ -18,16 +26,14 @@ export function createTunnel({ dataDir, port, settings }) {
       if (createHash("sha256").update(await readFile(path)).digest("hex") === checksum) return path;
       throw fail("O cloudflared local não passou na verificação de integridade.", 500);
     } catch (failure) { if (failure.code !== "ENOENT") throw failure; }
-    const release = await fetch("https://api.github.com/repos/cloudflare/cloudflared/releases/latest", { headers: { "User-Agent": "wappy-local" }, signal: AbortSignal.timeout(20000) });
-    if (!release.ok) throw fail("Não foi possível consultar a versão oficial do cloudflared.", 502);
-    const metadata = await release.json();
-    const asset = metadata.assets?.find(item => item.name === name);
-    if (!asset?.digest?.startsWith("sha256:") || !asset.browser_download_url?.startsWith("https://github.com/cloudflare/cloudflared/releases/download/")) throw fail("Download oficial sem checksum disponível. Instale seu próprio túnel e preencha a URL pública.", 502);
-    const response = await fetch(asset.browser_download_url, { signal: AbortSignal.timeout(120000) });
-    if (!response.ok || Number(response.headers.get("content-length")) > 150_000_000) throw fail("Falha ao baixar cloudflared.", 502);
+    if (!digests[name]) throw fail("Não há cloudflared verificado para esta arquitetura.", 502);
+    const response = await fetchImpl(`https://github.com/cloudflare/cloudflared/releases/download/${release}/${name}`, { signal: AbortSignal.timeout(120000) });
+    if (!response.ok || Number(response.headers.get("content-length")) > 150_000_000) {
+      const error = fail("Falha ao baixar cloudflared.", 502); error.code = `CLOUDFLARED_DOWNLOAD_${response.status}`; throw error;
+    }
     const bytes = Buffer.from(await response.arrayBuffer());
     const checksum = createHash("sha256").update(bytes).digest("hex");
-    if (bytes.length > 150_000_000 || checksum !== asset.digest.slice(7)) throw fail("Checksum do cloudflared inválido.", 502);
+    if (bytes.length > 150_000_000 || checksum !== digests[name]) throw fail("Checksum do cloudflared inválido.", 502);
     await writeFile(path, bytes, { mode: 0o700 });
     await writeFile(path + ".sha256", checksum);
     return path;

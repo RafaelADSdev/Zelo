@@ -18,6 +18,8 @@ O daemon não aceita HTTP de entrada na Vercel. Por isso, abre um túnel HTTPS d
 
 Sem heartbeat válido por 90 segundos, a Function responde 503. Se o controle exclusivo ou o túnel falhar, o worker encerra e a Vercel pode reiniciá-lo. Em trocas de versão, SIGTERM encerra o socket e grava backup antes de liberar a posse. A proteção impede dois daemons ativos; não coordena um servidor local iniciado manualmente.
 
+O `cloudflared` usa a versão fixa `2026.10.3`, com digests SHA256 oficiais registrados em `tunnel.mjs`. A inicialização não consulta mais a API pública de releases do GitHub: essa dependência poderia impedir o serviço de iniciar sob indisponibilidade ou limite de consultas. Atualizações exigem conferir a origem e os digests dos três binários antes de alterar a versão. Falhas de download registram apenas o código HTTP no diagnóstico do worker, sem segredos.
+
 ## Verificação
 
 Executar `npm test` e `npm audit --omit=dev`. Confirmar no painel da Vercel a conclusão do deploy e o daemon ativo. `/` deve redirecionar para `/login`; `/api/auth/status` deve retornar JSON; catálogo, anexos e configurações sem sessão devem retornar 401. Arquivos `.env` e rotas de encerramento não são publicados. No primeiro acesso, o proprietário escolhe seu e-mail e senha com o código de bootstrap. Não criar conta de demonstração em produção.
