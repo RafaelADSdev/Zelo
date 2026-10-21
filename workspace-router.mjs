@@ -7,7 +7,7 @@ import { fail } from './settings.mjs';
 
 const lifetime = 12 * 60 * 60 * 1000;
 const hash = value => createHash('sha256').update(value).digest('hex');
-const publicFiles = new Map([['/login','login.html'],['/login.js','login.js'],['/login.css','login.css'],['/brand/logo.svg','brand/logo.svg'],['/brand/logo-light.svg','brand/logo-light.svg'],['/brand/icon.svg','brand/icon.svg']]);
+const publicFiles = new Map([['/motion.css','motion.css'],['/motion.js','motion.js'],['/login','login.html'],['/login.js','login.js'],['/login.css','login.css'],['/brand/logo.svg','brand/logo.svg'],['/brand/logo-light.svg','brand/logo-light.svg'],['/brand/icon.svg','brand/icon.svg']]);
 const json = (res, status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
 async function body(req) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw fail('Use application/json.',415);

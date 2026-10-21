@@ -1,0 +1,18 @@
+:root{--motion-ease:cubic-bezier(.16,1,.3,1);--motion-fast:150ms;--motion-state:220ms}
+@media(prefers-reduced-motion:no-preference){
+  button,a,input,select,textarea{transition:background-color var(--motion-fast) var(--motion-ease),border-color var(--motion-fast) var(--motion-ease),color var(--motion-fast) var(--motion-ease),box-shadow var(--motion-state) var(--motion-ease)}
+  button:not(:disabled){transition:transform var(--motion-fast) var(--motion-ease),background-color var(--motion-fast) var(--motion-ease),border-color var(--motion-fast) var(--motion-ease),color var(--motion-fast) var(--motion-ease),box-shadow var(--motion-state) var(--motion-ease)}
+  html:not([data-motion-input=keyboard]) button:not(:disabled):active{transform:scale(.98)}
+  .nav-button .icon,.activity-chevron,.privacy-chevron,.connection-options .mode-check{transition:transform var(--motion-state) var(--motion-ease),opacity var(--motion-state) var(--motion-ease)}
+  .nav-button.active .icon{transform:translateX(2px)}
+  .product-card{transition:border-color var(--motion-state) var(--motion-ease),box-shadow var(--motion-state) var(--motion-ease)}
+  .reply-control,.reply-state-icon,.reply-power-controls button{transition:background-color var(--motion-state) var(--motion-ease),border-color var(--motion-state) var(--motion-ease),color var(--motion-state) var(--motion-ease)}
+  input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px #7041db0d}
+  @media(hover:hover) and (pointer:fine){
+    .product-card:hover{box-shadow:0 8px 22px #2411360c;border-color:#c9b4e5}
+    .nav-button:hover .icon{transform:translateX(3px)}
+    .primary-button:hover:not(:disabled),.submit:hover:not(:disabled){box-shadow:0 4px 12px #7041db20}
+  }
+}
+html[data-motion-input=keyboard] *,html[data-motion-input=keyboard] *::before,html[data-motion-input=keyboard] *::after{transition:none!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

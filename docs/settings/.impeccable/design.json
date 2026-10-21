@@ -30,6 +30,21 @@
         "name": "switch-state",
         "value": ".18s",
         "purpose": "Track color and thumb translation; removed for reduced motion."
+      },
+      {
+        "name": "workspace-feedback",
+        "value": "150ms / 220ms, cubic-bezier(.16,1,.3,1)",
+        "purpose": "Control press and state feedback; disabled for keyboard and reduced motion."
+      },
+      {
+        "name": "panel-continuity",
+        "value": "240ms reveal; 280ms reorder",
+        "purpose": "Visible panels and disclosures, stable row identity. Cancellation on repetition, keyboard, reduced preference, hidden page; no replay on polling."
+      },
+      {
+        "name": "login-focus",
+        "value": "380ms symbol; 460ms headline",
+        "purpose": "One bounded login entrance preserving approved appearance."
       }
     ],
     "breakpoints": [

@@ -19,6 +19,8 @@ import { createUploads } from "./deployment/uploads.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js", "text/javascript"]], ["/reply-schedule.js", ["reply-schedule.js", "text/javascript"]], ["/style.css", ["style.css", "text/css"]]]);
+assets.set("/motion.css", ["motion.css", "text/css"]);
+assets.set("/motion.js", ["motion.js", "text/javascript"]);
 assets.set("/panel.css", ["panel.css", "text/css"]);
 assets.set("/settings-ui.js", ["settings-ui.js", "text/javascript"]);
 assets.set("/workspace.js", ["workspace.js", "text/javascript"]);
@@ -30,7 +32,7 @@ for (const file of ["logo.svg", "logo-light.svg", "icon.svg"]) assets.set("/bran
 assets.set("/login", ["login.html", "text/html"]);
 assets.set("/login.js", ["login.js", "text/javascript"]);
 assets.set("/login.css", ["login.css", "text/css"]);
-const publicAssets = new Set(["/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
+const publicAssets = new Set(["/motion.css", "/motion.js", "/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
 function json(res, status, data) { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(data)); }
 async function rawBody(req, limit) {
   const parts = []; let size = 0;

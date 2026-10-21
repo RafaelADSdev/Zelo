@@ -42,7 +42,7 @@ export function renderAiKeys(settings) {
   if (!config.aiKeys.length) { const empty = el("div", "ai-keys-empty"); empty.append(icon("M8 10V7a4 4 0 0 1 8 0v3M5 10h14v11H5z"), el("h3", "", "Conecte sua primeira IA"), el("p", "hint", "Adicione uma chave para começar. Depois, organize os modelos na ordem que preferir.")); list.append(empty); }
   config.aiKeys.forEach((key, index) => {
     const row = el("article", "ai-key-row"), order = el("div", "ai-key-position", String(index + 1)), content = el("div", "ai-key-content");
-    row.dataset.enabled = String(key.enabled);
+    row.dataset.enabled = String(key.enabled); row.dataset.keyId = key.id;
     row.classList.toggle('ai-key-next', index === ready);
     const identity = el('div','ai-key-identity'), provider = el('span','ai-provider-avatar'), title = el('div','ai-key-title');
     const logo = el('img'); logo.src = `/brand/providers/${key.provider}.svg`; logo.alt = ''; logo.width = 26; logo.height = 26; provider.append(logo);

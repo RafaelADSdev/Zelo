@@ -172,3 +172,12 @@ The rotation switch is a real checkbox beneath a visual track (42px by 26px). Ch
 - **Don't** apply this scoped refinement as a replacement identity for unrelated surfaces.
 
 Not canonized: inherited system-font page display treatment, literal plus/arrow characters in legacy add/link labels, and uppercase sidebar kickers are inherited craft-floor exceptions or out-of-boundary defects, not reusable display/icon/eyebrow rules.
+
+
+### Motion refinement
+
+`public/motion.css` and `public/motion.js` provide progressive enhancement. Controls remain usable without waiting for motion. Button feedback uses 150ms; state feedback 220ms; panels and disclosure content 240ms; stable AI row reordering 280ms. The shared deceleration is `cubic-bezier(.16,1,.3,1)`. The login keeps its approved composition, with a 380ms symbol focus and 460ms bounded headline reveal.
+
+Keyboard input cancels active movement and uses instant transitions. Reduced-motion preferences disable spatial animation and cancel active Web Animations; hiding the page cancels them too. Each element interrupts its previous animation. No idle loops or repeated animation on dashboard polling. Desktop hover feedback is pointer-gated. On mobile, privacy detail is hidden and logout is compact so it cannot cover navigation.
+
+Verified with 47 automated tests including cancellation, reduced-motion and stable reorder behavior, plus desktop/mobile browser navigation. Settled screenshots verify layout; perceived smoothness was not independently measured with temporal capture.
