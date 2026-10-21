@@ -44,7 +44,8 @@ export function renderAiKeys(settings) {
     const row = el("article", "ai-key-row"), order = el("div", "ai-key-position", String(index + 1)), content = el("div", "ai-key-content");
     row.dataset.enabled = String(key.enabled);
     row.classList.toggle('ai-key-next', index === ready);
-    const identity = el('div','ai-key-identity'), provider = el('span','ai-provider-avatar',providers[key.provider].name[0]), title = el('div','ai-key-title');
+    const identity = el('div','ai-key-identity'), provider = el('span','ai-provider-avatar'), title = el('div','ai-key-title');
+    const logo = el('img'); logo.src = `/brand/providers/${key.provider}.svg`; logo.alt = ''; logo.width = 26; logo.height = 26; provider.append(logo);
     title.append(el('strong','',key.label),el('span','ai-key-provider-name',providers[key.provider].name.split(' · ')[0])); identity.append(provider,title);
     content.append(identity,el('code','ai-model-name',key.model));
     const waiting = key.cooldownUntil > Date.now(), state = !key.enabled ? 'paused' : waiting ? 'waiting' : key.lastError ? 'error' : key.validatedAt ? 'validated' : 'unverified';

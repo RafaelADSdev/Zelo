@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-21T00:42:40.1414547Z",
+  "generatedAt": "2026-10-21T01:13:43.0998121Z",
   "title": "Design System: Zelo Settings",
   "extensions": {
     "shadows": [
@@ -260,7 +260,7 @@
   ],
   "narrative": {
     "northStar": "Restrained functional workspace",
-    "overview": "This scoped record describes the shipped Conexões e IA surface, extracted from `public/panel.css`, inherited primitives in `public/style.css`, structure in `public/index.html`, and behavior in `public/ai-keys.js` and `public/settings-ui.js`. The local direction contract supplies its descriptive language; this is a code-led refinement with no approved comp.\n\nPurple, white and near-black maintain the Zelo identity. Aligned connection rows, compact metadata, explicit statuses and progressively disclosed secondary actions support configuration work. This record does not reconcile the older project-wide Wappy documentation.",
+    "overview": "This scoped record describes the shipped Conexões e IA surface, extracted from `public/panel.css`, inherited primitives in `public/style.css`, structure in `public/index.html`, and behavior in `public/ai-keys.js` and `public/settings-ui.js`. The local direction contract supplies its descriptive language; this is a code-led refinement with no approved comp.\n\nPurple, white and near-black maintain the Zelo identity. Aligned connection rows, compact metadata, explicit statuses and progressively disclosed secondary actions support configuration work. This record does not reconcile the older project-wide Wappy documentation. All seven supported providers use local Lobe Icons SVG marks with provenance and MIT license in public/brand/providers/README.md; adjacent provider names carry accessible identity. Contact rows reserve 58px of left padding for avatars and truncate long names and workspace email. Native activity disclosure presents a count badge and separate message/event sections with an empty-event state. A compact privacy disclosure sits beside a separate logout action; short desktop sidebars compact spacing and scroll vertically.",
     "keyCharacteristics": [
       "White bordered panels on a pale neutral canvas.",
       "Purple selections and primary actions with explicit text states.",

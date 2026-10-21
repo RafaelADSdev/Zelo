@@ -100,7 +100,7 @@ function renderDashboard() {
     jobs.append(row);
   });
   dashboard.outbox.forEach(item => jobs.append(node("p", "hint", `${item.phone} · ${labels[item.state]} · ${item.error || ""}`)));
-  const events = $("#events"); events.replaceChildren(); dashboard.events.slice(0, 10).forEach(item => events.append(node("p", "event-row", `${date(item.at)} · ${item.detail}`)));
+  const events = $("#events"); events.replaceChildren(); if (!dashboard.events.length) events.append(node("p", "hint", "Nenhum evento recente.")); dashboard.events.slice(0, 10).forEach(item => events.append(node("p", "event-row", `${date(item.at)} · ${item.detail}`)));
 }
 async function loadDashboard(refreshForm = false) { dashboard = await api("/api/dashboard"); renderDashboard(); if (refreshForm) fillSettings(); }
 async function loadConversation() {

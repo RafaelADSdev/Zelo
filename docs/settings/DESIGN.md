@@ -73,7 +73,7 @@ components:
 
 This scoped record describes the shipped Conexões e IA surface, extracted from `public/panel.css`, inherited primitives in `public/style.css`, structure in `public/index.html`, and behavior in `public/ai-keys.js` and `public/settings-ui.js`. The local direction contract supplies its descriptive language; this is a code-led refinement with no approved comp.
 
-Purple, white and near-black maintain the Zelo identity. Aligned connection rows, compact metadata, explicit statuses and progressively disclosed secondary actions support configuration work. This record does not reconcile the older project-wide Wappy documentation.
+Purple, white and near-black maintain the Zelo identity. Aligned connection rows, compact metadata, explicit statuses and progressively disclosed secondary actions support configuration work. This record does not reconcile the older project-wide Wappy documentation. All seven supported providers use local Lobe Icons SVG marks with provenance and MIT license in public/brand/providers/README.md; adjacent provider names carry accessible identity. Contact rows reserve 58px of left padding for avatars and truncate long names and workspace email. Native activity disclosure presents a count badge and separate message/event sections with an empty-event state. A compact privacy disclosure sits beside a separate logout action; short desktop sidebars compact spacing and scroll vertically.
 
 **Key Characteristics:**
 - White bordered panels on a pale neutral canvas.
@@ -147,7 +147,11 @@ A compact chip pairs a current-color dot with a word label. AI states distinguis
 
 ### Ordered connection list
 
-Each row keeps numeric priority, SVG reorder controls, provider initial, label, model, availability and edit visible. Native details contain pause/activate, validation, delete and conditional retry reset. Icon controls have accessible names; initials identify providers. Escape closes row menus and restores disclosure focus; outside clicks close menus. Saving makes the list inert and disables add/rotation controls while announcing status.
+Each row keeps numeric priority, SVG reorder controls, provider mark, label, model, availability and edit visible. All seven supported providers use local SVG marks from Lobe Icons; provenance and MIT license are recorded in `public/brand/providers/README.md`. Marks fit a contained square (26px desktop, 23px small screens); the adjacent provider name carries the accessible identity while the image has empty alt text. Native details contain pause/activate, validation, delete and conditional retry reset. Icon controls have accessible names. Escape closes row menus and restores disclosure focus; outside clicks close menus. Saving makes the list inert and disables add/rotation controls while announcing status.
+
+### Conversation and supporting disclosures
+
+Contact rows reserve left padding (58px) for the avatar; long contact names and workspace email truncate with ellipsis. Activity uses native disclosure with an explicit chevron and count badge; expanded content separates messages to follow from recent events and retains a real empty-event state. The sidebar pairs a compact private-environment disclosure with a separate logout action. Short desktop sidebars compact spacing and allow vertical scrolling, including when privacy is expanded.
 
 ### Rotation and WhatsApp connection
 
