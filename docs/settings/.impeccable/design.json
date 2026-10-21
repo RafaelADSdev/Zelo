@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-21T01:13:43.0998121Z",
+  "generatedAt": "2026-10-21T01:55:51.997341Z",
   "title": "Design System: Zelo Settings",
   "extensions": {
     "shadows": [
@@ -59,6 +59,10 @@
       {
         "name": "stacked-settings",
         "value": "580px"
+      },
+      {
+        "name": "wrapping-settings-tabs",
+        "value": "380px"
       }
     ],
     "colorMeta": {
@@ -225,7 +229,7 @@
       "refersTo": "button-primary",
       "description": "Add, save or connect.",
       "html": "<button class=\"ds-primary\">Salvar configurações</button>",
-      "css": ".ds-primary{font:600 12px/1.4 'Segoe UI',Arial,sans-serif;background:var(--accent,#7041db);color:#fff;border:1px solid var(--accent,#7041db);border-radius:9px;padding:10px 15px;min-height:42px;cursor:pointer;transition:background-color .16s,color .16s,border-color .16s}.ds-primary:hover:not(:disabled){background:var(--accent-hover,#5c2cc5);border-color:var(--accent-hover,#5c2cc5)}.ds-primary:focus-visible{outline:3px solid #b89aef;outline-offset:3px}.ds-primary:disabled{opacity:.48;cursor:default}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+      "css": ".ds-primary{font:600 12px/1.4 'Segoe UI',Arial,sans-serif;background:var(--accent,#7041db);color:#fff;border:1px solid var(--accent,#7041db);border-radius:9px;padding:10px 15px;min-height:42px;cursor:pointer;transition:background-color .16s,color .16s,border-color .16s}.ds-primary:hover:not(:disabled){background:var(--accent-hover,#5c2cc5);border-color:var(--accent-hover,#5c2cc5)}.ds-primary:focus-visible{outline:3px solid #b89aef;outline-offset:3px}.ds-primary:disabled{opacity:.48;cursor:default}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}@media(max-width:800px){.ds-primary{min-height:44px}}"
     },
     {
       "name": "Secondary action",
@@ -233,7 +237,7 @@
       "refersTo": "button-secondary",
       "description": "Supporting form action.",
       "html": "<button class=\"ds-secondary\">Cancelar</button>",
-      "css": ".ds-secondary{font:600 12px/1.4 'Segoe UI',Arial,sans-serif;background:#fff;color:#51495f;border:1px solid #dcd9e4;border-radius:9px;padding:10px 15px;min-height:42px;cursor:pointer;transition:background-color .16s,color .16s,border-color .16s}.ds-secondary:hover:not(:disabled){background:#f6f3fc;border-color:#c9b8e8}.ds-secondary:focus-visible{outline:3px solid #b89aef;outline-offset:3px}.ds-secondary:disabled{opacity:.48;cursor:default}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none}}"
+      "css": ".ds-secondary{font:600 12px/1.4 'Segoe UI',Arial,sans-serif;background:#fff;color:#51495f;border:1px solid #dcd9e4;border-radius:9px;padding:10px 15px;min-height:42px;cursor:pointer;transition:background-color .16s,color .16s,border-color .16s}.ds-secondary:hover:not(:disabled){background:#f6f3fc;border-color:#c9b8e8}.ds-secondary:focus-visible{outline:3px solid #b89aef;outline-offset:3px}.ds-secondary:disabled{opacity:.48;cursor:default}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none}}@media(max-width:800px){.ds-secondary{min-height:44px}}"
     },
     {
       "name": "Labeled field",
@@ -241,14 +245,14 @@
       "refersTo": "field",
       "description": "Visible label and keyboard focus.",
       "html": "<label class=\"ds-label\" for=\"ds-name\">Nome do assistente</label><input class=\"ds-field\" id=\"ds-name\" value=\"Assistente\">",
-      "css": ".ds-label{display:block;margin:19px 0 8px;font:600 12px/1.55 'Segoe UI',Arial,sans-serif;color:#48414f}.ds-field{width:100%;min-width:0;max-width:100%;font:13px/1.5 'Segoe UI',Arial,sans-serif;padding:11px 13px;border:1px solid #ddd8e5;border-radius:9px;background:#fff;color:var(--text,#202028);caret-color:var(--accent,#7041db);transition:border-color .16s}.ds-field:hover{border-color:#bdb4ca}.ds-field:focus{border-color:#9870d3}.ds-field:focus-visible{outline:3px solid #b89aef;outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-field{transition:none}}"
+      "css": ".ds-label{display:block;margin:19px 0 8px;font:600 12px/1.55 'Segoe UI',Arial,sans-serif;color:#48414f}.ds-field{width:100%;min-width:0;max-width:100%;font:13px/1.5 'Segoe UI',Arial,sans-serif;padding:11px 13px;border:1px solid #ddd8e5;border-radius:9px;background:#fff;color:var(--text,#202028);caret-color:var(--accent,#7041db);transition:border-color .16s}.ds-field:hover{border-color:#bdb4ca}.ds-field:focus{border-color:#9870d3}.ds-field:focus-visible{outline:3px solid #b89aef;outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-field{transition:none}}@media(max-width:800px){.ds-field{font-size:16px}}"
     },
     {
       "name": "Settings navigation",
       "kind": "nav",
       "description": "Native tab buttons shown with one selected segment; application supplies linked panels and keyboard behavior.",
       "html": "<nav class=\"ds-tabs\" aria-label=\"Configurações do atendimento\"><button class=\"ds-tab ds-selected\" type=\"button\" aria-current=\"page\">Inteligência artificial</button><button class=\"ds-tab\" type=\"button\">WhatsApp</button><button class=\"ds-tab\" type=\"button\">Seu assistente</button></nav>",
-      "css": ".ds-tabs{display:flex;gap:8px;padding:5px;background:#eeecf2;border-radius:12px;width:fit-content;max-width:100%;flex-wrap:wrap}.ds-tab{font:600 13px/1.55 'Segoe UI',Arial,sans-serif;background:transparent;border:1px solid transparent;padding:11px 20px;color:#655c70;border-radius:8px;min-height:44px;cursor:pointer}.ds-selected{background:#fff;color:#6133b8;border-color:#e2dce9;box-shadow:0 2px 4px #21182f07}.ds-tab:hover:not(.ds-selected){color:#30223f;background:#e5e0eb}.ds-tab:focus-visible{outline:3px solid #b89aef;outline-offset:3px}"
+      "css": ".ds-tabs{display:flex;gap:8px;padding:5px;background:#eeecf2;border-radius:12px;width:fit-content;max-width:100%;flex-wrap:wrap}.ds-tab{font:600 13px/1.55 'Segoe UI',Arial,sans-serif;background:transparent;border:1px solid transparent;padding:11px 20px;color:#655c70;border-radius:8px;min-height:44px;cursor:pointer}.ds-selected{background:#fff;color:#6133b8;border-color:#e2dce9;box-shadow:0 2px 4px #21182f07}.ds-tab:hover:not(.ds-selected){color:#30223f;background:#e5e0eb}.ds-tab:focus-visible{outline:3px solid #b89aef;outline-offset:3px}@media(max-width:380px){.ds-tab{white-space:normal;min-width:0;padding:9px 4px;font-size:10px;line-height:1.4}}"
     },
     {
       "name": "Settings panel",

@@ -109,9 +109,11 @@ The inherited shell pairs a (240px) sidebar with flexible content capped at (151
 
 Three tabs share one content region; inactive panels are hidden. At (800px), the segmented track fills available width and distributes tabs evenly.
 
-AI rows use four desktop columns: priority (66px), flexible identity, state (118px), actions (106px), with (18px) gaps and padding (16px 20px). At (1150px), columns contract to (58px), flexible, (102px), (95px), with (12px) gaps. At (580px), priority and identity become two columns (50px and flexible); status and actions stack under identity. Long models and error messages wrap.
+AI rows use four desktop columns: priority (66px), flexible identity, state (118px), actions (106px), with (18px) gaps and padding (16px 20px). At (1150px), columns contract to (58px), flexible, (102px), (95px), with (12px) gaps. At (580px), priority and identity become two columns (64px and flexible); status and actions stack under identity. Long models and error messages wrap.
 
 Connection mode options use two equal columns, then one at (580px). QR frame and instructions use a (260px) plus flexible grid with (38px) gap, contract at (1150px), and stack at (580px). The assistant note and fields use (220px) plus flexible columns with (42px) gap, becoming one at (800px). Generic field pairs stack at (580px). Small-screen add, generate and save actions fill their available width.
+
+Mobile refinements in `public/mobile.css` keep the conversation list and selected conversation in one pane at a time at (580px) and below. Settings tabs wrap their labels at (380px) and below. Main content and sidebar padding respect device safe-area insets. The approved login composition retains its normal padding through `max()` with the corresponding `env(safe-area-inset-*)` values: phone identity top (22px), side padding (24px), access bottom (38px); tablet identity vertical (38px) and horizontal (32px), access vertical (48px) and horizontal (28px).
 
 **The Row Becomes a Group Rule.** Small screens retain priority, identity, state and actions together by stacking them in reading order.
 
@@ -127,7 +129,9 @@ Rounded rectangles organize panels and controls. Cards, fields, shared list cont
 
 ### Buttons
 
-Primary buttons use purple, white text, matching border and minimum height (42px). Secondary buttons use white with muted violet text and a pale border; hover lightly tints the surface and strengthens its border. Row edit actions are (34px) minimum, increasing to (38px) on small screens. Disabled actions fade; unavailable reorder directions disable. Keyboard focus uses an outline (3px) with offset (3px).
+Primary buttons use purple, white text, matching border and minimum height (42px). Secondary buttons use white with muted violet text and a pale border; hover lightly tints the surface and strengthens its border. Desktop row edit actions are (34px) minimum; the mobile override is described below. Disabled actions fade; unavailable reorder directions disable. Keyboard focus uses an outline (3px) with offset (3px).
+
+At (800px) and below, shared buttons have a minimum height (44px); reorder controls also have a width (44px). The compact logout action retains its explicit minimum (40px). At (580px) and below, row menus and edit actions also use the (44px) minimum, while conversation form actions use (46px).
 
 ### Cards / Containers
 
@@ -136,6 +140,8 @@ Panels use a thin settings-line border. The inline key editor has a pale violet 
 ### Inputs / Fields
 
 Full-width white fields retain visible labels and helper text. Focus shifts the field border and retains the keyboard outline. Password controls protect secret entry; model help uses `aria-describedby`. Invalid Gemini models receive native validity feedback and `aria-invalid`, cleared on edit. Assistant instructions use a resizable textarea with minimum height (240px) and line height (1.9).
+
+At (800px) and below, editable text inputs, selects and textareas use (16px) text, including the settings fields.
 
 ### Navigation
 
@@ -152,6 +158,14 @@ Each row keeps numeric priority, SVG reorder controls, provider mark, label, mod
 ### Conversation and supporting disclosures
 
 Contact rows reserve left padding (58px) for the avatar; long contact names and workspace email truncate with ellipsis. Activity uses native disclosure with an explicit chevron and count badge; expanded content separates messages to follow from recent events and retains a real empty-event state. The sidebar pairs a compact private-environment disclosure with a separate logout action. Short desktop sidebars compact spacing and allow vertical scrolling, including when privacy is expanded.
+
+On phones, selecting a contact reveals the conversation pane; Back restores the contact list and focuses search. New message opens the recipient field, clears the selected contact and history, and retains the typed message text. Back also retains that draft; this is in-page continuity, not offline draft storage.
+
+### Installation and offline recovery
+
+Installation is a conditional supporting action in the top bar or below the login card. It appears when the browser supplies an install prompt, or as Safari home-screen guidance on iOS, and hides once installed or running standalone. Its pale violet treatment, rounded boundary and visible focus remain subordinate to primary actions. The adjacent offline status says “Sem conexão” in a live status region; the strip disappears when it has no content.
+
+The manifest retains a pale page launch background and dark browser theme, with standalone presentation and dedicated regular and maskable brand icons. Failed navigation falls back to a public recovery page: a centered text block (440px maximum), brand mark, connection explanation and purple “Tentar novamente” action. Only public recovery and branding resources are cached; private panel data and message sending require connectivity. Browser recovery was verified with the server stopped; physical OS installation remains unverified.
 
 ### Rotation and WhatsApp connection
 
