@@ -1,3 +1,4 @@
+import { PWA_ASSETS } from './pwa-assets.mjs';
 import { createServer, request } from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -8,6 +9,7 @@ import { fail } from './settings.mjs';
 const lifetime = 12 * 60 * 60 * 1000;
 const hash = value => createHash('sha256').update(value).digest('hex');
 const publicFiles = new Map([['/motion.css','motion.css'],['/motion.js','motion.js'],['/login','login.html'],['/login.js','login.js'],['/login.css','login.css'],['/brand/logo.svg','brand/logo.svg'],['/brand/logo-light.svg','brand/logo-light.svg'],['/brand/icon.svg','brand/icon.svg']]);
+for (const [path,asset] of PWA_ASSETS) publicFiles.set(path,asset.file);
 const json = (res, status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
 async function body(req) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw fail('Use application/json.',415);
@@ -69,7 +71,7 @@ export async function createWorkspaceRouter({ access, manager, original, origin,
       if (!['GET','POST','HEAD'].includes(req.method)) throw fail('Método não permitido.',405);
       if (req.method === 'GET' && publicFiles.has(path)) {
         const name = publicFiles.get(path), bytes = await readFile(fileURLToPath(new URL('./public/'+name, import.meta.url)));
-        res.writeHead(200,{'Content-Type': (name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.svg') ? 'image/svg+xml' : 'text/html')+'; charset=utf-8'}); return res.end(bytes);
+        res.writeHead(200,{'Content-Type': (PWA_ASSETS.get(path)?.type || (name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.svg') ? 'image/svg+xml' : 'text/html'))+'; charset=utf-8'}); return res.end(bytes);
       }
       if (path === '/favicon.ico') { res.writeHead(204); return res.end(); }
       if (req.method === 'GET' && path === '/api/health') return json(res,200,{ app:'zelo', workspaces:true });

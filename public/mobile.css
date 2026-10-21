@@ -1,0 +1,19 @@
+.mobile-chat-back{display:none}.contacts-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.contacts-heading h3{margin:0}.new-conversation{font-size:11px;min-height:38px;padding:7px 9px;white-space:nowrap}
+@media(max-width:800px){
+  input:not([type=checkbox]):not([type=radio]),select,textarea,#view-settings :is(input,select,textarea),#view-knowledge :is(input,textarea),#view-whatsapp :is(input,select,textarea){font-size:16px}
+  button,summary,a{touch-action:manipulation}button{min-height:44px}
+  .main-content{padding-bottom:max(24px,env(safe-area-inset-bottom))}.sidebar{padding-top:max(16px,env(safe-area-inset-top))}.logout-button{min-height:40px!important}
+  .settings-tabs button{min-height:44px}.ai-key-movers .secondary-button{width:44px!important;min-height:44px!important}.ai-key-movers{gap:4px}
+}
+@media(max-width:580px){
+  #view-settings .ai-key-row{grid-template-columns:64px minmax(0,1fr)}.ai-key-priority{gap:6px}.ai-key-menu>summary{min-height:44px}.ai-key-actions>.secondary-button{min-height:44px!important}
+  .inbox-layout{display:block}.contacts-panel{max-height:none;border:0;padding:18px 12px}.contact-button{min-height:80px!important}.contacts-heading h3{font-size:14px}.new-conversation{font-size:11px;min-height:44px}.contact-search{font-size:16px}
+  .inbox-layout:not([data-contact-selected=true]) .chat-panel{display:none}.inbox-layout[data-contact-selected=true] .contacts-panel{display:none}
+  .mobile-chat-back{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:8px 5px;border:0;background:transparent;color:#7041db;font-size:12px;font-weight:600;flex:none}.mobile-chat-back svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8}.chat-header{gap:12px}.chat-header>div{min-width:0}.chat-header h2{overflow-wrap:anywhere}.chat-header .hint{line-height:1.6}
+  #wa-messages{height:clamp(220px,38dvh,380px);min-height:220px}.panel-form{padding:6px 16px max(18px,env(safe-area-inset-bottom))}.panel-form textarea{min-height:100px}.panel-form .dialog-footer button{min-height:46px}
+  .product-link-row{gap:8px}.product-file a{min-width:0}.access-account-controls button{min-height:44px}.workspace-account-row strong{overflow-wrap:anywhere}
+}
+
+@media(max-width:380px){#view-settings .settings-tabs button{white-space:normal;min-width:0;padding:9px 4px;font-size:10px;line-height:1.4}#view-settings .settings-tabs{overflow:visible}}
+@media(max-width:640px){.login-shell .identity{padding-top:max(22px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}.login-shell .access{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right));padding-bottom:max(38px,env(safe-area-inset-bottom))}}
+@media(min-width:641px) and (max-width:900px){.login-shell .identity{padding-top:max(38px,env(safe-area-inset-top));padding-bottom:max(38px,env(safe-area-inset-bottom));padding-left:max(32px,env(safe-area-inset-left));padding-right:max(32px,env(safe-area-inset-right))}.login-shell .access{padding-top:max(48px,env(safe-area-inset-top));padding-bottom:max(48px,env(safe-area-inset-bottom));padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}}

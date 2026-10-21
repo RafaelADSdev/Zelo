@@ -1,3 +1,4 @@
+import { PWA_ASSETS } from "./pwa-assets.mjs";
 import { replyStatus } from "./reply-schedule.mjs";
 import { createAuth } from "./auth.mjs";
 import { createSupabase } from "./supabase-client.mjs";
@@ -32,7 +33,8 @@ for (const file of ["logo.svg", "logo-light.svg", "icon.svg"]) assets.set("/bran
 assets.set("/login", ["login.html", "text/html"]);
 assets.set("/login.js", ["login.js", "text/javascript"]);
 assets.set("/login.css", ["login.css", "text/css"]);
-const publicAssets = new Set(["/motion.css", "/motion.js", "/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
+for (const [path,asset] of PWA_ASSETS) assets.set(path,[asset.file,asset.type]);
+const publicAssets = new Set([...PWA_ASSETS.keys(),"/motion.css", "/motion.js", "/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
 function json(res, status, data) { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(data)); }
 async function rawBody(req, limit) {
   const parts = []; let size = 0;

@@ -83,7 +83,7 @@ function renderDashboard() {
     dashboard.conversations.forEach(contact => {
       const button = node("button", "contact-button", ""); button.type = "button"; button.dataset.initial = contact.name.trim().slice(0, 1).toLocaleUpperCase("pt-BR"); button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
       button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", contact.last_text || "Sem mensagem de texto"));
-      button.addEventListener("click", async () => { currentPhone = contact.phone; document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
+      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus(); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
   filterContacts();
@@ -130,6 +130,15 @@ function filterContacts() {
   document.querySelectorAll("#contacts .contact-button").forEach(button => button.hidden = !button.textContent.toLocaleLowerCase("pt-BR").includes(query));
 }
 $("#contact-search").addEventListener("input", filterContacts);
+$('#wa-contact').tabIndex = -1;
+$('#mobile-chat-back').onclick = () => { $('.inbox-layout').dataset.contactSelected = 'false'; $('#contact-search').focus(); };
+$('#new-wa-conversation').onclick = () => {
+  currentPhone = ''; lastWaHistory = ''; $('.inbox-layout').dataset.contactSelected = 'true';
+  $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
+  $('#wa-contact').textContent = 'Nova mensagem'; $('#wa-window').textContent = 'Informe o destinatário e escreva sua mensagem.';
+  $('#wa-to').value = ''; $('#wa-messages').replaceChildren(node('p','hint','Sua nova conversa aparecerá aqui após o envio.')); $('#wa-to').focus();
+};
+
 async function showView(next) {
   if (next === "access" && !workspace?.isMaster) return;
   updatePage(next);
