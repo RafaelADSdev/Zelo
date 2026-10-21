@@ -21,3 +21,18 @@
 .login-card .privacy-note{margin-top:18px;font-size:11px;color:#6d6278}
 .login-card .privacy-note a{color:#6031bd;text-underline-offset:3px}
 @media(max-width:640px){.login-legal-footer nav a,.login-supplier summary,.login-install-tools .pwa-install{min-height:44px}.access .login-legal-footer{margin-top:24px;padding-bottom:max(16px,env(safe-area-inset-bottom))}}
+.workspace-legal-footer{margin-top:32px;padding:16px 0;color:#706778}
+.workspace-footer-bar{display:flex;align-items:center;justify-content:space-between;gap:8px 28px;flex-wrap:wrap}
+.workspace-footer-brand{font-size:12px;white-space:nowrap;color:#655d70}
+.workspace-footer-brand span{padding:0 6px;color:#9b8eab}
+.workspace-legal-footer nav{gap:0 20px;margin:0}
+.workspace-legal-footer nav a{font-size:12px;color:#655d70;text-decoration:none}
+.workspace-legal-footer nav a:hover{color:#6031bd;text-decoration:underline}
+.workspace-supplier{margin-top:2px}
+.workspace-supplier summary{display:flex;align-items:center;gap:7px;width:fit-content;min-height:44px;font-size:11px;font-weight:400;cursor:pointer;list-style:none;color:#706778}
+.workspace-supplier summary::-webkit-details-marker{display:none}
+.workspace-supplier summary svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.7}
+.workspace-supplier[open] summary svg{transform:rotate(90deg)}
+.workspace-supplier summary:focus-visible{outline:3px solid #7041db;outline-offset:3px;border-radius:3px}
+.workspace-supplier address{border-left:2px solid #dfd3ed;padding:6px 0 6px 14px;margin:4px 0 10px;font-size:12px;line-height:1.8}
+@media(max-width:640px){.workspace-footer-bar{display:block}.workspace-footer-brand{display:block;margin:4px 0 8px}.workspace-legal-footer nav{justify-content:space-between;gap:0 12px}.workspace-legal-footer nav a{font-size:11px}.workspace-legal-footer{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
