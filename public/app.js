@@ -1,3 +1,4 @@
+import { initSettingsUi, syncConnectionMode, renderConnectionPresentation } from "/settings-ui.js";
 import { initWorkspace } from "/workspace.js";
 import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
@@ -24,17 +25,19 @@ function messageBox(container, role, text, at, status) {
   if (at || status) item.append(node("div", "message-time", [date(at), labels[status] || status].filter(Boolean).join(" · ")));
   container.append(item);
 }
-function fillSettings() {
+function fillSettings(scope) {
   const config = dashboard.settings;
-  for (const input of $$("#settings-form [name]")) {
+  for (const input of $$(scope ? `#settings-${scope}-panel [name]` : "#settings-form [name]")) {
     if (["apiKey", "accessToken", "appSecret"].includes(input.name)) { input.value = ""; input.placeholder = config[input.name + "Configured"] ? "Salvo no servidor · deixe vazio para manter" : "Ainda não configurado"; }
     else if (input.type === "checkbox") input.checked = config[input.name];
     else input.value = config[input.name] || "";
   }
   updateCallback();
   connectionFields();
+  renderConnectionPresentation(dashboard.qr, config);
 }
 function connectionFields() {
+  syncConnectionMode($("#whatsappMode").value);
   const qr = $("#whatsappMode").value === "qr";
   $("#qr-section").hidden = !qr;
   $$(".cloud-only").forEach(section => { section.hidden = qr; });
@@ -46,7 +49,7 @@ function renderQr() {
   const fresh = state.qr && state.expiresAt > Date.now();
   $("#qr-image").hidden = !fresh; $("#qr-placeholder").hidden = Boolean(fresh);
   if (fresh) { if ($("#qr-image").src !== state.qr) $("#qr-image").src = state.qr; }
-  else { $("#qr-image").removeAttribute("src"); $("#qr-placeholder").textContent = state.status === "connected" ? "✓ WhatsApp conectado" : names[state.status] || "Gere seu QR Code"; }
+  else { $("#qr-image").removeAttribute("src"); $("#qr-placeholder-text").textContent = state.status === "connected" ? "WhatsApp conectado" : state.status === "disconnected" ? "Pronto para conectar" : names[state.status] || "Gere seu QR Code"; }
 }
 function updateCallback() { const base = $("#publicUrl").value.trim().replace(/\/$/, "").replace(/\/webhook$/, ""); $("#callback-url").value = base ? base + "/webhook" : "Gere ou preencha uma URL pública HTTPS"; }
 function renderDashboard() {
@@ -56,6 +59,7 @@ function renderDashboard() {
   const qrMode = config.whatsappMode === "qr";
   renderAiKeys(config);
   renderQr();
+  renderConnectionPresentation(dashboard.qr, config);
   $("#assistant-name").textContent = config.assistantName;
   $("#gemini-status").textContent = config.aiRotationEnabled ? "Ordem automática" : config.aiValidatedAt ? "Validado" : config.apiKeyConfigured ? "Configurado" : "Não configurado";
   $("#ai-provider-name").textContent = aiName();
@@ -115,7 +119,7 @@ async function loadConversation() {
   if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa.")); container.scrollTop = container.scrollHeight;
 }
 function updatePage(next) {
-  const pages = { knowledge: ["Produtos e materiais", "Tudo que sua IA precisa saber, organizado em um só lugar.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e inteligência artificial", "Conecte seu WhatsApp e configure como seu assistente trabalha.", "Configurações"] };
+  const pages = { knowledge: ["Produtos e materiais", "Tudo que sua IA precisa saber, organizado em um só lugar.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
   const [title, description, badge] = pages[next];
   $("#page-title").textContent = title; $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
   $(".mode-badge").textContent = badge;
@@ -133,7 +137,7 @@ async function showView(next) {
   document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
   history.replaceState(null, "", next === "access" ? "/admin/access" : "/");
   $(".reply-control").hidden = next === "access";
-  $(".connection-notice").hidden = next === "access";
+  $(".connection-notice").hidden = ["access", "settings"].includes(next);
   try { if (next === "settings") await loadDashboard(true); if (next === "knowledge") await refreshCatalog(); if (next === "whatsapp") { await loadDashboard(); await loadConversation(); } } catch (failure) { error(failure.message); }
 }
 $$('[data-view]').forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
@@ -141,17 +145,21 @@ async function action(button, statusSelector, task) {
   button.disabled = true; error(); $(statusSelector).textContent = "Aguarde…";
   try { $(statusSelector).textContent = await task() || "Concluído."; } catch (failure) { $(statusSelector).textContent = failure.message; error(failure.message); } finally { button.disabled = false; }
 }
-async function saveSettings() {
-  if (!$("#settings-form").reportValidity()) throw new Error("Confira os campos da configuração.");
-  const input = {}; $$("#settings-form [name]").forEach(field => { input[field.name] = field.type === "checkbox" ? field.checked : field.value; });
-  await api("/api/settings", input); await loadDashboard(true); $("#settings-status").textContent = "Configurações salvas.";
+async function saveSettings(scope = 'whatsapp') {
+  const fields = $$(`#settings-${scope}-panel [name]`).filter(field => field.id === 'whatsappMode' || !field.closest('[hidden]'));
+  for (const field of fields) if (!field.reportValidity()) throw new Error('Confira os campos desta seção.');
+  const input = {}; fields.forEach(field => { input[field.name] = field.type === 'checkbox' ? field.checked : field.value; });
+  await api('/api/settings', input); await loadDashboard(); fillSettings(scope);
 }
-$("#settings-form").addEventListener("submit", event => { event.preventDefault(); action($("#save-settings"), "#settings-status", async () => { await saveSettings(); return "Configurações salvas."; }); });
-$("#whatsappMode").addEventListener("change", connectionFields);
+$('#settings-form').addEventListener('submit', event => {
+  event.preventDefault(); const assistant = !$('#settings-assistant-panel').hidden;
+  action($(assistant ? '#save-global-instructions' : '#save-settings'), assistant ? '#global-instructions-status' : '#settings-status', async () => { await saveSettings(assistant ? 'assistant' : 'whatsapp'); return 'Configurações salvas.'; });
+});
+$("#whatsappMode").addEventListener("change", () => { connectionFields(); renderConnectionPresentation(dashboard.qr, dashboard.settings); });
 $("#qr-connect").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/qr/connect", {}); await loadDashboard(); return "Aguarde o QR e escaneie pelo celular. O código é atualizado automaticamente."; }));
 $("#qr-disconnect").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await api("/api/qr/disconnect", {}); await loadDashboard(); return "Conexão pausada. A sessão foi mantida para reconectar."; }));
 $("#qr-logout").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await api("/api/qr/logout", {}); await loadDashboard(); return "Sessão local apagada. Se ainda aparecer no celular, remova-a em Aparelhos conectados."; }));
-$("#save-global-instructions").addEventListener("click", event => action(event.currentTarget, "#global-instructions-status", async () => { await saveSettings(); return "Nome e instruções globais salvos para todas as IAs."; }));
+$("#save-global-instructions").addEventListener("click", event => action(event.currentTarget, "#global-instructions-status", async () => { await saveSettings("assistant"); return "Nome e instruções globais salvos para todas as IAs."; }));
 $("#verify-whatsapp").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/whatsapp/verify", {}); await loadDashboard(); return "Número e credenciais validados na Meta."; }));
 $("#subscribe-whatsapp").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/whatsapp/subscribe", {}); await loadDashboard(); return "Aplicativo inscrito na conta WhatsApp Business. Assine também o campo messages no painel Meta."; }));
 $("#start-tunnel").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => {
@@ -195,6 +203,7 @@ $("#wa-send-form").addEventListener("submit", async event => {
 });
 try {
   providers = await api("/api/ai/providers");
+  initSettingsUi();
   initReplySchedule({ api, changed: () => loadDashboard() });
   initAiKeys({ providers, api, changed: () => loadDashboard() });
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge;

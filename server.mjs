@@ -19,6 +19,8 @@ import { createUploads } from "./deployment/uploads.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js", "text/javascript"]], ["/reply-schedule.js", ["reply-schedule.js", "text/javascript"]], ["/style.css", ["style.css", "text/css"]]]);
+assets.set("/panel.css", ["panel.css", "text/css"]);
+assets.set("/settings-ui.js", ["settings-ui.js", "text/javascript"]);
 assets.set("/workspace.js", ["workspace.js", "text/javascript"]);
 assets.set("/catalog.js", ["catalog.js", "text/javascript"]);
 assets.set("/catalog.css", ["catalog.css", "text/css"]);
