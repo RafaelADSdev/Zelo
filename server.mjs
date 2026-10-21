@@ -1,4 +1,5 @@
 import { PWA_ASSETS } from "./pwa-assets.mjs";
+import { LEGAL_ASSETS } from "./legal-assets.mjs";
 import { replyStatus } from "./reply-schedule.mjs";
 import { createAuth } from "./auth.mjs";
 import { createSupabase } from "./supabase-client.mjs";
@@ -34,7 +35,8 @@ assets.set("/login", ["login.html", "text/html"]);
 assets.set("/login.js", ["login.js", "text/javascript"]);
 assets.set("/login.css", ["login.css", "text/css"]);
 for (const [path,asset] of PWA_ASSETS) assets.set(path,[asset.file,asset.type]);
-const publicAssets = new Set([...PWA_ASSETS.keys(),"/motion.css", "/motion.js", "/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
+for (const [path,asset] of LEGAL_ASSETS) assets.set(path,[asset.file,asset.type]);
+const publicAssets = new Set([...LEGAL_ASSETS.keys(),...PWA_ASSETS.keys(),"/motion.css", "/motion.js", "/login", "/login.js", "/login.css", "/brand/logo.svg", "/brand/logo-light.svg", "/brand/icon.svg", "/favicon.ico"]);
 function json(res, status, data) { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(data)); }
 async function rawBody(req, limit) {
   const parts = []; let size = 0;

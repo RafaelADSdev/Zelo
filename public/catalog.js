@@ -1,6 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const el = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
-let products = [], editing = null, pending = [], busy = false;
+let products = [], editing = null, pending = [], busy = false, editorOpener;
 async function request(path, data) {
   const response = await fetch(path, data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
   const result = await response.json(); if (!response.ok) throw new Error(result.error || "Não foi possível concluir."); return result;
@@ -22,6 +22,7 @@ function files() {
     row.append(link);
     if (file.mime.startsWith("image/")) { const image = el("img"); image.src = file.url; image.alt = file.name; image.loading = "lazy"; row.prepend(image); }
     const remove = el("button", "quiet-button", "Remover anexo"); remove.type = "button";
+    remove.setAttribute('aria-label', `Remover anexo ${file.name}`);
     remove.addEventListener("click", async () => {
       if (busy) return;
       if (!confirm(`Remover o anexo “${file.name}” deste produto? Será necessário enviá-lo novamente para recuperar.`)) return;
@@ -35,6 +36,7 @@ function files() {
 }
 function open(product = null) {
   if (busy) return;
+  editorOpener = document.activeElement;
   editing = product; pending = []; $("#product-form").reset();
   $("#product-editor").hidden = false; $("#product-editor-title").textContent = product ? `Editar ${product.name}` : "Novo produto";
   $("#product-name").value = product?.name || ""; $("#product-description").value = product?.description || ""; $("#product-price").value = product?.price || "";
@@ -62,13 +64,17 @@ function render() {
     if (product.price) info.append(el("p", "product-price", product.price));
     info.append(el("p", "hint product-description", product.description.slice(0, 170) + (product.description.length > 170 ? "…" : "")));
     info.append(el("p", "hint product-material-count", `${images.length} ${images.length === 1 ? "imagem" : "imagens"} · ${product.files.filter(file => file.mime === "application/pdf").length} PDFs · ${product.links.length} ${product.links.length === 1 ? "link" : "links"}`));
-    const button = el("button", "secondary-button", "Abrir ficha do produto"); const arrow = document.createElement("span"); arrow.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>'; button.append(arrow); button.type = "button"; button.addEventListener("click", () => open(product)); info.append(button); card.append(info); list.append(card);
+    const button = el("button", "secondary-button", "Abrir ficha do produto"); const arrow = document.createElement("span"); arrow.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>'; button.append(arrow); button.type = "button"; button.setAttribute("aria-label", `Abrir ficha de ${product.name}`); button.addEventListener("click", () => open(product)); info.append(button); card.append(info); list.append(card);
   }
 }
 export async function refreshCatalog() { products = await request("/api/products"); render(); }
 export async function initCatalog() {
   $("#new-product").addEventListener("click", () => open());
-  $("#close-product").addEventListener("click", () => { if (!busy) $("#product-editor").hidden = true; });
+  $("#close-product").addEventListener("click", () => {
+    if (busy) return;
+    $("#product-editor").hidden = true;
+    (editorOpener?.isConnected ? editorOpener : $("#new-product")).focus();
+  });
   $("#add-product-link").addEventListener("click", () => { if ($("#product-links").children.length < 15) linkRow(); });
   $("#product-search").addEventListener("input", render);
   $("#product-upload").addEventListener("change", event => { pending = [...event.target.files]; files(); });

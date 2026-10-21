@@ -1,0 +1,138 @@
+ZELO — REVISÃO DE CONFORMIDADE
+Etapas 1 a 5 — implementação e revisão técnica inicial · 20/10/2026
+
+ESCOPO E INFORMAÇÕES CONFIRMADAS
+- Revisão do Zelo, não do site institucional da Tekton Labs.
+- Serviço pago, oferecido a clientes.
+- Marca: Tektonlabs. Fornecedor identificado como pessoa física pelo usuário.
+- Nome, CPF, endereço e contato nas páginas foram fornecidos pelo usuário.
+- Validação de dígitos de CPF não comprova identidade, titularidade ou situação cadastral.
+- Não foi atribuído CNPJ nem inventada uma razão social.
+
+IMPLEMENTADO NESTA ETAPA
+- /privacidade: dados, finalidades, responsabilidades, compartilhamento com IA,
+  infraestrutura, direitos, contato, cache e limites reais de retenção.
+- /termos: uso, integrações, responsabilidades, direitos legais e condições a
+  informar antes de contratar, sem inventar preço, fidelidade ou plano.
+- /cookies: cookie necessário de sessão, cache público do PWA e gerenciamento.
+- /cancelamento: atendimento por e-mail, arrependimento e demais hipóteses legais.
+- Links e identificação do fornecedor no login e no rodapé autenticado.
+- Páginas acessíveis sem login; APIs privadas permanecem protegidas.
+- Sem banner de consentimento: somente cookie de autenticação identificado no
+  aplicativo. Essa decisão deve ser reavaliada se tecnologias opcionais entrarem.
+- Sem aceite universal obrigatório nem alegação de conformidade integral.
+- /contato: canal público e identificação do fornecedor.
+- Avisos de finalidade e links de privacidade nos formulários estáticos e na programação.
+- Contraste do selo Pausada corrigido (antes 4,28:1); foco reforçado em fundos claros.
+- Atalhos para pular navegação, região do histórico acessível pelo teclado e
+  devolução de foco ao fechar editor de produto; nomes de ações contextualizados.
+- Correção da alegação de armazenamento somente no computador na versão em nuvem.
+- Inventário de assets e licenças em docs/licencas-e-materiais.txt.
+
+PENDÊNCIAS OPERACIONAIS APÓS A REVISÃO
+2. Dados e formulários:
+   - Formalizar bases legais por operação; avisos contextuais já adicionados, distinguindo
+     ciência da política, contratação e consentimento opcional.
+   - Definir e implementar retenção e descarte por categoria, incluindo histórico,
+     memória, logs, credenciais e snapshots. Hoje não há descarte automático geral.
+   - Formalizar e testar verificação de identidade, acesso, correção e eliminação
+     de dados; a existência do e-mail não prova execução de todo esse processo.
+   - Confirmar configurações da hospedagem e serviços fora do repositório;
+     não se concluiu ausência absoluta de analytics só pela inspeção do código.
+   - Confirmar contratos, planos, retenção, uso para treinamento e subprocessadores
+     dos provedores ativos; não enviar dados sensíveis sem análise específica.
+3. Acessibilidade: verificadas as telas de catálogo, abas de conexão e assistente,
+   estrutura dos documentos, leitura móvel e percursos de teclado. A medição de
+   contraste por DOM cobre texto em fundos sólidos nos estados examinados; não é
+   certificação WCAG. Validar leitores de tela, zoom e estados de erro/produção.
+4. Conteúdo honesto: inventário do código concluído em licencas-e-materiais.txt.
+   Autorizações e veracidade de preços, disponibilidade e alegações cadastradas
+   pelos clientes não foram comprovadas; conferir catálogo real de cada ambiente.
+5. Enquadramento inicial: LGPD, CDC quando houver relação de consumo, Decreto
+   7.962/2013 para comércio eletrônico, Marco Civil da Internet, Lei Brasileira de
+   Inclusão e Lei de Direitos Autorais. Confirmar aplicação específica com advogado.
+
+REVISÃO JURÍDICA / CONTÁBIL NECESSÁRIA
+- Definir responsabilidades contratuais entre fornecedor, clientes e terceiros;
+  contrato de tratamento de dados e instruções de operação.
+- Confirmar país, destinatários e mecanismo válido de transferência internacional
+  para cada fornecedor. Esta revisão não comprova existência das salvaguardas.
+- Definir condições comerciais reais: preços, vigência, renovação, cancelamento,
+  suporte e atendimento a restituições, antes de começar as vendas.
+- Validar aplicação do CDC em cada relação, inclusive contratações entre empresas.
+- Avaliar formalização da atividade paga, obrigações fiscais, emissão de documentos
+  e eventual necessidade de CNPJ com profissional competente.
+- Confirmar quem responde pelo canal de privacidade e eventual obrigação de
+  encarregado segundo o enquadramento e a regulamentação aplicável.
+- Procedimentos de incidentes, conservação legal e descarte verificável.
+- Compatibilidade do uso por QR não oficial com as regras do WhatsApp.
+
+FONTES OFICIAIS CONSULTADAS
+LGPD: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm
+CDC: https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm
+Decreto 7.962/2013: https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm
+ANPD — cookies: https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia_orientativo_cookies_e_protecao_de_dados_pessoais
+ANPD — transferências: https://www.gov.br/anpd/pt-br/assuntos/assuntos-internacionais/transferencia-internacional-de-dados
+
+LIMITAÇÃO
+Os textos e ajustes técnicos não representam parecer jurídico nem garantia de
+ausência de problemas. As pendências acima não foram resolvidas por publicar políticas.
+
+DADOS E TERCEIROS — RESULTADO DA INSPEÇÃO
+- Campos estruturados de CPF de cliente, nascimento, cartão ou documentos não
+  foram encontrados como exigência de uso do painel. Não adicionar sem finalidade.
+- Dados livres são o maior risco: excluir da base senhas e documentos de terceiros
+  desnecessários, e não usar o WhatsApp pessoal para misturar conversas privadas
+  com atendimento. Não foi feita exclusão de dados de produção.
+- QR recebe mensagens diretas novas elegíveis; não sincroniza histórico completo
+  nem usa grupos como canal de atendimento na implementação examinada. Ainda
+  assim, um número pessoal pode receber mensagens privadas enquanto conectado.
+- Não foram encontrados iframes de vídeos/mapas/chat externo, pixels ou analytics
+  no frontend examinado. Conteúdo opcional futuro requer análise e bloqueio quando
+  sua base exigir consentimento. URLs de material podem levar o destinatário a
+  terceiros, que recebem seus próprios dados de navegação ao abrir o link.
+- Supabase: conta, armazenamento privado e snapshots. Vercel/Cloudflare: tráfego
+  e infraestrutura. WhatsApp/Meta: mensagens. IA: conteúdo e contexto selecionado;
+  rotação e OpenRouter podem ampliar destinatários. Contratos e configurações de
+  retenção/treinamento/país de cada serviço não foram auditados nesta etapa.
+
+OUTROS RISCOS IDENTIFICADOS
+- Chaves secretas compartilhadas anteriormente na conversa devem ser substituídas
+  nos provedores correspondentes e atualizadas no servidor. Não foram copiadas
+  para as páginas legais e não foram rotacionadas automaticamente nesta revisão.
+- Cadastro com CPF não comprova regularidade empresarial/fiscal da atividade.
+- Políticas publicadas não substituem contrato, base legal documentada, resposta
+  a incidentes nem atendimento efetivo dos direitos dos titulares.
+- Não há fluxo de pagamento/estorno implementado nesta revisão: atendimento
+  financeiro pelo e-mail informado precisa ser operado por pessoa responsável.
+- Avaliar a aplicação do art. 15 do Marco Civil ao enquadramento do fornecedor e
+  as regras atuais de registros de acesso; seis meses não é prazo geral de guarda
+  de conversas. Não se deve apagar registros legalmente obrigatórios nem guardar
+  indefinidamente todos os dados com essa justificativa.
+- Baileys não é API oficial; há risco operacional/contratual com o WhatsApp.
+- Mensagens de IA podem errar ofertas, preços e condições. Supervisão e atendimento
+  humano devem fazer parte da operação, especialmente em decisões relevantes.
+
+FONTES ADICIONAIS
+Marco Civil: https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm
+LBI: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13146.htm
+Direitos autorais: https://www.planalto.gov.br/ccivil_03/leis/l9610.htm
+WCAG contraste: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum
+
+PROVEDORES — ALERTAS VERIFICADOS EM FONTES OFICIAIS
+- Gemini: termos Unpaid Services determinam não enviar informações pessoais,
+  confidenciais ou sensíveis e admitem uso do conteúdo para melhoria/revisão.
+  Confirmar regime do projeto (o nome do modelo ou uma cota sem custo não prova
+  por si só que o projeto é Unpaid). Não foi inspecionado o faturamento da conta.
+  Há também restrições de idade e usos específicos que devem ser avaliadas para
+  o público final e o setor de cada cliente; não presumir adequação universal.
+- Groq: a documentação distingue inferência, funcionalidades que retêm estado
+  e exceções de confiabilidade/abuso. Conferir Data Controls e contrato; não foi
+  ativado nem prometido Zero Data Retention para a conta do usuário.
+- OpenRouter: políticas distinguem os controles do intermediário dos controles
+  dos fornecedores de modelos. Rever destinos, treinamento e retenção de cada rota.
+- Avisos adicionados à seção de IA e ao editor Gemini; não representam um bloqueio
+  técnico ou uma comprovação da compatibilidade do plano contratado.
+Fontes: https://ai.google.dev/gemini-api/terms
+https://console.groq.com/docs/your-data
+https://openrouter.ai/docs/guides/privacy

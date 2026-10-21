@@ -1,7 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const el = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
 const icon = path => { const span = el("span", "ai-button-icon"); span.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`; return span; };
-let config, providers, api, changed, busy = false, editing, revision, signature = "";
+let config, providers, api, changed, busy = false, editing, revision, signature = "", editorOpener;
 const when = time => new Date(time).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 function status(text, failure = false) { $("#ai-keys-status").textContent = text; $("#ai-keys-status").classList.toggle("catalog-error", failure); }
 async function run(task) {
@@ -12,6 +12,7 @@ async function run(task) {
 }
 function edit(key = null) {
   if (busy) return;
+  editorOpener = document.activeElement;
   editing = key; revision = config.aiKeysRevision;
   $("#ai-key-form").reset(); $("#ai-key-editor").hidden = false;
   $("#ai-key-title").textContent = key ? `Editar ${key.label}` : "Adicionar chave";
@@ -22,6 +23,7 @@ function edit(key = null) {
 }
 function providerInfo() {
   const id = $("#ai-key-provider").value, info = providers[id];
+  $('#gemini-privacy-warning').hidden = id !== 'gemini';
   $("#ai-key-model").placeholder = info.example; $("#ai-key-console").href = info.console;
   $('#ai-key-model-help').textContent = id === 'gemini' ? `Use o ID completo, por exemplo ${info.example}. “Gemini” sozinho é o nome do provedor. A disponibilidade depende da sua conta Google.` : `Informe o ID exato do modelo disponível na sua conta. ${info.defaultModel ? 'Sugestão: ' + info.defaultModel + '.' : info.example + '.'}`;
   $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid');
@@ -97,7 +99,12 @@ export function initAiKeys(options) {
     run(async () => { await api("/api/ai/rotation", { enabled, revision: config.aiKeysRevision }); return enabled ? "Troca automática ativada." : "Troca automática desativada. A primeira chave ativa será utilizada."; });
   });
   $("#add-ai-key").addEventListener("click", () => edit());
-  $("#ai-key-cancel").addEventListener("click", () => { if (!busy) { $("#ai-key-editor").hidden = true; $("#ai-key-secret").value = ""; } });
+  $("#ai-key-cancel").addEventListener("click", () => {
+    if (busy) return;
+    $("#ai-key-editor").hidden = true;
+    $("#ai-key-secret").value = "";
+    (editorOpener?.isConnected ? editorOpener : $("#add-ai-key")).focus();
+  });
   $("#ai-key-provider").addEventListener("change", () => { $("#ai-key-secret").value = ""; $("#ai-key-model").value = providers[$("#ai-key-provider").value].defaultModel || ""; providerInfo(); });
   $("#ai-key-form").addEventListener("submit", event => {
     event.preventDefault();

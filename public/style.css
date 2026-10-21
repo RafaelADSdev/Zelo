@@ -51,3 +51,6 @@
 @media(max-width:1150px){.access-master-banner{flex-wrap:wrap}.access-exclusive{margin-left:82px}.access-directory .workspace-account-row{align-items:flex-start;flex-direction:column}.access-account-controls{padding-left:54px;justify-content:flex-start}}
 @media(max-width:800px){.sidebar nav{flex-wrap:wrap}.access-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.access-master-banner{padding:24px;gap:14px}.access-exclusive{margin-left:0}.access-master-banner h2{font-size:22px}}
 @media(max-width:580px){.access-filters{grid-template-columns:1fr;gap:10px}.access-stats>div{padding:17px}.access-master-banner{padding:20px}.access-shield{display:none}.access-account-controls{padding-left:0}.access-account-controls button{min-height:40px}.access-directory .ai-heading button{width:100%}}
+
+/* Accessible keyboard focus on light and dark surfaces. */
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,[tabindex="0"]:focus-visible{outline:3px solid #7041db;outline-offset:3px}.sidebar :focus-visible{outline-color:#c9b1f3}

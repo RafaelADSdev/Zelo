@@ -1,0 +1,61 @@
+ZELO — IMAGENS, FONTES, ÍCONES E MATERIAIS
+Inventário do código · 20/10/2026
+
+IDENTIDADE DO ZELO
+public/brand/logo.svg
+public/brand/logo-light.svg
+public/brand/icon.svg
+public/brand/pwa/icon-192.png
+public/brand/pwa/icon-512.png
+public/brand/pwa/maskable-512.png
+public/brand/pwa/apple-touch-icon.png
+Origem: identidade criada no projeto; PNGs derivados do SVG. Não foi feita
+busca de disponibilidade de marca ou comprovação de registro no INPI.
+
+LOGOS DOS PROVEDORES
+public/brand/providers/anthropic.svg
+public/brand/providers/deepseek.svg
+public/brand/providers/gemini.svg
+public/brand/providers/groq.svg
+public/brand/providers/openai.svg
+public/brand/providers/openrouter.svg
+public/brand/providers/xai.svg
+Origem: Lobe Icons, pacote @lobehub/icons-static-svg@1.95.1.
+Licença da biblioteca: MIT; aviso de copyright e licença mantidos em
+public/brand/providers/LICENSE. Origem em public/brand/providers/README.md.
+Marcas permanecem de seus titulares. A MIT da biblioteca não concede uso
+irrestrito das marcas nem demonstra parceria ou aprovação pelos provedores.
+
+DOCUMENTAÇÃO
+docs/assets/capa.svg: composição vetorial criada para o projeto com seu símbolo.
+docs/assets/painel-ias.png
+docs/assets/mobile-lista.png
+docs/assets/mobile-conversa.png
+As três capturas são do aplicativo real com dados sintéticos, não depoimentos
+de clientes. Não devem ser apresentadas como prova de resultados comerciais.
+Badges do README são imagens remotas do Shields.io; não são certificados.
+O painel não carrega esses badges nem esses scripts de marketing.
+
+FONTES E ÍCONES DO PAINEL
+Fontes: Segoe UI, Arial e fallback sans-serif, por CSS. Não foram encontrados
+arquivos de fontes redistribuídos em public/. São usadas as fontes disponíveis
+no dispositivo; isso não equivale a redistribuir seus arquivos ou adquirir
+licença de webfont. Avaliar licença antes de futuramente hospedar uma fonte.
+Ícones de interface: SVGs embutidos no HTML/JavaScript. Manter sua procedência
+documentada em futuras adições; não presumir que todo SVG externo é livre.
+
+MATERIAIS DO CATÁLOGO (INCLUSIVE SOPRO)
+Arquivos privados e conteúdo de cada cliente não fazem parte do inventário de
+assets versionados. Não foi feita nesta revisão leitura geral de conversas ou
+download dos arquivos de todos os ambientes.
+Confirmar autorização para fotos, renders, plantas, PDFs, logotipos e textos
+retirados de https://site-jairo-rocha.vercel.app/sopro e de qualquer outra fonte.
+Guardar evidência do titular, escopo de uso, prazo, alterações permitidas e
+crédito exigido. Um link acessível ou a possibilidade de baixar um arquivo não
+comprova licença para redistribuir ou enviar comercialmente pelo WhatsApp.
+Se não houver autorização verificável, não utilizar o arquivo até regularizar.
+Não foi feita exclusão de materiais de produção durante a auditoria.
+
+BASE
+Lei 9.610/1998: https://www.planalto.gov.br/ccivil_03/leis/l9610.htm
+Licença MIT efetivamente encontrada: public/brand/providers/LICENSE.
