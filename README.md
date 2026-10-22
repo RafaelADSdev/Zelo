@@ -59,6 +59,14 @@ No celular, a lista e a conversa aberta ocupam telas distintas. Use **Voltar** p
 
 A validação de uma chave faz uma chamada real ao provedor e pode consumir cota ou créditos. O Zelo não fornece chaves nem cotas de IA.
 
+### OpenRouter gratuito para testes
+
+Em **Conexões e IA → Adicionar chave**, selecione **OpenRouter** e cadastre cada modelo separadamente. O modelo sugerido é `nvidia/nemotron-3-ultra-550b-a55b:free`. Ultra, Nemotron 3.5 Super VL e as versões Gemma 4 31B e 26B A4B aceitam a mesma chave em cadastros distintos. Use **Observação** para registrar porte, contexto e se o endpoint é gratuito ou pago; use as setas para definir a prioridade. Os cadastros da mesma conta compartilham a cota do OpenRouter.
+
+Cada requisição especifica somente o modelo daquele cadastro, sem reserva oculta no OpenRouter. Com a troca automática ligada, o Zelo tenta o próximo cadastro ativo em caso de limite, modelo indisponível, falha transitória ou resposta inválida do OpenRouter; erros de autenticação e configuração precisam ser corrigidos. A função `responder` produz a resposta do atendimento e seu conteúdo é validado no servidor, sem executar ferramentas externas. A chave é cadastrada pelo campo protegido do painel e não volta nas respostas da API. Não a cole em chats, código do navegador ou arquivos versionados. Os modelos Embed são de busca semântica e não devem entrar na lista de respostas. Versões pagas devem permanecer pausadas se a intenção é usar somente modelos gratuitos.
+
+Use essa sugestão apenas com dados fictícios: o endpoint gratuito do Nemotron registra conteúdo e pede que não sejam enviados dados pessoais ou confidenciais. A integração não ativa nem altera chaves já cadastradas. O OpenRouter publica cotas gerais de 50 requisições/dia e 20/minuto sem compra de créditos, ou 1.000/dia após US$ 10 de compras acumuladas; disponibilidade e regras podem mudar. Confira as [condições do modelo](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free), os [limites](https://openrouter.ai/docs/api_reference/limits) e o [funcionamento da reserva](https://openrouter.ai/docs/guides/routing/model-fallbacks).
+
 ## Controle por contato
 
 Em **Conversas**, use **Bloquear IA** para impedir respostas e transcrições para uma pessoa, mantendo o atendimento manual. O filtro de contatos bloqueados e o botão **Desbloquear IA** ajudam a gerenciar a lista. O bloqueio fica salvo por ambiente e WhatsApp conectado; desbloquear libera novas mensagens, sem responder às antigas em lote.

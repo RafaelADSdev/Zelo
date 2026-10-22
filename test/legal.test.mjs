@@ -19,7 +19,7 @@ async function verifyPublicLegal(url) {
   assert.equal((await fetch(url + '/api/dashboard')).status, 401);
   assert.equal((await fetch(url + '/api/products')).status, 401);
   const login = await (await fetch(url + '/login')).text();
-  for (const path of ['/privacidade', '/termos', '/cookies', '/cancelamento']) assert.ok(login.includes(`href="${path}"`));
+  for (const path of ['/privacidade', '/termos', '/cookies', '/cancelamento', '/contato']) assert.ok(!login.includes(`href="${path}"`));
 }
 
 test('legal pages are public without exposing private APIs in local and workspace modes', async () => {

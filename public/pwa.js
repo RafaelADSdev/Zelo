@@ -7,7 +7,7 @@ const status = document.createElement('span'); status.className = 'pwa-network';
 status.textContent = 'Sem conexão';
 const help = document.createElement('p'); help.className = 'pwa-install-help'; help.hidden = true; help.id = 'pwa-install-help'; help.role = 'status';
 container.append(status, button, help);
-(document.querySelector('.main-topbar') || document.querySelector('.login-install-tools') || document.querySelector('.login-card'))?.append(container);
+(document.querySelector('.main-topbar') || document.querySelector('.login-card'))?.append(container);
 const installed = () => appInstalled || standalone.matches || navigator.standalone === true;
 function sync() { button.hidden = installed() || (!installation && !ios); button.textContent = installation ? 'Instalar Zelo' : 'Adicionar à tela inicial'; container.hidden = button.hidden && status.hidden && help.hidden; }
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installation = event; sync(); });

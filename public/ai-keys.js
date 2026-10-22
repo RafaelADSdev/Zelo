@@ -19,6 +19,7 @@ function edit(key = null) {
   $("#ai-key-title").textContent = key ? `Editar ${key.label}` : "Adicionar chave";
   $("#ai-key-label").value = key?.label || ""; $("#ai-key-provider").value = key?.provider || "gemini";
   $("#ai-key-model").value = key?.model || providers[$('#ai-key-provider').value].defaultModel || ""; $("#ai-key-enabled").checked = key?.enabled ?? true;
+  $("#ai-key-notes").value = key?.notes || "";
   $("#ai-key-secret").placeholder = key ? "Deixe vazio para manter esta chave" : "Cole a chave de API";
   $("#ai-key-secret").required = !key; providerInfo(); $("#ai-key-label").focus();
 }
@@ -27,6 +28,8 @@ function providerInfo() {
   $('#gemini-privacy-warning').hidden = id !== 'gemini';
   $("#ai-key-model").placeholder = info.example; $("#ai-key-console").href = info.console;
   $('#ai-key-model-help').textContent = id === 'gemini' ? `Use o ID completo, por exemplo ${info.example}. “Gemini” sozinho é o nome do provedor. A disponibilidade depende da sua conta Google.` : `Informe o ID exato do modelo disponível na sua conta. ${info.defaultModel ? 'Sugestão: ' + info.defaultModel + '.' : info.example + '.'}`;
+  if (id === 'openrouter') $('#ai-key-model-help').textContent = 'Um modelo por cadastro. A ordem desta lista define quem responde e quem assume quando necessário. Modelos com a mesma chave compartilham a cota do OpenRouter.';
+  $('#openrouter-privacy-warning').hidden = id !== 'openrouter';
   $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid');
   if (scope === "audio") $("#ai-key-model-help").textContent = "Modelo de transcrição de áudio. Sugestão: " + info.defaultModel + ". Essa lista é independente da IA que responde aos clientes.";
   $("#ai-key-secret").required = !editing || editing.provider !== id;
@@ -41,7 +44,7 @@ export function renderAiKeys(settings) {
   $("#ai-rotation-enabled").checked = config.aiRotationEnabled;
   const latest = config.aiLastUsed;
   $("#ai-rotation-summary").textContent = config.aiRotationEnabled
-    ? `Troca automática ativada. ${latest ? `${scope === "audio" ? "Última transcrição" : "Última resposta"}: ${latest.label} · ${providers[latest.provider].name} · ${when(latest.at)}.` : "A primeira chave ativa e liberada será utilizada."}`
+    ? `Troca automática ativada. ${latest ? `${scope === "audio" ? "Última transcrição" : "Última resposta"}: ${latest.label} · ${latest.model} · ${when(latest.at)}.` : "A primeira chave ativa e liberada será utilizada."}`
     : "Troca automática desativada. Apenas a primeira chave ativa da lista será utilizada.";
   const nextSignature = JSON.stringify([scope, config.aiKeys, config.aiKeysRevision, config.aiKeys.map(key => key.cooldownUntil > Date.now())]);
   if (nextSignature === signature) return; signature = nextSignature;
@@ -57,6 +60,7 @@ export function renderAiKeys(settings) {
     const logo = el('img'); logo.src = `/brand/providers/${key.provider}.svg`; logo.alt = ''; logo.width = 26; logo.height = 26; provider.append(logo);
     title.append(el('strong','',key.label),el('span','ai-key-provider-name',providers[key.provider].name.split(' · ')[0])); identity.append(provider,title);
     content.append(identity,el('code','ai-model-name',key.model));
+    if (key.notes) content.append(el('p', 'hint ai-key-notes', key.notes));
     const waiting = key.cooldownUntil > Date.now(), state = !key.enabled ? 'paused' : waiting ? 'waiting' : key.lastError ? 'error' : key.validatedAt ? 'validated' : 'unverified';
     const stateText = {paused:'Pausada',waiting:'Em espera',error:'Atenção',validated:'Validada',unverified:'Não validada'}[state];
     const statusArea = el('div','ai-key-state'); statusArea.append(el('span','ai-status ai-status-'+state,stateText));
@@ -115,7 +119,14 @@ export async function initAiKeys(options) {
   document.addEventListener('click', event => { document.querySelectorAll('.ai-key-menu[open]').forEach(menu => { if(!menu.contains(event.target))menu.open=false; }); });
   document.addEventListener('keydown', event => { if(event.key==='Escape')document.querySelectorAll('.ai-key-menu[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();}); });
   const modelHelp = el('p', 'hint'); modelHelp.id = 'ai-key-model-help'; $('#ai-key-model').after(modelHelp); $('#ai-key-model').setAttribute('aria-describedby', modelHelp.id);
-  $('#ai-key-model').addEventListener('input', () => { $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid'); });
+  const notesLabel = el('label', '', 'Observação (opcional)'); notesLabel.htmlFor = 'ai-key-notes';
+  const notesInput = el('textarea'); notesInput.id = 'ai-key-notes'; notesInput.rows = 3; notesInput.maxLength = 500; notesInput.placeholder = 'Ex.: maior porte, contexto de 1M, modelo gratuito para testes.';
+  modelHelp.after(notesLabel, notesInput);
+  const routerWarning = el('p', 'privacy-field-note', 'Modelos gratuitos têm cotas e condições próprias. No Nemotron gratuito, use somente dados fictícios: o endpoint registra conteúdo e pede que não sejam enviados dados pessoais ou confidenciais. ');
+  routerWarning.id = 'openrouter-privacy-warning'; routerWarning.hidden = true;
+  const routerTerms = el('a', '', 'Ver condições do Nemotron'); routerTerms.href = 'https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free'; routerTerms.target = '_blank'; routerTerms.rel = 'noreferrer'; routerWarning.append(routerTerms); modelHelp.after(routerWarning);
+  $('#ai-key-model').setAttribute('aria-describedby', `${modelHelp.id} ${routerWarning.id}`);
+  $('#ai-key-model').addEventListener('input', providerInfo);
   $("#ai-key-provider").replaceChildren(...Object.entries(providers).map(([id, info]) => new Option(info.name, id)));
   $("#ai-rotation-enabled").addEventListener("change", event => {
     const enabled = event.target.checked;
@@ -141,7 +152,7 @@ export async function initAiKeys(options) {
       }
     }
     run(async () => {
-      await api(editing ? `/api/ai/keys/${editing.id}` : "/api/ai/keys", { label: $("#ai-key-label").value, provider: $("#ai-key-provider").value, model: $("#ai-key-model").value, apiKey: $("#ai-key-secret").value, enabled: $("#ai-key-enabled").checked, revision });
+      await api(editing ? `/api/ai/keys/${editing.id}` : "/api/ai/keys", { label: $("#ai-key-label").value, notes: $("#ai-key-notes").value, provider: $("#ai-key-provider").value, model: $("#ai-key-model").value, apiKey: $("#ai-key-secret").value, enabled: $("#ai-key-enabled").checked, revision });
       $("#ai-key-secret").value = ""; $("#ai-key-editor").hidden = true; return "Chave salva na lista. Use Subir e Descer para definir a prioridade.";
     });
   });

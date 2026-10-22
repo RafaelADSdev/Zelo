@@ -138,12 +138,14 @@ export async function createSettings(dataDir, seed = {}) {
         const model = normalizeModelId(provider, imported?.model || input.model);
         const label = input.label ?? AI_PROVIDERS[provider].name;
         if (typeof label !== "string" || !label.trim() || label.length > 80 || /[\x00-\x1f]/.test(label)) throw fail("Dê um nome à chave, com até 80 caracteres.");
+        const notes = input.notes ?? before?.notes ?? "";
+        if (typeof notes !== "string" || notes.length > 500 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(notes)) throw fail("A observação deve ser um texto de até 500 caracteres.");
         if (input.apiKey !== undefined && typeof input.apiKey !== "string") throw fail("Chave inválida.");
         const apiKey = imported?.apiKey || input.apiKey?.trim() || (before?.provider === provider ? before.apiKey : "");
         if (!apiKey || apiKey.length > 512 || /[\x00-\x20\x7f]/.test(apiKey)) throw fail("Informe uma chave de API válida para este provedor.");
         if (next.aiKeys.some(item => item.id !== id && item.provider === provider && item.model === model && item.apiKey === apiKey)) throw fail("Esta chave e este modelo já estão na lista. Edite o cadastro existente.", 409);
         if (input.enabled !== undefined && typeof input.enabled !== "boolean") throw fail("Situação da chave inválida.");
-        const item = { ...before, id: id || randomUUID(), label: label.trim(), provider, model, apiKey, enabled: input.enabled ?? before?.enabled ?? true };
+        const item = { ...before, id: id || randomUUID(), label: label.trim(), notes: notes.trim(), provider, model, apiKey, enabled: input.enabled ?? before?.enabled ?? true };
         if (!before || before.apiKey !== apiKey || before.model !== model || before.provider !== provider) { item.cooldownUntil = 0; item.validatedAt = 0; item.lastError = ""; }
         if (before) next.aiKeys[next.aiKeys.findIndex(entry => entry.id === id)] = item; else next.aiKeys.push(item);
         next.aiListOnly = true;

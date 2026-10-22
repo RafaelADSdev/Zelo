@@ -35,6 +35,7 @@ export function createAiModel(config) {
   if (!config.apiKey || !config.model) throw fail("Configure a chave e o modelo de IA em Conexões.", 409);
   if (provider === "gemini") return createGeminiModel(config);
   const info = AI_PROVIDERS[provider], fetchImpl = config.fetchImpl || fetch;
+  const toolOpenRouter = provider === "openrouter" && info.toolModels.includes(config.model);
   return {
     async generate(request) {
       const compose = Boolean(request.responseSchema?.properties?.message);
@@ -50,6 +51,15 @@ export function createAiModel(config) {
           ...(compose ? { tools: [{ name: "responder", description: "Produz a resposta final do atendimento no formato solicitado. Não executa ações externas.", input_schema: schema }], tool_choice: { type: "tool", name: "responder" } } : {}),
         };
       } else body = { model: config.model, messages: [{ role: "system", content: system }, ...messages], max_tokens: 4096, ...(compose ? { response_format: { type: "json_object" } } : {}) };
+      if (toolOpenRouter) {
+        body.provider = { require_parameters: true };
+        // Each request uses one model; priority and fallbacks belong to the Zelo list.
+        if (compose) {
+          delete body.response_format;
+          body.tools = [{ type: "function", function: { name: "responder", description: "Produz a resposta final do atendimento. Não executa ações externas.", parameters: schema } }];
+          body.tool_choice = { type: "function", function: { name: "responder" } };
+        }
+      }
       if (provider === "groq" && compose && ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "meta-models/muse-spark-open"].includes(config.model)) {
         body.response_format = { type: "json_schema", json_schema: { name: "resposta_atendimento", strict: true, schema } };
       }
@@ -65,6 +75,14 @@ export function createAiModel(config) {
         throw tagProviderError(fail(providerError(info.name, quota ? 402 : response.status), 502), response, quota);
       }
       let data; try { data = await response.json(); } catch { throw fail(`${info.name} retornou uma resposta inválida.`, 502); }
+      if (toolOpenRouter && compose) {
+        const choice = data?.choices?.[0];
+        if (data?.error || choice?.finish_reason === "length") throw fail(`${info.name} não concluiu a resposta. Tente novamente.`, 502);
+        const calls = choice?.message?.tool_calls;
+        const tool = Array.isArray(calls) ? calls.find(item => item?.type === "function" && item.function?.name === "responder") : undefined;
+        const result = parse(tool?.function?.arguments, info.name);
+        return { ...result, modelUsed: config.model };
+      }
       let text;
       if (provider === "openai") {
         if (data.status === "incomplete" || data.error) throw fail(`${info.name} não concluiu a resposta. Confira o modelo ou tente uma pergunta mais curta.`, 502);

@@ -15,7 +15,7 @@ try {
     $("#username").type = "email"; $("#username").placeholder = "seu@email.com";
     $("#login-description").textContent = setup ? "Crie sua conta de administrador no Supabase para proteger o Zelo." : status.inviteOnly ? "Entre no seu ambiente privado. Novas contas precisam de um convite do administrador." : "Entre com sua conta do Supabase para gerenciar o atendimento.";
   }
-  for (const id of ["setup-fields", "confirm-field", "setup-help"]) $("#" + id).hidden = !setup;
+  for (const id of ["setup-fields", "confirm-field"]) $("#" + id).hidden = !setup;
   $("#setup-token").required = $("#confirm-password").required = setup;
   if (setup) {
     $("#login-title").textContent = "Seu espaço começa aqui.";
