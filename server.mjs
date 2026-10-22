@@ -196,6 +196,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
           case "/api/whatsapp/retry": return json(res, 200, await transport().retry(input.id));
+          case "/api/whatsapp/block": return json(res, 200, await transport().setBlocked(input));
           case "/api/tunnel/start": return json(res, 200, await tunnel.start());
           case "/api/tunnel/stop": return json(res, 200, tunnel.stop());
           case "/api/chat":

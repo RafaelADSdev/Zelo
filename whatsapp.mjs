@@ -1,14 +1,16 @@
-import { automaticAllowed, assertAutomatic } from "./reply-schedule.mjs";
+import { assertAutomatic } from "./reply-schedule.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { parseWebhookPayload, verifySignature, renderSmartMessage } from "@wappy_ai/whatsapp";
 import { fail } from "./settings.mjs";
 import { cloudMedia } from "./media.mjs";
 import { downloadCloudAudio } from "./audio.mjs";
+import { createContactBlocks } from "./contact-blocks.mjs";
 
 const WINDOW = 24 * 60 * 60 * 1000;
 const phonePattern = /^\d{7,20}$/;
 export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clock = Date.now }) {
   const db = runtime.client;
+  const blocks = await createContactBlocks(db);
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS wa_contacts (phone TEXT PRIMARY KEY, account_id TEXT NOT NULL, name TEXT, last_inbound INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS wa_jobs (id TEXT PRIMARY KEY, phone TEXT NOT NULL, message TEXT NOT NULL, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL DEFAULT 0, error TEXT, created INTEGER NOT NULL);
@@ -73,8 +75,13 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
     let accepted = false;
     try {
       let packet = existing ? JSON.parse(existing.payload) : payload;
-      if (packet.fileId) packet = await cloudMedia(value, await runtime.catalog.file(packet.fileId, true), phone, fetchImpl);
+      if (packet.fileId) {
+        const file = await runtime.catalog.file(packet.fileId, true);
+        if (id.startsWith("auto:")) await blocks.assertAllowed("cloud", value.phoneNumberId, phone);
+        packet = await cloudMedia(value, file, phone, fetchImpl);
+      }
       if (settings.get().whatsappMode === "qr" || settings.get().phoneNumberId !== value.phoneNumberId) throw fail("A conexão mudou durante o envio.", 409);
+      if (id.startsWith("auto:")) await blocks.assertAllowed("cloud", value.phoneNumberId, phone);
       const result = await graph(`${value.phoneNumberId}/messages`, "POST", packet);
       const metaId = result.messages?.[0]?.id;
       if (typeof metaId !== "string" || !metaId) throw fail("A Meta não retornou um ID de mensagem. Confira o WhatsApp antes de reenviar.", 504);
@@ -83,6 +90,10 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
       await event("sent", `Mensagem aceita pela Meta para ${phone}.`).catch(() => {});
       return { status: "sent", messageId: metaId, text: existing?.text || outgoing.text };
     } catch (error) {
+      if (error.contactBlocked) {
+        await db.execute({ sql: "UPDATE wa_outbox SET state='failed',error=? WHERE id=?", args: [error.message, id] });
+        throw error;
+      }
       const message = error.status ? error.message : "Falha ao registrar o resultado do envio. Confira o WhatsApp antes de repetir.";
       const uncertain = accepted || error.status === 504 || !error.status;
       await db.execute({ sql: "UPDATE wa_outbox SET state=?,error=? WHERE id=?", args: [uncertain ? "unknown" : "failed", message, id] }).catch(() => {});
@@ -97,21 +108,16 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
       if (!job) return;
       const claimed = await db.execute({ sql: "UPDATE wa_jobs SET state='processing',attempts=attempts+1 WHERE id=? AND state=? AND NOT EXISTS (SELECT 1 FROM wa_jobs busy WHERE busy.phone=wa_jobs.phone AND busy.state='processing')", args: [job.id, job.state] });
       if (!claimed.rowsAffected) continue;
-      if (job.state !== "requested" && !automaticAllowed(settings.get(), JSON.parse(job.message).timestamp, clock())) {
-        await db.execute({ sql: "UPDATE wa_jobs SET state='manual',error='Resposta automática pausada.' WHERE id=?", args: [job.id] });
-        const message = JSON.parse(job.message);
-        await runtime.memory.append({ id: message.id, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "user", text: message.text || `[${message.media?.kind || "Mídia"}]`, timestamp: message.timestamp });
-        continue;
-      }
       try {
-        const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
+        const checkSchedule = async () => { await blocks.assertAllowed("cloud", JSON.parse(job.message).accountId, job.phone); if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
+        await checkSchedule();
         const message = JSON.parse(job.message);
         if (message.accountId !== settings.get().phoneNumberId) throw fail("Mensagem recebida em outro número da Meta. Verifique a configuração antes de tentar novamente.", 409);
         if (["audio", "voice"].includes(message.media?.kind) && !message.transcribed) {
           await db.execute({ sql: "UPDATE wa_jobs SET message=json_set(message,'$.audioStage','download') WHERE id=?", args: [job.id] });
           const audio = await downloadCloudAudio(message.media, config(), fetchImpl);
           if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante o download.", 409);
-          checkSchedule();
+          await checkSchedule();
           await db.execute({ sql: "UPDATE wa_jobs SET message=json_set(message,'$.audioStage','transcribe') WHERE id=?", args: [job.id] });
           const transcription = await runtime.transcribe(audio);
           if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
@@ -121,21 +127,21 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
           delete message.media;
           await db.execute({ sql: "UPDATE wa_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
           await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, `whatsapp:${message.accountId}:${job.phone}`] });
-          checkSchedule();
+          await checkSchedule();
         }
         if (!message.text || message.text.startsWith("[unsupported WhatsApp")) {
           const text = "Posso entender mensagens de texto e de voz. Por favor, descreva o que você precisa por escrito ou envie um áudio.";
           await runtime.memory.append({ id: message.id, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "user", text: `[${message.media?.kind || "Mensagem não textual"}]`, timestamp: message.timestamp });
-          checkSchedule();
+          await checkSchedule();
           await send(job.phone, { text }, `auto:${message.id}`);
           await runtime.memory.append({ id: `${message.id}:reply`, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "agent", text, timestamp: clock() });
         } else {
           await runtime.whatsapp({ ...message, contactId: `whatsapp:${message.accountId}:${job.phone}` }, async (_to, outgoing) => {
-            checkSchedule();
+            await checkSchedule();
           const result = await send(job.phone, outgoing, `auto:${message.id}`);
             for (const material of outgoing.materials || []) {
               if (message.accountId !== settings.get().phoneNumberId) throw fail("A conta conectada mudou.", 409);
-              checkSchedule();
+              await checkSchedule();
               await send(job.phone, { text: `[Arquivo: ${material.name}]`, attachment: material }, `auto:${message.id}:file:${material.id}`);
             }
             return result;
@@ -143,8 +149,12 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
         }
         await db.execute({ sql: "UPDATE wa_jobs SET state='done',error=NULL WHERE id=?", args: [job.id] });
       } catch (error) {
+        if (error.contactBlocked || error.replyPaused) {
+          const message = JSON.parse(job.message);
+          await runtime.memory.append({ id: message.id, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "user", text: message.text || `[${message.media?.kind || "Mídia"} recebida — IA não acionada]`, timestamp: message.timestamp });
+        }
         // Errors remain visible for operator retry; no hidden duplicate messages.
-        await db.execute({ sql: "UPDATE wa_jobs SET state=?,error=? WHERE id=?", args: [error.replyPaused ? "manual" : "failed", error.message, job.id] });
+        await db.execute({ sql: "UPDATE wa_jobs SET state=?,error=? WHERE id=?", args: [error.contactBlocked ? "blocked" : error.replyPaused ? "manual" : "failed", error.message, job.id] });
         await event("processing_error", error.message);
       }
     }
@@ -232,14 +242,18 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
       return result;
     },
     async conversations() {
-      return (await db.execute({ sql: "SELECT c.*, (SELECT text FROM turns WHERE contactId='whatsapp:'||c.account_id||':'||c.phone ORDER BY timestamp DESC,rowid DESC LIMIT 1) AS last_text FROM wa_contacts c WHERE c.account_id=? ORDER BY last_inbound DESC LIMIT 100", args: [settings.get().phoneNumberId] })).rows;
+      return blocks.contacts("cloud", settings.get().phoneNumberId, (await db.execute({ sql: "SELECT c.*, (SELECT text FROM turns WHERE contactId='whatsapp:'||c.account_id||':'||c.phone ORDER BY timestamp DESC,rowid DESC LIMIT 1) AS last_text FROM wa_contacts c WHERE c.account_id=? ORDER BY last_inbound DESC LIMIT 100", args: [settings.get().phoneNumberId] })).rows);
+    },
+    async setBlocked(input) {
+      if (typeof input?.phone !== "string" || !phonePattern.test(input.phone) || !settings.get().phoneNumberId) throw fail("Informe um contato válido e configure seu WhatsApp.");
+      return blocks.set("cloud", settings.get().phoneNumberId, input.phone, input.blocked);
     },
     async history(phone) {
       if (!phonePattern.test(phone)) throw fail("Número inválido.");
       const accountId = settings.get().phoneNumberId;
       const history = await runtime.memory.load(`whatsapp:${accountId}:${phone}`);
       const outbound = (await db.execute({ sql: "SELECT o.*, s.status AS delivery_status, s.error AS delivery_error FROM wa_outbox o LEFT JOIN wa_statuses s ON s.id=o.meta_id WHERE o.phone=? AND o.account_id=? ORDER BY o.created", args: [phone, accountId] })).rows;
-      return { history, outbound: outbound.map(({ id, text, state, meta_id, delivery_status, delivery_error, error, created }) => ({ id, text, state, metaId: meta_id, deliveryStatus: delivery_status, error: delivery_error || error, created })) };
+      return { history, blocked: await blocks.blocked("cloud", accountId, phone), outbound: outbound.map(({ id, text, state, meta_id, delivery_status, delivery_error, error, created }) => ({ id, text, state, metaId: meta_id, deliveryStatus: delivery_status, error: delivery_error || error, created })) };
     },
     async status() {
       return {
@@ -250,6 +264,10 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
     },
     async retry(id) {
       if (typeof id !== "string" || id.length > 256) throw fail("Mensagem inválida.");
+      const job = (await db.execute({ sql: "SELECT phone,message,state FROM wa_jobs WHERE id=?", args: [id] })).rows[0];
+      if (!job || JSON.parse(job.message).accountId !== settings.get().phoneNumberId) throw fail("Mensagem não encontrada neste WhatsApp.", 404);
+      await blocks.assertAllowed("cloud", settings.get().phoneNumberId, job.phone);
+      if (job.state === "blocked") throw fail("Esta mensagem foi recebida com a IA bloqueada. Após desbloquear, aguarde uma nova mensagem ou atenda manualmente.", 409);
       const unknown = (await db.execute({ sql: "SELECT state FROM wa_outbox WHERE id=?", args: [`auto:${id}`] })).rows[0];
       if (unknown && ["unknown", "sending"].includes(unknown.state)) throw fail("Envio sem confirmação. Confira o WhatsApp; uma nova tentativa automática foi bloqueada para evitar duplicação.", 409);
       await db.execute({ sql: "UPDATE wa_jobs SET state='requested',error=NULL WHERE id=? AND state IN ('failed','manual')", args: [id] }); kick();

@@ -59,6 +59,12 @@ No celular, a lista e a conversa aberta ocupam telas distintas. Use **Voltar** p
 
 A validação de uma chave faz uma chamada real ao provedor e pode consumir cota ou créditos. O Zelo não fornece chaves nem cotas de IA.
 
+## Controle por contato
+
+Em **Conversas**, use **Bloquear IA** para impedir respostas e transcrições para uma pessoa, mantendo o atendimento manual. O filtro de contatos bloqueados e o botão **Desbloquear IA** ajudam a gerenciar a lista. O bloqueio fica salvo por ambiente e WhatsApp conectado; desbloquear libera novas mensagens, sem responder às antigas em lote.
+
+[Detalhes do bloqueio de contatos →](docs/bloqueio-de-contatos.md)
+
 ## Mensagens de voz
 
 O assistente entende áudios recebidos no WhatsApp, por QR Code e Cloud API, e responde em texto. A transcrição aparece no histórico com a identificação **Áudio transcrito**. Use uma chave ativa de Gemini, Groq ou OpenAI; o Zelo respeita a ordem entre as chaves compatíveis e tenta uma reserva por limite quando a troca automática está ligada. Transcrever também consome cota ou créditos.

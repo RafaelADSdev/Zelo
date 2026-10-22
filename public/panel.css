@@ -85,3 +85,6 @@
 .audio-job-status strong{display:block;font-size:14px}.audio-job-status p{margin:7px 0}.audio-job-status small{display:block;color:#65556f}.audio-job-status button{margin-top:12px;min-height:44px}
 .audio-job-error{border-color:#e6c4cc;border-left-color:#a42b48;background:#fff7f8;color:#762039}.audio-job-error small{color:#785263}
 .audio-job-paused{border-left-color:#776581;background:#f8f6fa}
+.contact-block-button{margin-left:auto;flex:none;min-height:44px}.contact-block-filter{width:100%;margin:0 0 14px;padding:10px;border:1px solid #e5dcef;background:#fff;border-radius:8px;color:#554461;font:inherit;font-size:12px;min-height:44px}
+.contact-block-badge{display:table;margin:5px 0;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:#efe9f5;color:#604374}.contact-block-notice{background:#f4eff8;border-left-color:#74528c}
+@media(max-width:580px){.chat-header{flex-wrap:wrap}.contact-block-button{margin-left:0}.contact-block-filter{font-size:16px}.contact-block-badge{display:block;width:fit-content;margin:5px 0 0}}

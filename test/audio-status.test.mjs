@@ -13,6 +13,7 @@ test("áudio: falha e pausa nunca aparecem como aguardando transcrição", () =>
   assert.equal(audioPreview("Resposta posterior", failed), "Resposta posterior");
   assert.equal(audioStatus({ ...failed, state: "done" }), null);
   assert.equal(audioStatus({ ...failed, audio: false }), null);
+  assert.match(audioStatus({ ...failed, state: "blocked" }).short, /IA bloqueada/);
   assert.equal(audioStatus({ ...failed, stage: "reply" }).title, "Áudio entendido; a resposta falhou");
   assert.equal(audioStatus({ ...failed, state: "processing", stage: "download" }).title, "Baixando áudio do WhatsApp");
   assert.equal(audioStatus({ ...failed, state: "processing", stage: "transcribe" }).title, "Transcrevendo áudio");

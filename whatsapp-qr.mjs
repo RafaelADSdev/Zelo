@@ -1,4 +1,4 @@
-import { automaticAllowed, assertAutomatic } from "./reply-schedule.mjs";
+import { assertAutomatic } from "./reply-schedule.mjs";
 import makeWASocket, { Browsers, DisconnectReason, jidNormalizedUser, makeCacheableSignalKeyStore, normalizeMessageContent } from "@whiskeysockets/baileys";
 import pino from "pino";
 import QRCode from "qrcode";
@@ -7,6 +7,7 @@ import { createQrAuth } from "./qr-auth.mjs";
 import { fail } from "./settings.mjs";
 import { qrMedia } from "./media.mjs";
 import { qrAudio, downloadQrAudio } from "./audio.mjs";
+import { createContactBlocks } from "./contact-blocks.mjs";
 
 const logger = pino({ level: "silent" });
 const direct = jid => /^\d{5,20}@(s\.whatsapp\.net|lid)$/.test(jid || "");
@@ -17,6 +18,7 @@ function recipient(phone) {
 }
 export async function createWhatsAppQr({ runtime, settings, socketFactory = makeWASocket, audioDownload, clock = Date.now }) {
   const db = runtime.client;
+  const blocks = await createContactBlocks(db);
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS qr_contacts (account TEXT NOT NULL, jid TEXT NOT NULL, name TEXT, last_inbound INTEGER, last_text TEXT, PRIMARY KEY(account,jid));
     CREATE TABLE IF NOT EXISTS qr_jobs (id TEXT PRIMARY KEY, account TEXT NOT NULL, jid TEXT NOT NULL, message TEXT NOT NULL, state TEXT NOT NULL, error TEXT, created INTEGER NOT NULL);
@@ -50,16 +52,22 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       throw fail("Envio já iniciado ou sem confirmação. Confira no celular antes de reenviar.", 409);
     }
     const file = material ? await runtime.catalog.file(material.id, true) : null;
+    if (id.startsWith("auto:")) await blocks.assertAllowed("qr", account, jid);
     await db.execute({ sql: "INSERT INTO qr_outbox(id,account,jid,text,hash,state,created) VALUES (?,?,?,?,?,'sending',?)", args: [id, account, jid, text, hash, clock()] });
     try {
       online();
       if (socket !== currentSocket || state.account !== account) throw fail("A conexão mudou durante o envio.", 409);
+      if (id.startsWith("auto:")) await blocks.assertAllowed("qr", account, jid);
       const result = await currentSocket.sendMessage(jid, file ? qrMedia(file) : { text });
       if (!result?.key?.id) throw new Error("missing message id");
       await db.execute({ sql: "UPDATE qr_outbox SET state='sent',meta_id=? WHERE id=?", args: [result.key.id, id] });
       await db.execute({ sql: "INSERT INTO qr_contacts(account,jid,name,last_inbound,last_text) VALUES (?,?,?,0,?) ON CONFLICT(account,jid) DO UPDATE SET last_text=excluded.last_text", args: [account, jid, jid.split("@")[0], text] });
       return { status: "sent", messageId: result.key.id, text };
-    } catch {
+    } catch (error) {
+      if (error.contactBlocked) {
+        await db.execute({ sql: "UPDATE qr_outbox SET state='failed',error=? WHERE id=?", args: [error.message, id] });
+        throw error;
+      }
       await db.execute({ sql: "UPDATE qr_outbox SET state='unknown',error='WhatsApp não confirmou o envio. Confira no celular antes de repetir.' WHERE id=?", args: [id] });
       throw fail("WhatsApp não confirmou o envio. Confira no celular antes de repetir.", 504);
     }
@@ -70,20 +78,16 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       if (!job) return;
       const claimed = await db.execute({ sql: "UPDATE qr_jobs SET state='processing',error=NULL WHERE id=? AND state=? AND NOT EXISTS (SELECT 1 FROM qr_jobs busy WHERE busy.account=qr_jobs.account AND busy.jid=qr_jobs.jid AND busy.state='processing')", args: [job.id, job.state] });
       if (!claimed.rowsAffected) continue;
-      if (job.state !== "requested" && !automaticAllowed(settings.get(), JSON.parse(job.message).timestamp, clock())) {
-        const message = JSON.parse(job.message);
-        await runtime.memory.append({ id: message.id, contactId: message.contactId, role: "user", text: message.text, timestamp: message.timestamp });
-        await db.execute({ sql: "UPDATE qr_jobs SET state='manual',error='Resposta automática pausada pelo controle de atendimento.' WHERE id=?", args: [job.id] }); continue;
-      }
       try {
-        const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
+        const checkSchedule = async () => { await blocks.assertAllowed("qr", job.account, job.jid); if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
+        await checkSchedule();
         const message = JSON.parse(job.message);
         if (message.audioError) throw fail(message.audioError, 422);
         if (message.audio && !message.transcribed) {
           await db.execute({ sql: "UPDATE qr_jobs SET message=json_set(message,'$.audioStage','download') WHERE id=?", args: [job.id] });
           const audio = await downloadQrAudio(message.audio, audioDownload);
           if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante o download.", 409);
-          checkSchedule();
+          await checkSchedule();
           await db.execute({ sql: "UPDATE qr_jobs SET message=json_set(message,'$.audioStage','transcribe') WHERE id=?", args: [job.id] });
           const transcription = await runtime.transcribe(audio);
           if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
@@ -94,22 +98,26 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
           await db.execute({ sql: "UPDATE qr_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
           await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, message.contactId] });
           await db.execute({ sql: "UPDATE qr_contacts SET last_text=? WHERE account=? AND jid=? AND last_inbound=?", args: [message.text, job.account, job.jid, message.timestamp] });
-          checkSchedule();
+          await checkSchedule();
         }
         await runtime.whatsapp(message, async (_to, outgoing) => {
           if (state.account !== job.account) throw fail("A conta conectada mudou.", 409);
-          checkSchedule();
+          await checkSchedule();
           const result = await send(job.jid, outgoing.text, `auto:${job.id}`);
           for (const material of outgoing.materials || []) {
             if (state.account !== job.account) throw fail("A conta conectada mudou.", 409);
-            checkSchedule();
+            await checkSchedule();
             await send(job.jid, `[Arquivo: ${material.name}]`, `auto:${job.id}:file:${material.id}`, material);
           }
           return result;
         });
         await db.execute({ sql: "UPDATE qr_jobs SET state='done' WHERE id=?", args: [job.id] });
       } catch (error) {
-        await db.execute({ sql: "UPDATE qr_jobs SET state=?,error=? WHERE id=?", args: [error.replyPaused ? "manual" : "failed", error.status ? error.message : "Não foi possível responder. Confira a conexão e o Gemini.", job.id] });
+        if (error.contactBlocked || error.replyPaused) {
+          const message = JSON.parse(job.message);
+          await runtime.memory.append({ id: message.id, contactId: message.contactId, role: "user", text: message.audio ? "[Áudio recebido — IA não acionada]" : message.text, timestamp: message.timestamp });
+        }
+        await db.execute({ sql: "UPDATE qr_jobs SET state=?,error=? WHERE id=?", args: [error.contactBlocked ? "blocked" : error.replyPaused ? "manual" : "failed", error.status ? error.message : "Não foi possível responder. Confira a conexão e o Gemini.", job.id] });
       }
     }
   }
@@ -234,11 +242,16 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       if (typeof input.text !== "string" || !input.text.trim() || input.text.length > 4000 || !/^[a-f0-9-]{36}$/.test(input.requestId || "")) throw fail("Informe uma mensagem de até 4.000 caracteres e um identificador válido.");
       return send(recipient(input.phone), input.text.trim(), `manual:${input.requestId}`);
     },
-    async conversations() { return (await db.execute({ sql: "SELECT jid AS phone,name,last_inbound,last_text FROM qr_contacts WHERE account=? ORDER BY last_inbound DESC LIMIT 100", args: [state.account] })).rows; },
+    async setBlocked(input) {
+      const jid = recipient(input?.phone);
+      if (!state.account) throw fail("Vincule seu WhatsApp antes de bloquear contatos.", 409);
+      return blocks.set("qr", state.account, jid, input?.blocked);
+    },
+    async conversations() { return blocks.contacts("qr", state.account, (await db.execute({ sql: "SELECT jid AS phone,name,last_inbound,last_text FROM qr_contacts WHERE account=? ORDER BY last_inbound DESC LIMIT 100", args: [state.account] })).rows); },
     async history(phone) {
       const jid = recipient(phone);
       const outbound = (await db.execute({ sql: "SELECT id,text,state,meta_id AS metaId,error,created FROM qr_outbox WHERE account=? AND jid=? ORDER BY created LIMIT 200", args: [state.account, jid] })).rows;
-      return { history: (await runtime.state(accountId(jid))).history, outbound };
+      return { history: (await runtime.state(accountId(jid))).history, outbound, blocked: await blocks.blocked("qr", state.account, jid) };
     },
     async status() {
       const jobs = (await db.execute({ sql: "SELECT id,jid AS phone,state,error,created,CASE WHEN json_type(message,'$.audio') IS NOT NULL OR json_type(message,'$.audioError') IS NOT NULL OR json_extract(message,'$.transcribed')=1 THEN 1 ELSE 0 END AS audio,json_extract(message,'$.audioStage') AS stage FROM qr_jobs WHERE account=? ORDER BY created DESC,rowid DESC LIMIT 100", args: [state.account] })).rows;
@@ -246,7 +259,12 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       return { jobs, events, outbox };
     },
     async retry(id) {
+      if (typeof id !== "string" || id.length > 512) throw fail("Mensagem inválida.");
       online();
+      const job = (await db.execute({ sql: "SELECT jid,state FROM qr_jobs WHERE id=? AND account=?", args: [id, state.account] })).rows[0];
+      if (!job) throw fail("Mensagem não encontrada neste WhatsApp.", 404);
+      await blocks.assertAllowed("qr", state.account, job.jid);
+      if (job.state === "blocked") throw fail("Esta mensagem foi recebida com a IA bloqueada. Após desbloquear, aguarde uma nova mensagem ou atenda manualmente.", 409);
       const out = (await db.execute({ sql: "SELECT state FROM qr_outbox WHERE id=?", args: [`auto:${id}`] })).rows[0];
       if (out) throw fail("Este atendimento já teve uma tentativa de envio. Confira no celular antes de enviar manualmente.", 409);
       await db.execute({ sql: "UPDATE qr_jobs SET state='requested',error=NULL WHERE id=? AND account=? AND state IN ('failed','manual')", args: [id, state.account] }); kick(); return { queued: true };

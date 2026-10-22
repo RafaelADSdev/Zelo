@@ -1,6 +1,7 @@
 export function audioStatus(job) {
   if (!job?.audio || job.state === "done") return null;
   const reply = job.stage === "reply";
+  if (job.state === "blocked") return { title: "Áudio não processado: IA bloqueada", short: "Áudio recebido · IA bloqueada", detail: "A IA não processa mensagens deste contato. O atendimento manual continua disponível.", retry: false, tone: "paused" };
   if (job.state === "failed") return { title: reply ? "Áudio entendido; a resposta falhou" : "Não foi possível transcrever este áudio", short: reply ? "Falha ao responder ao áudio" : "Falha na transcrição · tentar novamente", detail: job.error || "Confira a conexão com a IA e tente novamente.", retry: true, tone: "error" };
   if (job.state === "manual") return { title: "Áudio em atendimento manual", short: "Áudio pausado · atendimento manual", detail: "O atendimento está pausado ou fora do horário. Você pode solicitar uma tentativa pelo botão abaixo.", retry: true, tone: "paused" };
   if (job.state === "processing") {

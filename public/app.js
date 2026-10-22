@@ -12,8 +12,16 @@ let providers = {};
 const activeAi = () => dashboard?.settings.aiRotationEnabled ? dashboard.settings.aiLastUsed || dashboard.settings.aiKeys.find(key => key.enabled && key.cooldownUntil <= Date.now()) || {} : dashboard?.settings.aiListOnly ? dashboard.settings.aiKeys.find(key => key.enabled) || {} : { provider: dashboard?.settings.aiProvider, model: dashboard?.settings.model };
 const aiName = () => providers[activeAi().provider]?.name || "Lista de IAs";
 const date = value => value ? new Date(Number(value)).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Ainda não";
-const labels = { pending: "Na fila", requested: "Na fila do operador", processing: "Processando", done: "Respondida", failed: "Falhou", manual: "Atendimento manual", unknown: "Envio sem confirmação", sending: "Enviando", sent: "Envio aceito", delivered: "Entregue", read: "Lida" };
+const labels = { pending: "Na fila", requested: "Na fila do operador", processing: "Processando", done: "Respondida", failed: "Falhou", manual: "Atendimento manual", blocked: "IA bloqueada", unknown: "Envio sem confirmação", sending: "Enviando", sent: "Envio aceito", delivered: "Entregue", read: "Lida" };
 function node(tag, className, text) { const item = document.createElement(tag); if (className) item.className = className; if (text !== undefined) item.textContent = text; return item; }
+const blockContactButton = node("button", "secondary-button contact-block-button", "Bloquear IA");
+blockContactButton.type = "button"; blockContactButton.hidden = true;
+$("#wa-window").closest("header").append(blockContactButton);
+const blockFilter = node("select", "contact-block-filter");
+blockFilter.setAttribute("aria-label", "Filtrar conversas por bloqueio da IA");
+for (const [value, text] of [["all", "Todas as conversas"], ["blocked", "Somente com IA bloqueada"]]) { const option = node("option", "", text); option.value = value; blockFilter.append(option); }
+$("#contact-search").after(blockFilter);
+blockFilter.addEventListener("change", filterContacts);
 async function api(path, data) {
   const response = await fetch(path, { ...(data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }), signal: AbortSignal.timeout(path === "/api/tunnel/start" ? 190000 : 60000) });
   if (response.status === 401) { location.replace("/login"); throw new Error("Sua sessão terminou. Entre novamente."); }
@@ -83,13 +91,15 @@ function renderDashboard() {
     if (!dashboard.conversations.length) contacts.append(node("p", "hint", "Nenhum contato recebido ou envio realizado. Conecte o WhatsApp e envie uma mensagem para ele usando outro celular."));
     dashboard.conversations.forEach(contact => {
       const button = node("button", "contact-button", ""); button.type = "button"; button.dataset.initial = contact.name.trim().slice(0, 1).toLocaleUpperCase("pt-BR"); button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
+      button.dataset.blocked = String(Boolean(contact.blocked));
       button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto"));
+      if (contact.blocked) button.querySelector("strong").after(node("span", "contact-block-badge", "IA bloqueada"));
       button.addEventListener("click", async () => { currentPhone = contact.phone; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus(); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
   filterContacts();
   const jobs = $("#jobs"); jobs.replaceChildren();
-  const attention = dashboard.jobs.filter(job => job.state !== "done");
+  const attention = dashboard.jobs.filter(job => !["done", "blocked"].includes(job.state));
   $("#activity-count").textContent = attention.length ? attention.length + " para revisar" : "Tudo em dia";
   if (!attention.length) jobs.append(node("p", "hint", "Nenhuma mensagem pendente ou com falha."));
   attention.forEach(job => {
@@ -106,11 +116,16 @@ function renderDashboard() {
 async function loadDashboard(refreshForm = false) { dashboard = await api("/api/dashboard"); renderDashboard(); if (refreshForm) fillSettings(); }
 async function loadConversation() {
   if (!currentPhone) return;
-  const result = await api("/api/conversation?phone=" + encodeURIComponent(currentPhone));
-  const audioJobs = dashboard.jobs.filter(job => job.phone === currentPhone && job.audio && job.state !== "done").slice(0, 5);
+  const phone = currentPhone;
+  const result = await api("/api/conversation?phone=" + encodeURIComponent(phone));
+  if (phone !== currentPhone) return;
+  const audioJobs = dashboard.jobs.filter(job => job.phone === currentPhone && job.audio && !["done", "blocked"].includes(job.state)).slice(0, 5);
   const signature = JSON.stringify([result, audioJobs]); if (signature === lastWaHistory) return; lastWaHistory = signature;
   const contact = dashboard.conversations.find(item => item.phone === currentPhone);
   $("#wa-contact").textContent = contact?.name || currentPhone;
+  blockContactButton.hidden = false; blockContactButton.dataset.blocked = String(Boolean(result.blocked));
+  blockContactButton.textContent = result.blocked ? "Desbloquear IA" : "Bloquear IA";
+  blockContactButton.setAttribute("aria-label", `${result.blocked ? "Desbloquear" : "Bloquear"} IA para ${contact?.name || currentPhone}`);
   $("#wa-window").textContent = dashboard.settings.whatsappMode === "qr" ? "Conversa pelo WhatsApp vinculado por QR Code." : contact?.last_inbound && Date.now() - Number(contact.last_inbound) < 86400000 ? "Janela de 24 horas aberta para texto livre." : "Envie um template aprovado ou aguarde uma mensagem do contato.";
   const container = $("#wa-messages"); container.replaceChildren();
   result.history.forEach(turn => {
@@ -118,11 +133,15 @@ async function loadConversation() {
     messageBox(container, turn.role, turn.text, turn.timestamp, outgoing?.deliveryStatus || outgoing?.state);
   });
   result.outbound.filter(item => !result.history.some(turn => turn.id === item.id || item.id === "auto:" + turn.id.replace(/:reply$/, ""))).forEach(item => messageBox(container, "agent", item.text, item.created, item.deliveryStatus || item.state));
+  if (result.blocked) {
+    const notice = node("section", "audio-job-status contact-block-notice"); notice.setAttribute("role", "status");
+    notice.append(node("strong", "", "IA bloqueada para este contato"), node("p", "", "Este contato não recebe respostas da IA nem tem áudios transcritos. Você pode continuar o atendimento manualmente. Ao desbloquear, somente novas mensagens voltam ao atendimento automático.")); container.append(notice);
+  }
   audioJobs.slice().reverse().forEach(job => {
     const status = audioStatus(job), card = node("section", `audio-job-status audio-job-${status.tone}`);
     card.setAttribute("role", "status");
     card.append(node("strong", "", status.title), node("p", "", status.detail), node("small", "", `Áudio recebido em ${date(job.created)}`));
-    if (status.retry) {
+    if (status.retry && !result.blocked) {
       const retry = node("button", "secondary-button", "Tentar atender este áudio"); retry.type = "button";
       retry.addEventListener("click", () => action(retry, "#wa-send-status", async () => { await api("/api/whatsapp/retry", { id: job.id }); await loadDashboard(); lastWaHistory = ""; await loadConversation(); return "Áudio recolocado na fila."; })); card.append(retry);
     }
@@ -139,12 +158,13 @@ function updatePage(next) {
 }
 function filterContacts() {
   const query = $("#contact-search").value.toLocaleLowerCase("pt-BR");
-  document.querySelectorAll("#contacts .contact-button").forEach(button => button.hidden = !button.textContent.toLocaleLowerCase("pt-BR").includes(query));
+  document.querySelectorAll("#contacts .contact-button").forEach(button => button.hidden = !button.textContent.toLocaleLowerCase("pt-BR").includes(query) || blockFilter.value === "blocked" && button.dataset.blocked !== "true");
 }
 $("#contact-search").addEventListener("input", filterContacts);
 $('#wa-contact').tabIndex = -1;
 $('#mobile-chat-back').onclick = () => { $('.inbox-layout').dataset.contactSelected = 'false'; $('#contact-search').focus(); };
 $('#new-wa-conversation').onclick = () => {
+  blockContactButton.hidden = true;
   currentPhone = ''; lastWaHistory = ''; $('.inbox-layout').dataset.contactSelected = 'true';
   $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
   $('#wa-contact').textContent = 'Nova mensagem'; $('#wa-window').textContent = 'Informe o destinatário e escreva sua mensagem.';
@@ -166,6 +186,15 @@ async function action(button, statusSelector, task) {
   button.disabled = true; error(); $(statusSelector).textContent = "Aguarde…";
   try { $(statusSelector).textContent = await task() || "Concluído."; } catch (failure) { $(statusSelector).textContent = failure.message; error(failure.message); } finally { button.disabled = false; }
 }
+blockContactButton.addEventListener("click", () => {
+  if (!currentPhone) return;
+  const phone = currentPhone, blocked = blockContactButton.dataset.blocked !== "true";
+  return action(blockContactButton, "#wa-send-status", async () => {
+    await api("/api/whatsapp/block", { phone, blocked });
+    await loadDashboard(); lastWaHistory = ""; await loadConversation();
+    return blocked ? "IA bloqueada para este contato. O atendimento manual continua disponível." : "IA desbloqueada. Somente novas mensagens serão atendidas automaticamente.";
+  });
+});
 async function saveSettings(scope = 'whatsapp') {
   const fields = $$(`#settings-${scope}-panel [name]`).filter(field => field.id === 'whatsappMode' || !field.closest('[hidden]'));
   for (const field of fields) if (!field.reportValidity()) throw new Error('Confira os campos desta seção.');
