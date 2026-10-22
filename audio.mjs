@@ -90,7 +90,7 @@ export async function downloadCloudAudio(media, config, fetchImpl = fetch) {
     return { bytes, mimeType };
   } catch (error) { if (error.status) throw error; throw fail("Falha ao baixar o áudio na Meta. Tente novamente.", 502); }
 }
-export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.now } = {}) {
+export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.now, shortAudioTimeoutMs = 20000 } = {}) {
   const cooldowns = new Map();
   return async ({ bytes, mimeType }) => {
     size(bytes?.byteLength || 0); mimeType = mime(mimeType);
@@ -101,6 +101,7 @@ export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.no
     const keys = config.aiRotationEnabled ? compatible : compatible.slice(0, 1);
     if (!keys.length) throw fail("Para entender áudios, ative uma chave Gemini, Groq ou OpenAI na sua lista de IA.", 409);
     const signal = AbortSignal.timeout(55000);
+    let timedOut = false;
     for (const key of keys) {
       const current = settings.get();
       const live = listed ? current.aiKeys.find(item => item.id === key.id && item.enabled && item.apiKey === key.apiKey && item.provider === key.provider && item.model === key.model) : current.aiProvider === key.provider && current.apiKey === key.apiKey ? key : null;
@@ -121,22 +122,33 @@ export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.no
         body.set("model", key.provider === "groq" ? "whisper-large-v3-turbo" : "gpt-transcribe");
       }
       let response, data;
+      const attemptSignal = AbortSignal.timeout(bytes.byteLength <= 128 * 1024 ? shortAudioTimeoutMs : 55000);
       try {
-        response = await fetchImpl(url, { method: "POST", redirect: "error", signal, headers, body });
+        response = await fetchImpl(url, { method: "POST", redirect: "error", signal: AbortSignal.any([signal, attemptSignal]), headers, body });
         if (response.status === 429 || response.status === 402) {
           const delay = Number(response.headers.get("retry-after"));
           cooldowns.set(identity, clock() + (delay > 0 ? Math.min(delay * 1000, 86400000) : 300000));
           await response.body?.cancel(); continue;
         }
         if (!response.ok) { await response.body?.cancel(); throw fail(response.status === 401 || response.status === 403 ? "O provedor recusou a transcrição. Confira as credenciais e permissões de áudio." : "O provedor não aceitou este áudio ou modelo. Confira a configuração e tente novamente.", 502); }
-        data = JSON.parse((await collect(response.body, 100000)).toString("utf8"));
-      } catch (error) { if (error.status) throw error; throw fail("Não foi possível transcrever o áudio. Confira a conexão e tente novamente.", 502); }
+        const raw = (await collect(response.body, 100000)).toString("utf8");
+        try { data = JSON.parse(raw); } catch { throw fail("O provedor retornou uma transcrição inválida. Tente novamente.", 502); }
+      } catch (error) {
+        if (error.status) throw error;
+        if (signal.aborted || attemptSignal.aborted) {
+          timedOut = true;
+          cooldowns.set(identity, clock() + 60000);
+          if (config.aiRotationEnabled && !signal.aborted) continue;
+          throw fail("A IA demorou demais para transcrever este áudio. Tente novamente ou ative outra chave compatível.", 504);
+        }
+        throw fail("A conexão com o provedor de transcrição falhou. Tente novamente; se persistir, confira a conexão ou use outra chave compatível.", 502);
+      }
       const parts = data.candidates?.[0]?.content?.parts || [];
       const value = key.provider === "gemini" ? parts.filter(part => !part.thought).map(part => typeof part.text === "string" ? part.text : "").join("") : data.text;
       const text = typeof value === "string" ? value.trim() : "";
       if (typeof text !== "string" || !text || text.length > 12000 || (key.provider === "gemini" && data.candidates?.[0]?.finishReason && data.candidates[0].finishReason !== "STOP")) throw fail("Não foi possível entender a fala completa. Peça um áudio mais curto e claro ou uma mensagem escrita.", 422);
       return { text, provider: key.provider };
     }
-    throw fail("As chaves de transcrição atingiram o limite. Aguarde, confira os créditos ou ative outra chave compatível.", 503);
+    throw fail(timedOut ? "As tentativas de transcrição demoraram demais. Tente novamente ou use outra chave compatível." : "As chaves de transcrição atingiram o limite ou estão em espera. Aguarde, confira os créditos ou ative outra chave compatível.", 503);
   };
 }

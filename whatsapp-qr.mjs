@@ -80,13 +80,16 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
         const message = JSON.parse(job.message);
         if (message.audioError) throw fail(message.audioError, 422);
         if (message.audio && !message.transcribed) {
+          await db.execute({ sql: "UPDATE qr_jobs SET message=json_set(message,'$.audioStage','download') WHERE id=?", args: [job.id] });
           const audio = await downloadQrAudio(message.audio, audioDownload);
           if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante o download.", 409);
           checkSchedule();
+          await db.execute({ sql: "UPDATE qr_jobs SET message=json_set(message,'$.audioStage','transcribe') WHERE id=?", args: [job.id] });
           const transcription = await runtime.transcribe(audio);
           if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
           message.text = `[Áudio transcrito] ${transcription.text}`;
           message.transcribed = true;
+          message.audioStage = "reply";
           delete message.audio;
           await db.execute({ sql: "UPDATE qr_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
           await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, message.contactId] });
@@ -238,7 +241,7 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       return { history: (await runtime.state(accountId(jid))).history, outbound };
     },
     async status() {
-      const jobs = (await db.execute({ sql: "SELECT id,jid AS phone,state,error,created FROM qr_jobs WHERE account=? ORDER BY created DESC LIMIT 100", args: [state.account] })).rows;
+      const jobs = (await db.execute({ sql: "SELECT id,jid AS phone,state,error,created,CASE WHEN json_type(message,'$.audio') IS NOT NULL OR json_type(message,'$.audioError') IS NOT NULL OR json_extract(message,'$.transcribed')=1 THEN 1 ELSE 0 END AS audio,json_extract(message,'$.audioStage') AS stage FROM qr_jobs WHERE account=? ORDER BY created DESC,rowid DESC LIMIT 100", args: [state.account] })).rows;
       const outbox = (await db.execute({ sql: "SELECT jid AS phone,state,error FROM qr_outbox WHERE account=? AND state='unknown' LIMIT 100", args: [state.account] })).rows;
       return { jobs, events, outbox };
     },

@@ -3,6 +3,7 @@ import { initWorkspace } from "/workspace.js";
 import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
+import { audioStatus, audioPreview } from "/audio-status.js";
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let workspace, dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
@@ -76,13 +77,13 @@ function renderDashboard() {
     $("#wa-kind").value = "text"; $("#wa-kind").disabled = true; $("#text-fields").hidden = false; $("#template-fields").hidden = true;
   } else $("#wa-kind").disabled = false;
   $("#wa-kind option[value='text']").textContent = qrMode ? "Texto pelo WhatsApp vinculado" : "Texto · dentro da janela de 24 horas";
-  const signature = JSON.stringify(dashboard.conversations);
+  const signature = JSON.stringify([dashboard.conversations, dashboard.jobs]);
   if (signature !== lastContacts) {
     lastContacts = signature; const contacts = $("#contacts"); contacts.replaceChildren();
     if (!dashboard.conversations.length) contacts.append(node("p", "hint", "Nenhum contato recebido ou envio realizado. Conecte o WhatsApp e envie uma mensagem para ele usando outro celular."));
     dashboard.conversations.forEach(contact => {
       const button = node("button", "contact-button", ""); button.type = "button"; button.dataset.initial = contact.name.trim().slice(0, 1).toLocaleUpperCase("pt-BR"); button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
-      button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", contact.last_text || "Sem mensagem de texto"));
+      button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto"));
       button.addEventListener("click", async () => { currentPhone = contact.phone; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus(); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
@@ -106,7 +107,8 @@ async function loadDashboard(refreshForm = false) { dashboard = await api("/api/
 async function loadConversation() {
   if (!currentPhone) return;
   const result = await api("/api/conversation?phone=" + encodeURIComponent(currentPhone));
-  const signature = JSON.stringify(result); if (signature === lastWaHistory) return; lastWaHistory = signature;
+  const audioJobs = dashboard.jobs.filter(job => job.phone === currentPhone && job.audio && job.state !== "done").slice(0, 5);
+  const signature = JSON.stringify([result, audioJobs]); if (signature === lastWaHistory) return; lastWaHistory = signature;
   const contact = dashboard.conversations.find(item => item.phone === currentPhone);
   $("#wa-contact").textContent = contact?.name || currentPhone;
   $("#wa-window").textContent = dashboard.settings.whatsappMode === "qr" ? "Conversa pelo WhatsApp vinculado por QR Code." : contact?.last_inbound && Date.now() - Number(contact.last_inbound) < 86400000 ? "Janela de 24 horas aberta para texto livre." : "Envie um template aprovado ou aguarde uma mensagem do contato.";
@@ -116,6 +118,16 @@ async function loadConversation() {
     messageBox(container, turn.role, turn.text, turn.timestamp, outgoing?.deliveryStatus || outgoing?.state);
   });
   result.outbound.filter(item => !result.history.some(turn => turn.id === item.id || item.id === "auto:" + turn.id.replace(/:reply$/, ""))).forEach(item => messageBox(container, "agent", item.text, item.created, item.deliveryStatus || item.state));
+  audioJobs.slice().reverse().forEach(job => {
+    const status = audioStatus(job), card = node("section", `audio-job-status audio-job-${status.tone}`);
+    card.setAttribute("role", "status");
+    card.append(node("strong", "", status.title), node("p", "", status.detail), node("small", "", `Áudio recebido em ${date(job.created)}`));
+    if (status.retry) {
+      const retry = node("button", "secondary-button", "Tentar atender este áudio"); retry.type = "button";
+      retry.addEventListener("click", () => action(retry, "#wa-send-status", async () => { await api("/api/whatsapp/retry", { id: job.id }); await loadDashboard(); lastWaHistory = ""; await loadConversation(); return "Áudio recolocado na fila."; })); card.append(retry);
+    }
+    container.append(card);
+  });
   if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa.")); container.scrollTop = container.scrollHeight;
 }
 function updatePage(next) {

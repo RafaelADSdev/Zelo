@@ -12,7 +12,7 @@ Ative pelo menos uma chave de Gemini, Groq ou OpenAI na lista de IA. A primeira 
 | Groq | `whisper-large-v3-turbo` pela API de transcrições |
 | OpenAI | `gpt-transcribe` pela API de transcrições |
 
-Com troca automática habilitada, respostas HTTP 429 ou 402 permitem tentar a próxima chave compatível. A espera de áudio é independente da cota de texto e dura o prazo numérico de Retry-After, limitado a um dia, ou cinco minutos se ausente. Essa espera é mantida em memória e reinicia com o processo. Credenciais inválidas, arquivo recusado e falhas de conexão ficam visíveis na fila; não provocam troca silenciosa de provedor.
+Com troca automática habilitada, respostas HTTP 429 ou 402 e tentativas que excedam o prazo de transcrição permitem tentar a próxima chave compatível. Arquivos de até 128 KiB têm até 20 segundos por tentativa; o limite total das chamadas de transcrição continua sendo 55 segundos. Uma tentativa que excede o prazo deixa a chave em espera por um minuto. Para limite de uso, a espera dura o prazo numérico de Retry-After, limitado a um dia, ou cinco minutos se ausente. Essa espera é independente da cota de texto, é mantida em memória e reinicia com o processo. Credenciais inválidas, arquivo recusado e falhas de conexão ficam visíveis na conversa e na fila; não provocam troca silenciosa de provedor. Uma solicitação interrompida pode já ter consumido cota no provedor.
 
 ## Operação e privacidade
 
@@ -24,6 +24,7 @@ Com troca automática habilitada, respostas HTTP 429 ou 402 permitem tentar a pr
 - Ao terminar a transcrição, o texto identificado como `[Áudio transcrito]` substitui a referência da mídia no job. Uma falha posterior de resposta pode ser retomada sem transcrever novamente. Envios incertos continuam bloqueados contra repetição automática.
 - Áudio binário não é salvo no catálogo ou no banco. Referências necessárias para baixar novamente ficam na fila pendente/com erro. Transcrições ficam no histórico e seguem a política de guarda existente; a alteração não apaga snapshots antigos.
 - Não há promessa de precisão integral: silêncio, ruído, fala longa, limites do modelo ou bloqueios podem exigir uma nova gravação ou atendimento escrito.
+- A conversa identifica a etapa atual: download, transcrição ou preparação da resposta. Falhas não devem continuar aparecendo como "aguardando transcrição"; há um botão explícito para retomar o atendimento. A retomada pode enviar a resposta ao contato e continua usando as proteções contra envio duplicado.
 - Transcrição e resposta são solicitações distintas e podem consumir créditos. Observe os contratos dos provedores, especialmente a restrição do Gemini Unpaid Services sobre dados pessoais, confidenciais ou sensíveis.
 
 ## Verificação

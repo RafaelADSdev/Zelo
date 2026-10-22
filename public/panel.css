@@ -80,3 +80,8 @@
 @media(max-width:800px){.sidebar-bottom{border:0;padding:0!important;right:16px;top:12px;width:auto;max-width:130px}.sidebar-bottom .privacy-note{display:none}.sidebar-bottom .logout-button{width:auto;min-height:32px;margin:0;padding:7px 9px;font-size:10px}.sidebar-bottom .logout-button .icon{width:14px;height:14px}}
 
 .ai-status-paused{color:#6c6275}.inline-switch input:focus-visible+span{outline-color:#7041db}
+
+.audio-job-status{margin:16px 0;padding:18px;border:1px solid #dfd4ef;border-left:3px solid #7041db;border-radius:10px;background:#faf7ff;color:#372647;max-width:620px;font-size:13px;line-height:1.6}
+.audio-job-status strong{display:block;font-size:14px}.audio-job-status p{margin:7px 0}.audio-job-status small{display:block;color:#65556f}.audio-job-status button{margin-top:12px;min-height:44px}
+.audio-job-error{border-color:#e6c4cc;border-left-color:#a42b48;background:#fff7f8;color:#762039}.audio-job-error small{color:#785263}
+.audio-job-paused{border-left-color:#776581;background:#f8f6fa}

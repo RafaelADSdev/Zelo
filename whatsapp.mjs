@@ -108,13 +108,16 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
         const message = JSON.parse(job.message);
         if (message.accountId !== settings.get().phoneNumberId) throw fail("Mensagem recebida em outro número da Meta. Verifique a configuração antes de tentar novamente.", 409);
         if (["audio", "voice"].includes(message.media?.kind) && !message.transcribed) {
+          await db.execute({ sql: "UPDATE wa_jobs SET message=json_set(message,'$.audioStage','download') WHERE id=?", args: [job.id] });
           const audio = await downloadCloudAudio(message.media, config(), fetchImpl);
           if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante o download.", 409);
           checkSchedule();
+          await db.execute({ sql: "UPDATE wa_jobs SET message=json_set(message,'$.audioStage','transcribe') WHERE id=?", args: [job.id] });
           const transcription = await runtime.transcribe(audio);
           if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
           message.text = `[Áudio transcrito] ${transcription.text}`;
           message.transcribed = true;
+          message.audioStage = "reply";
           delete message.media;
           await db.execute({ sql: "UPDATE wa_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
           await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, `whatsapp:${message.accountId}:${job.phone}`] });
@@ -240,7 +243,7 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
     },
     async status() {
       return {
-        jobs: (await db.execute("SELECT id,phone,state,error,attempts,created FROM wa_jobs ORDER BY created DESC LIMIT 50")).rows,
+        jobs: (await db.execute("SELECT id,phone,state,error,attempts,created,CASE WHEN json_extract(message,'$.media.kind') IN ('audio','voice') OR json_extract(message,'$.transcribed')=1 THEN 1 ELSE 0 END AS audio,json_extract(message,'$.audioStage') AS stage FROM wa_jobs ORDER BY created DESC,rowid DESC LIMIT 50")).rows,
         events: (await db.execute("SELECT type,detail,at FROM wa_events ORDER BY id DESC LIMIT 30")).rows,
         outbox: (await db.execute("SELECT phone,state,error,created FROM wa_outbox WHERE state IN ('failed','unknown') ORDER BY created DESC LIMIT 20")).rows,
       };

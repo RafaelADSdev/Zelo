@@ -85,6 +85,21 @@ test("áudio: sem troca automática não usa a segunda chave e silêncio não ge
   await assert.rejects(empty({ bytes, mimeType }), /entender/);
 });
 
+test("áudio: tentativa travada em arquivo curto passa à reserva e erro de rede fica claro", async () => {
+  let calls = 0;
+  const transcribe = createTranscriber(settings([key("gemini"), key("groq")]), { shortAudioTimeoutMs: 10, fetchImpl: async (_url, options) => {
+    calls++;
+    if (calls === 1) await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 500);
+      options.signal.addEventListener("abort", () => { clearTimeout(timer); reject(options.signal.reason); }, { once: true });
+    });
+    return Response.json({ text: "Entendido." });
+  } });
+  assert.equal((await transcribe({ bytes, mimeType })).text, "Entendido."); assert.equal(calls, 2);
+  const disconnected = createTranscriber(settings([key("groq")]), { fetchImpl: async () => { throw new TypeError("fetch failed secret-url"); } });
+  await assert.rejects(disconnected({ bytes, mimeType }), /conexão com o provedor/i);
+});
+
 test("áudio QR: transcrição vira contexto e histórico, sem duplicar; pausa não baixa nem transcreve", async () => {
   const dataDir = await testDirectory(); let socket, downloads = 0, transcriptions = 0, replies = 0, sends = 0, failReply = false;
   const app = await startTestServer({ port: 0, dataDir, ai: { apiKey: "test-gemini" },
@@ -116,6 +131,7 @@ test("áudio QR: transcrição vira contexto e histórico, sem duplicar; pausa n
     socket.ev.emit("messages.upsert", { type: "notify", messages: [incoming("retry")] }); await app.qr.idle();
     const retry = (await app.qr.status()).jobs.find(job => job.id.endsWith(":retry"));
     assert.equal(retry.state, "failed"); assert.equal(transcriptions, 3);
+    assert.equal(retry.audio, 1); assert.equal(retry.stage, "reply");
     failReply = false; await app.qr.retry(retry.id); await app.qr.idle();
     assert.equal(transcriptions, 3); assert.equal(sends, 3);
     const stored = (await app.runtime.client.execute("SELECT message FROM qr_jobs")).rows;
@@ -144,6 +160,7 @@ test("áudio Cloud: webhook assinado baixa mídia autenticada, transcreve e resp
     assert.equal((await app.whatsapp.status()).jobs[0]?.state, "done", JSON.stringify(await app.whatsapp.status()));
     assert.equal(transcriptions, 1); assert.equal(downloads, 1); assert.equal(sends, 1);
     assert.equal((await app.whatsapp.status()).jobs[0].state, "done");
+    assert.equal((await app.whatsapp.status()).jobs[0].audio, 1); assert.equal((await app.whatsapp.status()).jobs[0].stage, "reply");
     assert.match((await app.whatsapp.history("5511888888888")).history[0].text, /Áudio transcrito/);
     await app.whatsapp.accept(raw, signature); await app.whatsapp.idle(); assert.equal(transcriptions, 1);
   } finally { await app.close(); await releaseDirectory(dataDir); }
