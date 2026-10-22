@@ -6,7 +6,7 @@ import { createHmac, createCipheriv } from "node:crypto";
 import { getMediaKeys } from "@whiskeysockets/baileys";
 import { startTestServer, testDirectory, releaseDirectory } from "./helpers.mjs";
 import { createHash } from "node:crypto";
-import { createTranscriber, qrAudio, downloadQrAudio, downloadCloudAudio, MAX_AUDIO_BYTES } from "../audio.mjs";
+import { createTranscriber, qrAudio, downloadQrAudio, downloadCloudAudio, MAX_AUDIO_BYTES } from "../lib/audio/audio.mjs";
 
 const bytes = Buffer.from("OggS-test-only-audio"), mimeType = "audio/ogg";
 const key = (provider, id = provider) => ({ id, provider, model: provider === "gemini" ? "gemini-2.5-flash" : "chat-model", enabled: true, apiKey: `test-${id}` });

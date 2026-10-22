@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createAiModel } from "../ai.mjs";
-import { createRotatingAi } from "../ai-rotation.mjs";
-import { createSettings } from "../settings.mjs";
+import { createAiModel } from "../lib/ai/ai.mjs";
+import { createRotatingAi } from "../lib/ai/ai-rotation.mjs";
+import { createSettings } from "../lib/core/settings.mjs";
 import { testDirectory, releaseDirectory, startTestServer, authenticatedFetch } from "./helpers.mjs";
 
 const primary = "nvidia/nemotron-3-ultra-550b-a55b:free";

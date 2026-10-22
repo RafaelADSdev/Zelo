@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startServer } from "../server.mjs";
-import { createAuth } from "../auth.mjs";
+import { createAuth } from "../lib/auth/auth.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 const password = "test-auth-secret-only-2026";
 test("login protege APIs, anexos e painel; primeiro acesso é único, senha persistida como hash e logout revoga sessão", async () => {

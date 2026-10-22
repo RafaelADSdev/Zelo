@@ -149,10 +149,24 @@ Os testes cobrem autenticação, isolamento, convites, prioridade de IA, persist
 - Memória, filas e credenciais QR têm snapshots periódicos. Uma queda abrupta pode perder alterações posteriores ao último backup; catálogo e materiais remotos são persistidos diretamente no Supabase.
 - A disponibilidade depende do servidor, da hospedagem, do WhatsApp e das cotas dos provedores.
 
+## Organização do projeto
+
+- `server.mjs`: entrada do servidor local; `INICIAR.cmd` e `PARAR.cmd` continuam na raiz.
+- `lib/`: módulos agrupados por responsabilidade em `ai/`, `audio/`, `auth/`, `catalog/`, `atendimento/`, `core/`, `supabase/`, `whatsapp/`, `http/`, `tunnel/` e `workspaces/`.
+- `public/`: interface e arquivos públicos; identidade visual em `public/brand/`.
+- `api/` e `deployment/`: entradas e infraestrutura de hospedagem.
+- `supabase/`: migração e histórico de migrations.
+- `test/`: testes automatizados; execute com `npm test`.
+- `docs/`: documentação de produto, design e operação.
+
+Os dados locais continuam em `.wappy/`, e os materiais em `materiais/`; ambas as pastas são ignoradas pelo Git.
+
 ## Documentação
 
 | Guia | Conteúdo |
 | --- | --- |
+| [Produto](docs/product.md) | Público, propósito e restrições do produto. |
+| [Design geral](docs/design.md) | Registro visual geral do projeto. |
 | [PWA e mobile](docs/pwa.md) | Instalação, funcionamento offline, atualização e navegação móvel. |
 | [Ambientes privados](docs/workspaces.md) | Convites, administrador master, isolamento e recuperação. |
 | [Vercel](docs/vercel.md) | Function, worker, variáveis e limites da implantação. |

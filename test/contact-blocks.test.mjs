@@ -4,9 +4,9 @@ import { createClient } from "@libsql/client";
 import { EventEmitter } from "node:events";
 import { createHash, createHmac } from "node:crypto";
 import { Readable } from "node:stream";
-import { createContactBlocks } from "../contact-blocks.mjs";
-import { createWhatsAppQr } from "../whatsapp-qr.mjs";
-import { createWhatsApp } from "../whatsapp.mjs";
+import { createContactBlocks } from "../lib/atendimento/contact-blocks.mjs";
+import { createWhatsAppQr } from "../lib/whatsapp/whatsapp-qr.mjs";
+import { createWhatsApp } from "../lib/whatsapp/whatsapp.mjs";
 import { allowedPath } from "../deployment/routes.mjs";
 
 test("bloqueios persistem por conta e conexão, sem atravessar ambientes", async () => {

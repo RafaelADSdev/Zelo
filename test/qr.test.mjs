@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { startTestServer as startServer, authenticatedFetch as fetch } from "./helpers.mjs";
-import { createQrAuth } from "../qr-auth.mjs";
+import { createQrAuth } from "../lib/whatsapp/qr-auth.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("QR: credenciais persistidas, novas mensagens, dedupe, isolamento e envio incerto", async () => {

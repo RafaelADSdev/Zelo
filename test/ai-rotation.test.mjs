@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { startTestServer as startServer, authenticatedFetch as fetch } from "./helpers.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
-import { createSettings } from "../settings.mjs";
-import { createRotatingAi } from "../ai-rotation.mjs";
+import { createSettings } from "../lib/core/settings.mjs";
+import { createRotatingAi } from "../lib/ai/ai-rotation.mjs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 

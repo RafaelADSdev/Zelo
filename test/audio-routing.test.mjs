@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createSettings } from "../settings.mjs";
-import { createTranscriber } from "../audio.mjs";
+import { createSettings } from "../lib/core/settings.mjs";
+import { createTranscriber } from "../lib/audio/audio.mjs";
 import { startTestServer, authenticatedFetch, testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("listas de IA: migração única, segredos ocultos e alterações independentes", async () => {

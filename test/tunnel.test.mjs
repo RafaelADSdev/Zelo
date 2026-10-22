@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTunnel } from '../tunnel.mjs';
+import { createTunnel } from '../lib/tunnel/tunnel.mjs';
 import { testDirectory, releaseDirectory } from './helpers.mjs';
 
 test('tunnel uses a pinned official binary without release API discovery and rejects a corrupt download', async () => {

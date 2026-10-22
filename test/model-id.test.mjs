@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createSettings} from '../settings.mjs';
+import {createSettings} from '../lib/core/settings.mjs';
 import {testDirectory,releaseDirectory} from './helpers.mjs';
 
 test('cadastro Gemini aceita ID real, remove espaços e prefixo da API, e explica nome incompleto',async()=>{

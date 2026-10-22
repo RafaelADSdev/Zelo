@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
-import { PWA_ASSETS } from '../pwa-assets.mjs';
+import { PWA_ASSETS } from '../lib/http/pwa-assets.mjs';
 import { allowedPath } from '../deployment/routes.mjs';
 
 const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');

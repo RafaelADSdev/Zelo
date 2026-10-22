@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { defaultSchedule, validateSchedule, replyStatus, automaticAllowed, assertAutomatic } from "../reply-schedule.mjs";
+import { defaultSchedule, validateSchedule, replyStatus, automaticAllowed, assertAutomatic } from "../lib/atendimento/reply-schedule.mjs";
 const at = text => Date.parse(text + "-03:00");
 test("programação: limites, fuso de São Paulo, dias, datas e faixa noturna", () => {
   const config = { autoReply: true, replySchedule: { ...defaultSchedule(), enabled: true } };

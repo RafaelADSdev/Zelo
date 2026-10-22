@@ -6,10 +6,10 @@ import { writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@libsql/client";
-import { createSupabase } from "../supabase-client.mjs";
-import { createSupabaseCatalog } from "../supabase-catalog.mjs";
-import { createStateBackup } from "../supabase-state.mjs";
-import { createAuth } from "../auth.mjs";
+import { createSupabase } from "../lib/supabase/supabase-client.mjs";
+import { createSupabaseCatalog } from "../lib/supabase/supabase-catalog.mjs";
+import { createStateBackup } from "../lib/supabase/supabase-state.mjs";
+import { createAuth } from "../lib/auth/auth.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("Supabase usa segredo só no servidor e oculta erros externos; autenticação usa chave pública", async () => {

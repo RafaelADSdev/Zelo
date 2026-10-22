@@ -1,5 +1,5 @@
-import { PWA_ASSETS } from '../pwa-assets.mjs';
-import { LEGAL_ASSETS } from '../legal-assets.mjs';
+import { PWA_ASSETS } from '../lib/http/pwa-assets.mjs';
+import { LEGAL_ASSETS } from '../lib/http/legal-assets.mjs';
 const files = new Set(['/motion.css','/motion.js','/','/admin/access','/login','/login.js','/login.css','/app.js','/audio-status.js','/workspace.js','/panel.css','/settings-ui.js','/style.css','/catalog.js','/catalog.css','/ai-keys.js','/reply-schedule.js','/brand/logo.svg','/brand/logo-light.svg','/brand/icon.svg','/favicon.ico','/webhook']);
 export function allowedPath(path) {
   if (LEGAL_ASSETS.has(path)) return true;

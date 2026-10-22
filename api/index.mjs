@@ -1,4 +1,4 @@
-import { createSupabase } from '../supabase-client.mjs';
+import { createSupabase } from '../lib/supabase/supabase-client.mjs';
 import { createProxy } from '../deployment/proxy.mjs';
 import { readRecord, decryptRecord } from '../deployment/records.mjs';
 export const config = {api:{bodyParser:false}};

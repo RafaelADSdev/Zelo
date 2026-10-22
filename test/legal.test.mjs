@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startServer } from '../server.mjs';
-import { createWorkspaceRouter } from '../workspace-router.mjs';
+import { createWorkspaceRouter } from '../lib/workspaces/workspace-router.mjs';
 import { testDirectory, releaseDirectory } from './helpers.mjs';
 
 async function verifyPublicLegal(url) {

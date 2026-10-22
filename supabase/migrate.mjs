@@ -3,8 +3,8 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { createClient } from "@libsql/client";
-import { createSupabase } from "../supabase-client.mjs";
-import { createStateBackup } from "../supabase-state.mjs";
+import { createSupabase } from "../lib/supabase/supabase-client.mjs";
+import { createStateBackup } from "../lib/supabase/supabase-state.mjs";
 try { process.loadEnvFile(".env"); } catch (error) { if (error.code !== "ENOENT") throw error; }
 const dataDir = resolve(".wappy"), client = createClient({ url: pathToFileURL(join(dataDir,"wappy.db")).href });
 const cloud = createSupabase({ url: process.env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY });

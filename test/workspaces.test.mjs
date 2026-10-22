@@ -4,14 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createWorkspaceAccess } from '../workspace-access.mjs';
-import { createWorkspaceManager, workspaceKey, originalAccount } from '../workspace-manager.mjs';
-import { createStateBackup } from '../supabase-state.mjs';
-import { createWorkspaceRouter } from '../workspace-router.mjs';
-import { createSupabaseCatalog } from '../supabase-catalog.mjs';
+import { createWorkspaceAccess } from '../lib/workspaces/workspace-access.mjs';
+import { createWorkspaceManager, workspaceKey, originalAccount } from '../lib/workspaces/workspace-manager.mjs';
+import { createStateBackup } from '../lib/supabase/supabase-state.mjs';
+import { createWorkspaceRouter } from '../lib/workspaces/workspace-router.mjs';
+import { createSupabaseCatalog } from '../lib/supabase/supabase-catalog.mjs';
 import { decodeSnapshot } from '../deployment/restore.mjs';
 import { startServer } from '../server.mjs';
-import { createQrAuth } from '../qr-auth.mjs';
+import { createQrAuth } from '../lib/whatsapp/qr-auth.mjs';
 import { testDirectory } from './helpers.mjs';
 
 export function fixture() {

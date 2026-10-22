@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { fail } from '../settings.mjs';
+import { fail } from '../lib/core/settings.mjs';
 export function createUploads(catalog, clock=Date.now) {
   const pending=new Map();
   function clean(){for(const [id,item] of pending)if(item.expires<clock())pending.delete(id);}

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { startTestServer as startServer, authenticatedFetch as fetch } from "./helpers.mjs";
 import { EventEmitter } from "node:events";
-import { cloudMedia } from "../media.mjs";
+import { cloudMedia } from "../lib/whatsapp/media.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("catálogo aceita galeria com mais de 20 arquivos e PDF acima de 10 MB, preservando limite das imagens", async () => {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
-import { createGeminiModel } from "../gemini.mjs";
+import { createGeminiModel } from "../lib/ai/gemini.mjs";
 import { startTestServer as startServer, authenticatedFetch as fetch } from "./helpers.mjs";
 
 test("Gemini usa cabeçalho secreto e mantém a resposta no fluxo Wappy", async () => {
