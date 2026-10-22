@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { audioStatus, audioPreview } from "../public/audio-status.js";
+import { audioStatus, audioPreview, canRetryJob } from "../public/audio-status.js";
 import { allowedPath } from "../deployment/routes.mjs";
 
 test("áudio: falha e pausa nunca aparecem como aguardando transcrição", () => {
@@ -17,4 +17,14 @@ test("áudio: falha e pausa nunca aparecem como aguardando transcrição", () =>
   assert.equal(audioStatus({ ...failed, stage: "reply" }).title, "Áudio entendido; a resposta falhou");
   assert.equal(audioStatus({ ...failed, state: "processing", stage: "download" }).title, "Baixando áudio do WhatsApp");
   assert.equal(audioStatus({ ...failed, state: "processing", stage: "transcribe" }).title, "Transcrevendo áudio");
+});
+
+test("áudio: botão de tentar novamente aparece somente em falha", () => {
+  for (const state of ["pending", "requested", "processing", "manual", "blocked", "done", "failed"]) {
+    const job = { audio: true, state };
+    assert.equal(canRetryJob(job), state === "failed", state);
+    if (audioStatus(job)) assert.equal(audioStatus(job).retry, state === "failed", state);
+  }
+  assert.equal(canRetryJob({ audio: false, state: "manual" }), true);
+  assert.ok(!audioStatus({ audio: true, state: "manual" }).detail.includes("botão"));
 });

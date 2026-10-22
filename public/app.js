@@ -3,7 +3,7 @@ import { initWorkspace } from "/workspace.js";
 import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
-import { audioStatus, audioPreview } from "/audio-status.js";
+import { audioStatus, audioPreview, canRetryJob } from "/audio-status.js";
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let workspace, dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
@@ -104,7 +104,7 @@ function renderDashboard() {
   if (!attention.length) jobs.append(node("p", "hint", "Nenhuma mensagem pendente ou com falha."));
   attention.forEach(job => {
     const row = node("div", "job-row"); row.append(node("div", "", `${job.phone} · ${labels[job.state] || job.state}${job.error ? " · " + job.error : ""}`));
-    if (["failed", "manual"].includes(job.state)) {
+    if (canRetryJob(job)) {
       const retry = node("button", "secondary-button", "Tentar responder"); retry.type = "button";
       retry.addEventListener("click", () => action(retry, "#wa-send-status", async () => { await api("/api/whatsapp/retry", { id: job.id }); await loadDashboard(); return "Mensagem recolocada na fila."; })); row.append(retry);
     }
