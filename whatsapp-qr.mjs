@@ -20,11 +20,13 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS qr_contacts (account TEXT NOT NULL, jid TEXT NOT NULL, name TEXT, last_inbound INTEGER, last_text TEXT, PRIMARY KEY(account,jid));
     CREATE TABLE IF NOT EXISTS qr_jobs (id TEXT PRIMARY KEY, account TEXT NOT NULL, jid TEXT NOT NULL, message TEXT NOT NULL, state TEXT NOT NULL, error TEXT, created INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS qr_jobs_contact_state ON qr_jobs(account,jid,state);
     CREATE TABLE IF NOT EXISTS qr_outbox (id TEXT PRIMARY KEY, account TEXT NOT NULL, jid TEXT NOT NULL, text TEXT NOT NULL, hash TEXT NOT NULL, state TEXT NOT NULL, meta_id TEXT, error TEXT, created INTEGER NOT NULL);
     UPDATE qr_jobs SET state='pending' WHERE state='processing';
     UPDATE qr_outbox SET state='unknown',error='Servidor reiniciado durante envio. Confira no celular antes de reenviar.' WHERE state='sending';
   `);
-  let socket, auth, generation = 0, reconnectTimer, qrTimer, work, events = [], eventQueue = Promise.resolve();
+  let socket, auth, generation = 0, reconnectTimer, qrTimer, events = [], eventQueue = Promise.resolve();
+  const workers = new Set();
   let stopped = false, desired = false, retries = 0;
   let state = { status: "disconnected", account: settings.get().qrAccount || "", qr: "", expiresAt: 0, error: "" };
   const event = detail => { events.unshift({ at: clock(), detail }); events = events.slice(0, 30); };
@@ -64,14 +66,15 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
   }
   async function drain() {
     while (!stopped && state.status === "connected" && settings.get().whatsappMode === "qr") {
-      const job = (await db.execute({ sql: "SELECT * FROM qr_jobs WHERE account=? AND state IN ('pending','requested') ORDER BY created,rowid LIMIT 1", args: [state.account] })).rows[0];
+      const job = (await db.execute({ sql: "SELECT j.* FROM qr_jobs j WHERE j.account=? AND j.state IN ('pending','requested') AND NOT EXISTS (SELECT 1 FROM qr_jobs busy WHERE busy.account=j.account AND busy.jid=j.jid AND busy.state='processing') ORDER BY j.created,j.rowid LIMIT 1", args: [state.account] })).rows[0];
       if (!job) return;
+      const claimed = await db.execute({ sql: "UPDATE qr_jobs SET state='processing',error=NULL WHERE id=? AND state=? AND NOT EXISTS (SELECT 1 FROM qr_jobs busy WHERE busy.account=qr_jobs.account AND busy.jid=qr_jobs.jid AND busy.state='processing')", args: [job.id, job.state] });
+      if (!claimed.rowsAffected) continue;
       if (job.state !== "requested" && !automaticAllowed(settings.get(), JSON.parse(job.message).timestamp, clock())) {
         const message = JSON.parse(job.message);
         await runtime.memory.append({ id: message.id, contactId: message.contactId, role: "user", text: message.text, timestamp: message.timestamp });
         await db.execute({ sql: "UPDATE qr_jobs SET state='manual',error='Resposta automática pausada pelo controle de atendimento.' WHERE id=?", args: [job.id] }); continue;
       }
-      await db.execute({ sql: "UPDATE qr_jobs SET state='processing',error=NULL WHERE id=?", args: [job.id] });
       try {
         const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
         const message = JSON.parse(job.message);
@@ -108,7 +111,11 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
     }
   }
   function kick() {
-    if (!work && !stopped) { work = drain().catch(() => event("Falha ao processar a fila local.")).finally(() => { work = null; }); }
+    if (stopped) return;
+    while (workers.size < 2) {
+      const task = Promise.resolve().then(drain).catch(() => event("Falha ao processar a fila local.")).finally(() => workers.delete(task));
+      workers.add(task);
+    }
   }
   async function incoming(upsert) {
     if (upsert.type !== "notify" || !desired || state.status !== "connected" || settings.get().whatsappMode !== "qr") return;
@@ -241,10 +248,10 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       if (out) throw fail("Este atendimento já teve uma tentativa de envio. Confira no celular antes de enviar manualmente.", 409);
       await db.execute({ sql: "UPDATE qr_jobs SET state='requested',error=NULL WHERE id=? AND account=? AND state IN ('failed','manual')", args: [id, state.account] }); kick(); return { queued: true };
     },
-    async idle() { await eventQueue; if (work) await work; },
+    async idle() { await eventQueue; while (workers.size) await Promise.all([...workers]); },
     async close() {
       const resume = settings.get().qrAutoConnect;
-      stopped = true; clearInterval(timer); await disconnect(); if (work) await work;
+      stopped = true; clearInterval(timer); await disconnect(); while (workers.size) await Promise.all([...workers]);
       await settings.mark({ qrAutoConnect: resume });
     },
   };

@@ -12,13 +12,15 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS wa_contacts (phone TEXT PRIMARY KEY, account_id TEXT NOT NULL, name TEXT, last_inbound INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS wa_jobs (id TEXT PRIMARY KEY, phone TEXT NOT NULL, message TEXT NOT NULL, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL DEFAULT 0, error TEXT, created INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS wa_jobs_contact_state ON wa_jobs(phone,state);
     CREATE TABLE IF NOT EXISTS wa_outbox (id TEXT PRIMARY KEY, phone TEXT NOT NULL, account_id TEXT NOT NULL, text TEXT NOT NULL, payload TEXT NOT NULL, hash TEXT NOT NULL, state TEXT NOT NULL, meta_id TEXT, error TEXT, created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS wa_statuses (id TEXT PRIMARY KEY, status TEXT NOT NULL, rank INTEGER NOT NULL, at INTEGER NOT NULL, error TEXT);
     CREATE TABLE IF NOT EXISTS wa_events (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, detail TEXT NOT NULL, at INTEGER NOT NULL);
     UPDATE wa_jobs SET state='pending' WHERE state='processing';
     UPDATE wa_outbox SET state='unknown', error='Servidor reiniciado durante o envio. Confira o WhatsApp antes de enviar novamente.' WHERE state='sending';
   `);
-  let stopped = false, work = null;
+  let stopped = false;
+  const workers = new Set();
   const event = async (type, detail) => {
     await db.execute({ sql: "INSERT INTO wa_events(type, detail, at) VALUES (?,?,?)", args: [type, detail, clock()] });
     await db.execute("DELETE FROM wa_events WHERE id NOT IN (SELECT id FROM wa_events ORDER BY id DESC LIMIT 200)");
@@ -91,15 +93,16 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
   async function drain() {
     while (!stopped) {
       if (settings.get().whatsappMode === "qr") return;
-      const job = (await db.execute({ sql: "SELECT * FROM wa_jobs WHERE state IN ('pending','requested') AND next_at<=? ORDER BY created,rowid LIMIT 1", args: [clock()] })).rows[0];
+      const job = (await db.execute({ sql: "SELECT j.* FROM wa_jobs j WHERE j.state IN ('pending','requested') AND j.next_at<=? AND NOT EXISTS (SELECT 1 FROM wa_jobs busy WHERE busy.phone=j.phone AND busy.state='processing') ORDER BY j.created,j.rowid LIMIT 1", args: [clock()] })).rows[0];
       if (!job) return;
+      const claimed = await db.execute({ sql: "UPDATE wa_jobs SET state='processing',attempts=attempts+1 WHERE id=? AND state=? AND NOT EXISTS (SELECT 1 FROM wa_jobs busy WHERE busy.phone=wa_jobs.phone AND busy.state='processing')", args: [job.id, job.state] });
+      if (!claimed.rowsAffected) continue;
       if (job.state !== "requested" && !automaticAllowed(settings.get(), JSON.parse(job.message).timestamp, clock())) {
         await db.execute({ sql: "UPDATE wa_jobs SET state='manual',error='Resposta automática pausada.' WHERE id=?", args: [job.id] });
         const message = JSON.parse(job.message);
         await runtime.memory.append({ id: message.id, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "user", text: message.text || `[${message.media?.kind || "Mídia"}]`, timestamp: message.timestamp });
         continue;
       }
-      await db.execute({ sql: "UPDATE wa_jobs SET state='processing',attempts=attempts+1 WHERE id=?", args: [job.id] });
       try {
         const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
         const message = JSON.parse(job.message);
@@ -144,10 +147,11 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
     }
   }
   function kick() {
-    if (!work && !stopped) {
-      work = drain().catch(() => event("worker_error", "Falha ao processar fila local.").catch(() => {})).finally(() => { work = null; });
+    if (stopped) return;
+    while (workers.size < 2) {
+      const task = Promise.resolve().then(drain).catch(() => event("worker_error", "Falha ao processar fila local.").catch(() => {})).finally(() => workers.delete(task));
+      workers.add(task);
     }
-    return work;
   }
   const timer = setInterval(kick, 2000); timer.unref(); kick();
   return {
@@ -248,7 +252,7 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
       await db.execute({ sql: "UPDATE wa_jobs SET state='requested',error=NULL WHERE id=? AND state IN ('failed','manual')", args: [id] }); kick();
       return { queued: true };
     },
-    async idle() { if (work) await work; await kick(); },
-    async close() { stopped = true; clearInterval(timer); if (work) await work; },
+    async idle() { kick(); while (workers.size) await Promise.all([...workers]); },
+    async close() { stopped = true; clearInterval(timer); while (workers.size) await Promise.all([...workers]); },
   };
 }
