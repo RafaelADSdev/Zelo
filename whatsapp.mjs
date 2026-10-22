@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { parseWebhookPayload, verifySignature, renderSmartMessage } from "@wappy_ai/whatsapp";
 import { fail } from "./settings.mjs";
 import { cloudMedia } from "./media.mjs";
+import { downloadCloudAudio } from "./audio.mjs";
 
 const WINDOW = 24 * 60 * 60 * 1000;
 const phonePattern = /^\d{7,20}$/;
@@ -103,8 +104,21 @@ export async function createWhatsApp({ runtime, settings, fetchImpl = fetch, clo
         const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
         const message = JSON.parse(job.message);
         if (message.accountId !== settings.get().phoneNumberId) throw fail("Mensagem recebida em outro número da Meta. Verifique a configuração antes de tentar novamente.", 409);
+        if (["audio", "voice"].includes(message.media?.kind) && !message.transcribed) {
+          const audio = await downloadCloudAudio(message.media, config(), fetchImpl);
+          if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante o download.", 409);
+          checkSchedule();
+          const transcription = await runtime.transcribe(audio);
+          if (message.accountId !== settings.get().phoneNumberId || settings.get().whatsappMode === "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
+          message.text = `[Áudio transcrito] ${transcription.text}`;
+          message.transcribed = true;
+          delete message.media;
+          await db.execute({ sql: "UPDATE wa_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
+          await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, `whatsapp:${message.accountId}:${job.phone}`] });
+          checkSchedule();
+        }
         if (!message.text || message.text.startsWith("[unsupported WhatsApp")) {
-          const text = "Este atendimento recebe mensagens de texto. Por favor, descreva o que você precisa por escrito.";
+          const text = "Posso entender mensagens de texto e de voz. Por favor, descreva o que você precisa por escrito ou envie um áudio.";
           await runtime.memory.append({ id: message.id, contactId: `whatsapp:${message.accountId}:${job.phone}`, role: "user", text: `[${message.media?.kind || "Mensagem não textual"}]`, timestamp: message.timestamp });
           checkSchedule();
           await send(job.phone, { text }, `auto:${message.id}`);

@@ -6,6 +6,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createQrAuth } from "./qr-auth.mjs";
 import { fail } from "./settings.mjs";
 import { qrMedia } from "./media.mjs";
+import { qrAudio, downloadQrAudio } from "./audio.mjs";
 
 const logger = pino({ level: "silent" });
 const direct = jid => /^\d{5,20}@(s\.whatsapp\.net|lid)$/.test(jid || "");
@@ -14,7 +15,7 @@ function recipient(phone) {
   if (!direct(jid)) throw fail("Informe o número com DDI e DDD ou selecione um contato recebido.");
   return jid;
 }
-export async function createWhatsAppQr({ runtime, settings, socketFactory = makeWASocket, clock = Date.now }) {
+export async function createWhatsAppQr({ runtime, settings, socketFactory = makeWASocket, audioDownload, clock = Date.now }) {
   const db = runtime.client;
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS qr_contacts (account TEXT NOT NULL, jid TEXT NOT NULL, name TEXT, last_inbound INTEGER, last_text TEXT, PRIMARY KEY(account,jid));
@@ -74,6 +75,21 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       try {
         const checkSchedule = () => { if (job.state !== "requested") assertAutomatic(settings.get(), JSON.parse(job.message).timestamp, clock()); };
         const message = JSON.parse(job.message);
+        if (message.audioError) throw fail(message.audioError, 422);
+        if (message.audio && !message.transcribed) {
+          const audio = await downloadQrAudio(message.audio, audioDownload);
+          if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante o download.", 409);
+          checkSchedule();
+          const transcription = await runtime.transcribe(audio);
+          if (state.account !== job.account || settings.get().whatsappMode !== "qr") throw fail("A conta conectada mudou durante a transcrição.", 409);
+          message.text = `[Áudio transcrito] ${transcription.text}`;
+          message.transcribed = true;
+          delete message.audio;
+          await db.execute({ sql: "UPDATE qr_jobs SET message=? WHERE id=?", args: [JSON.stringify(message), job.id] });
+          await db.execute({ sql: "UPDATE turns SET text=? WHERE id=? AND contactId=? AND role='user'", args: [message.text, message.id, message.contactId] });
+          await db.execute({ sql: "UPDATE qr_contacts SET last_text=? WHERE account=? AND jid=? AND last_inbound=?", args: [message.text, job.account, job.jid, message.timestamp] });
+          checkSchedule();
+        }
         await runtime.whatsapp(message, async (_to, outgoing) => {
           if (state.account !== job.account) throw fail("A conta conectada mudou.", 409);
           checkSchedule();
@@ -102,12 +118,16 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
       if (item.key?.fromMe || !direct(jid) || !item.key?.id || !item.message || item.messageStubType) continue;
       const content = normalizeMessageContent(item.message);
       const text = content?.conversation || content?.extendedTextMessage?.text;
-      if (typeof text !== "string" || !text.trim()) continue;
+      const audio = content?.audioMessage;
+      if ((!text || typeof text !== "string" || !text.trim()) && !audio) continue;
       // Offline/history messages must never trigger a retroactive wave of replies.
       const at = Number(item.messageTimestamp) * 1000;
       if (!Number.isFinite(at) || at < connectedAt - 60000 || at > clock() + 60000) continue;
       const id = `${account}:${jid}:${item.key.id}`;
-      const message = { id, contactId: `whatsapp-qr:${account}:${jid}`, channel: "whatsapp", text: text.slice(0, 4000), timestamp: at };
+      const message = { id, contactId: `whatsapp-qr:${account}:${jid}`, channel: "whatsapp", text: audio ? "[Áudio recebido — aguardando transcrição]" : text.slice(0, 4000), timestamp: at };
+      if (audio) {
+        try { message.audio = qrAudio(audio); } catch (error) { message.audioError = error.status ? error.message : "Referência de áudio inválida."; }
+      }
       const inserted = await db.execute({ sql: "INSERT OR IGNORE INTO qr_jobs(id,account,jid,message,state,created) VALUES (?,?,?,?,'pending',?)", args: [id, account, jid, JSON.stringify(message), clock()] });
       if (!inserted.rowsAffected) continue;
       await db.execute({ sql: "INSERT INTO qr_contacts(account,jid,name,last_inbound,last_text) VALUES (?,?,?,?,?) ON CONFLICT(account,jid) DO UPDATE SET name=excluded.name,last_inbound=excluded.last_inbound,last_text=excluded.last_text", args: [account, jid, item.pushName || jid.split("@")[0], at, message.text] });
@@ -152,7 +172,7 @@ export async function createWhatsAppQr({ runtime, settings, socketFactory = make
         if (!direct(account)) { state.error = "WhatsApp não identificou a conta vinculada."; return; }
         state = { status: "connected", account, qr: "", expiresAt: 0, error: "" };
         await settings.mark({ qrAccount: account, qrAutoConnect: true });
-        event("WhatsApp vinculado. Novas mensagens individuais de texto podem ser atendidas."); kick();
+        event("WhatsApp vinculado. Novas mensagens individuais de texto e áudio podem ser atendidas."); kick();
       }
       if (update.connection === "close") {
         clearTimeout(qrTimer); socket = null;

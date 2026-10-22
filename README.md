@@ -59,6 +59,14 @@ No celular, a lista e a conversa aberta ocupam telas distintas. Use **Voltar** p
 
 A validação de uma chave faz uma chamada real ao provedor e pode consumir cota ou créditos. O Zelo não fornece chaves nem cotas de IA.
 
+## Mensagens de voz
+
+O assistente entende áudios recebidos no WhatsApp, por QR Code e Cloud API, e responde em texto. A transcrição aparece no histórico com a identificação **Áudio transcrito**. Use uma chave ativa de Gemini, Groq ou OpenAI; o Zelo respeita a ordem entre as chaves compatíveis e tenta uma reserva por limite quando a troca automática está ligada. Transcrever também consome cota ou créditos.
+
+Arquivos de até **10 MB**; áudios vazios, inacessíveis, incompreensíveis ou recusados pelo provedor ficam com erro na fila para revisão. O atendimento pausado ou fora do horário não baixa nem transcreve automaticamente. O operador pode retomar pela fila. O arquivo é processado em memória; o texto reconhecido permanece no histórico. Confira as condições de privacidade do provedor antes de usar dados reais.
+
+[Funcionamento, limites e testes de áudio →](docs/audio.md)
+
 ## Na tela inicial do seu celular
 
 Abra o [site em HTTPS](https://zelo-liard.vercel.app/) no navegador do dispositivo:

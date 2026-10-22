@@ -53,7 +53,7 @@ function sameToken(a, b) { const x = Buffer.from(a || ""); const y = Buffer.from
 async function listen(server, port) { await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); }); }
 async function closeServer(server) { await new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); }); }
 
-export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, onShutdown, cloudConfig, authDelegate, ownerId, snapshotId, backupKey } = {}) {
+export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, qrAudioDownload, onShutdown, cloudConfig, authDelegate, ownerId, snapshotId, backupKey } = {}) {
   const instanceId = randomUUID();
   const settings = await createSettings(dataDir, ai);
   const config = cloudConfig || (process.env.SUPABASE_URL ? { url: process.env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : null);
@@ -63,7 +63,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const uploads = createUploads(runtime.catalog);
   await runtime.memory.load("system:init");
   const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch });
-  const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory });
+  const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory, audioDownload: qrAudioDownload });
   const transport = () => settings.get().whatsappMode === "qr" ? qr : whatsapp;
   const webhook = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");

@@ -6,6 +6,7 @@ import { createClient } from "@libsql/client";
 import { createInMemoryTracer, systemClock } from "@wappy_ai/core";
 import { createAgent, createLibsqlMemory, createLibsqlSessionProfileStore, createKnowledge } from "@wappy_ai/harness";
 import { createRotatingAi } from "./ai-rotation.mjs";
+import { createTranscriber } from "./audio.mjs";
 import { normalize, searchQuery } from "./search.mjs";
 import { fail } from "./settings.mjs";
 import { createCatalog } from "./catalog.mjs";
@@ -39,6 +40,7 @@ export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backu
     return { history: await memory.load(contactId), facts: (await profiles.get(contactId, Date.now()))?.facts || {}, knowledge: document, mode: config.apiKey ? config.aiProvider : "unconfigured", model: config.model, assistantName: config.assistantName };
   }
   const chains = new Map();
+  const transcribe = createTranscriber(settings, { fetchImpl });
   async function respond(message, send, channelName) {
     const config = settings.get();
     const listMode = config.aiListOnly || config.aiRotationEnabled;
@@ -98,7 +100,7 @@ export async function createRuntime(dataDir, settings, { fetchImpl, cloud, backu
     return next;
   }
   return {
-    client, memory, state, catalog, async flushBackup() { if (backup) { await backup.run(); await backup.run(); } },
+    client, memory, state, catalog, transcribe, async flushBackup() { if (backup) { await backup.run(); await backup.run(); } },
     async saveKnowledge(value) {
       await writeFile(knowledgeFile + ".tmp", value, "utf8");
       await rename(knowledgeFile + ".tmp", knowledgeFile);
