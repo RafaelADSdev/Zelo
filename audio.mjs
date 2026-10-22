@@ -2,6 +2,7 @@ import { createHash, createHmac, createDecipheriv, timingSafeEqual } from "node:
 import { Readable } from "node:stream";
 import { getMediaKeys } from "@whiskeysockets/baileys";
 import { fail } from "./settings.mjs";
+import { audioConfiguration } from "./audio-providers.mjs";
 
 export const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const formats = { "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/wav": "wav", "audio/webm": "webm", "audio/flac": "flac" };
@@ -90,24 +91,24 @@ export async function downloadCloudAudio(media, config, fetchImpl = fetch) {
     return { bytes, mimeType };
   } catch (error) { if (error.status) throw error; throw fail("Falha ao baixar o áudio na Meta. Tente novamente.", 502); }
 }
-export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.now, shortAudioTimeoutMs = 20000 } = {}) {
+export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.now, shortAudioTimeoutMs = 20000, allowEmpty = false } = {}) {
   const cooldowns = new Map();
   return async ({ bytes, mimeType }) => {
     size(bytes?.byteLength || 0); mimeType = mime(mimeType);
     if (!bytes?.byteLength) throw fail("O áudio recebido está vazio.", 422);
-    const config = settings.get(), listed = config.aiRotationEnabled || config.aiListOnly;
+    const root = settings.get(), config = audioConfiguration(root), listed = config.aiRotationEnabled || config.aiListOnly;
     const active = listed ? config.aiKeys.filter(key => key.enabled && key.apiKey) : [{ provider: config.aiProvider, model: config.model, apiKey: config.apiKey }];
     const compatible = active.filter(key => ["gemini", "groq", "openai"].includes(key.provider) && key.apiKey);
     const keys = config.aiRotationEnabled ? compatible : compatible.slice(0, 1);
-    if (!keys.length) throw fail("Para entender áudios, ative uma chave Gemini, Groq ou OpenAI na sua lista de IA.", 409);
+    if (!keys.length) throw fail("Para entender áudios, ative uma chave Gemini, Groq ou OpenAI na lista de áudios em Conexões e IA.", 409);
     const signal = AbortSignal.timeout(55000);
     let timedOut = false;
     for (const key of keys) {
-      const current = settings.get();
+      const current = audioConfiguration(settings.get());
       const live = listed ? current.aiKeys.find(item => item.id === key.id && item.enabled && item.apiKey === key.apiKey && item.provider === key.provider && item.model === key.model) : current.aiProvider === key.provider && current.apiKey === key.apiKey ? key : null;
       if (!live || current.aiRotationEnabled !== config.aiRotationEnabled || current.aiListOnly !== config.aiListOnly) throw fail("A configuração de IA mudou durante a transcrição. Tente novamente.", 409);
       const identity = `${key.id || key.provider}:${createHash("sha256").update(key.apiKey).digest("hex")}`;
-      if ((cooldowns.get(identity) || 0) > clock()) continue;
+      if (Math.max(cooldowns.get(identity) || 0, Number(live.cooldownUntil) || 0) > clock()) continue;
       let url, body, headers;
       if (key.provider === "gemini") {
         if (!/^[a-zA-Z0-9._-]{1,100}$/.test(key.model || "")) throw fail("Configure um modelo Gemini válido para entender áudios.", 409);
@@ -119,7 +120,7 @@ export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.no
         headers = { Authorization: `Bearer ${key.apiKey}` };
         body = new FormData();
         body.set("file", new Blob([bytes], { type: mimeType }), `audio.${formats[mimeType]}`);
-        body.set("model", key.provider === "groq" ? "whisper-large-v3-turbo" : "gpt-transcribe");
+        body.set("model", Array.isArray(root.audioAiKeys) ? key.model : key.provider === "groq" ? "whisper-large-v3-turbo" : "gpt-transcribe");
       }
       let response, data;
       const attemptSignal = AbortSignal.timeout(bytes.byteLength <= 128 * 1024 ? shortAudioTimeoutMs : 55000);
@@ -128,27 +129,46 @@ export function createTranscriber(settings, { fetchImpl = fetch, clock = Date.no
         if (response.status === 429 || response.status === 402) {
           const delay = Number(response.headers.get("retry-after"));
           cooldowns.set(identity, clock() + (delay > 0 ? Math.min(delay * 1000, 86400000) : 300000));
+          if (Array.isArray(root.audioAiKeys)) await settings.markAiKey?.(live, { cooldownUntil: cooldowns.get(identity), lastError: "Limite de transcrição atingido. Tentando a próxima chave de áudio." }, "audio");
           await response.body?.cancel(); continue;
         }
         if (!response.ok) { await response.body?.cancel(); throw fail(response.status === 401 || response.status === 403 ? "O provedor recusou a transcrição. Confira as credenciais e permissões de áudio." : "O provedor não aceitou este áudio ou modelo. Confira a configuração e tente novamente.", 502); }
         const raw = (await collect(response.body, 100000)).toString("utf8");
         try { data = JSON.parse(raw); } catch { throw fail("O provedor retornou uma transcrição inválida. Tente novamente.", 502); }
       } catch (error) {
-        if (error.status) throw error;
+        if (error.status) {
+          if (Array.isArray(root.audioAiKeys)) await settings.markAiKey?.(live, { lastError: error.message }, "audio");
+          throw error;
+        }
         if (signal.aborted || attemptSignal.aborted) {
           timedOut = true;
           cooldowns.set(identity, clock() + 60000);
+          if (Array.isArray(root.audioAiKeys)) await settings.markAiKey?.(live, { cooldownUntil: cooldowns.get(identity), lastError: "A transcrição excedeu o prazo. A chave ficará em espera por um minuto." }, "audio");
           if (config.aiRotationEnabled && !signal.aborted) continue;
           throw fail("A IA demorou demais para transcrever este áudio. Tente novamente ou ative outra chave compatível.", 504);
         }
         throw fail("A conexão com o provedor de transcrição falhou. Tente novamente; se persistir, confira a conexão ou use outra chave compatível.", 502);
       }
       const parts = data.candidates?.[0]?.content?.parts || [];
+      if (key.provider === "gemini" ? !data.candidates?.[0]?.content : typeof data.text !== "string") throw fail("O provedor retornou uma transcrição inválida. Tente novamente.", 502);
       const value = key.provider === "gemini" ? parts.filter(part => !part.thought).map(part => typeof part.text === "string" ? part.text : "").join("") : data.text;
       const text = typeof value === "string" ? value.trim() : "";
-      if (typeof text !== "string" || !text || text.length > 12000 || (key.provider === "gemini" && data.candidates?.[0]?.finishReason && data.candidates[0].finishReason !== "STOP")) throw fail("Não foi possível entender a fala completa. Peça um áudio mais curto e claro ou uma mensagem escrita.", 422);
+      if ((!text && !allowEmpty) || text.length > 12000 || (key.provider === "gemini" && data.candidates?.[0]?.finishReason && data.candidates[0].finishReason !== "STOP")) throw fail("Não foi possível entender a fala completa. Peça um áudio mais curto e claro ou uma mensagem escrita.", 422);
+      if (Array.isArray(root.audioAiKeys)) await settings.markAiKey?.(live, { validatedAt: clock(), lastUsedAt: clock(), cooldownUntil: 0, lastError: "" }, "audio");
       return { text, provider: key.provider };
     }
     throw fail(timedOut ? "As tentativas de transcrição demoraram demais. Tente novamente ou use outra chave compatível." : "As chaves de transcrição atingiram o limite ou estão em espera. Aguarde, confira os créditos ou ative outra chave compatível.", 503);
   };
+}
+
+export async function verifyAudioKey(settings, key, fetchImpl) {
+  // One second of synthetic silence checks the actual speech endpoint without
+  // disclosing customer conversations. An empty transcript is valid here only.
+  const bytes = Buffer.alloc(32044);
+  bytes.write("RIFF", 0); bytes.writeUInt32LE(bytes.length - 8, 4); bytes.write("WAVEfmt ", 8);
+  bytes.writeUInt32LE(16, 16); bytes.writeUInt16LE(1, 20); bytes.writeUInt16LE(1, 22);
+  bytes.writeUInt32LE(16000, 24); bytes.writeUInt32LE(32000, 28); bytes.writeUInt16LE(2, 32); bytes.writeUInt16LE(16, 34);
+  bytes.write("data", 36); bytes.writeUInt32LE(32000, 40);
+  const isolated = { get: () => ({ ...settings.get(), audioAiKeys: settings.get().audioAiKeys.filter(item => item.id === key.id), audioAiRotationEnabled: false }) };
+  await createTranscriber(isolated, { fetchImpl, allowEmpty: true })({ bytes, mimeType: "audio/wav" });
 }

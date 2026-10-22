@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultSchedule, validateSchedule } from "./reply-schedule.mjs";
 import { AI_PROVIDERS, normalizeModelId } from "./ai-providers.mjs";
+import { AUDIO_PROVIDERS, audioConfiguration } from "./audio-providers.mjs";
 import { setTimeout as pause } from 'node:timers/promises';
 
 export function fail(message, status = 400) { return Object.assign(new Error(message), { status }); }
@@ -29,6 +30,9 @@ export async function createSettings(dataDir, seed = {}) {
   value.aiListOnly ??= value.aiRotationEnabled;
   value.aiKeysRevision ||= 1;
   value.aiKeys ||= Object.entries(value.aiProfiles).filter(([, profile]) => profile.apiKey && profile.model).sort(([a], [b]) => Number(b === value.aiProvider) - Number(a === value.aiProvider)).map(([provider, profile]) => ({ id: randomUUID(), label: AI_PROVIDERS[provider].name, provider, model: profile.model, apiKey: profile.apiKey, enabled: true, cooldownUntil: 0, validatedAt: profile.validatedAt || 0 }));
+  value.audioAiKeys ??= value.aiKeys.filter(key => Object.hasOwn(AUDIO_PROVIDERS, key.provider)).map(key => ({ ...key, id: randomUUID(), model: key.provider === "gemini" ? key.model : AUDIO_PROVIDERS[key.provider].defaultModel, cooldownUntil: 0, validatedAt: 0, lastUsedAt: 0, lastError: "" }));
+  value.audioAiKeysRevision ||= 1;
+  value.audioAiRotationEnabled ??= value.aiRotationEnabled;
   async function persist(next) {
     await writeFile(path + ".tmp", JSON.stringify(next, null, 2), { mode: 0o600 });
     // Windows antivirus can briefly lock a freshly restored settings file.
@@ -45,6 +49,14 @@ export async function createSettings(dataDir, seed = {}) {
     writes = result.catch(() => {});
     return result;
   }
+  function group(scope) {
+    if (!["text", "audio"].includes(scope)) throw fail("Lista de IA inválida.");
+    return scope === "audio" ? audioConfiguration(structuredClone(value)) : structuredClone(value);
+  }
+  async function persistGroup(next, scope) {
+    if (scope === "text") return persist(next);
+    return persist({ ...value, audioAiKeys: next.aiKeys, audioAiKeysRevision: next.aiKeysRevision, audioAiRotationEnabled: next.aiRotationEnabled, audioAiLastUsed: next.aiLastUsed });
+  }
   const secrets = ["apiKey", "accessToken", "appSecret"];
   return {
     get: () => structuredClone(value),
@@ -53,6 +65,7 @@ export async function createSettings(dataDir, seed = {}) {
       result.aiProfiles = Object.fromEntries(Object.entries(value.aiProfiles).map(([id, profile]) => [id, { model: profile.model, apiKeyConfigured: Boolean(profile.apiKey), validatedAt: profile.validatedAt || 0 }]));
       result.aiValidatedAt = value.aiProfiles[value.aiProvider].validatedAt || 0;
       result.aiKeys = value.aiKeys.map(({ apiKey, ...item }) => ({ ...item, apiKeyConfigured: Boolean(apiKey) }));
+      result.audioAiKeys = value.audioAiKeys.map(({ apiKey, ...item }) => ({ ...item, apiKeyConfigured: Boolean(apiKey) }));
       result.aiReadyConfigured = value.aiListOnly || value.aiRotationEnabled ? value.aiKeys.some(key => key.enabled && key.apiKey && key.model) : Boolean(value.apiKey && value.model);
       for (const field of secrets) { result[field + "Configured"] = Boolean(value[field]); delete result[field]; }
       result.whatsappConfigured = Boolean(value.accessToken && value.appSecret && value.phoneNumberId);
@@ -111,16 +124,17 @@ export async function createSettings(dataDir, seed = {}) {
         if (profile?.apiKey === config.apiKey && profile?.model === config.model) { profile.validatedAt = Date.now(); await persist(next); }
       });
     },
-    async saveAiKey(input, id) {
+    async saveAiKey(input, id, scope = "text") {
       return change(async () => {
         if (!input || typeof input !== "object" || Array.isArray(input)) throw fail("Chave inválida.");
-        const next = structuredClone(value), before = id ? next.aiKeys.find(item => item.id === id) : null;
+        const next = group(scope), before = id ? next.aiKeys.find(item => item.id === id) : null;
         if (id && !before) throw fail("Chave não encontrada.", 404);
         if (input.revision !== undefined && input.revision !== next.aiKeysRevision) throw fail("A lista mudou. Atualize antes de salvar.", 409);
         if (!before && next.aiKeys.length >= 20) throw fail("Cadastre até 20 chaves na lista.", 409);
         const imported = input.importCurrent === true ? { provider: next.aiProvider, ...next.aiProfiles[next.aiProvider] } : null;
         const provider = imported?.provider || input.provider;
         if (typeof provider !== "string" || !Object.hasOwn(AI_PROVIDERS, provider)) throw fail("Provedor de IA inválido.");
+        if (scope === "audio" && !Object.hasOwn(AUDIO_PROVIDERS, provider)) throw fail("Este provedor não aceita transcrição de áudio nesta integração.");
         const model = normalizeModelId(provider, imported?.model || input.model);
         const label = input.label ?? AI_PROVIDERS[provider].name;
         if (typeof label !== "string" || !label.trim() || label.length > 80 || /[\x00-\x1f]/.test(label)) throw fail("Dê um nome à chave, com até 80 caracteres.");
@@ -133,40 +147,40 @@ export async function createSettings(dataDir, seed = {}) {
         if (!before || before.apiKey !== apiKey || before.model !== model || before.provider !== provider) { item.cooldownUntil = 0; item.validatedAt = 0; item.lastError = ""; }
         if (before) next.aiKeys[next.aiKeys.findIndex(entry => entry.id === id)] = item; else next.aiKeys.push(item);
         next.aiListOnly = true;
-        next.aiKeysRevision++; await persist(next);
+        next.aiKeysRevision++; await persistGroup(next, scope);
         const { apiKey: _secret, ...safe } = item; return { ...safe, apiKeyConfigured: true };
       });
     },
-    async removeAiKey(id, revision) {
+    async removeAiKey(id, revision, scope = "text") {
       return change(async () => {
-        const next = structuredClone(value);
+        const next = group(scope);
         if (revision !== next.aiKeysRevision) throw fail("A lista mudou. Atualize antes de excluir a chave.", 409);
         if (!next.aiKeys.some(key => key.id === id)) throw fail("Chave não encontrada.", 404);
         next.aiKeys = next.aiKeys.filter(key => key.id !== id);
         if (next.aiLastUsed?.id === id) delete next.aiLastUsed;
-        next.aiKeysRevision++; await persist(next);
+        next.aiKeysRevision++; await persistGroup(next, scope);
         return { deleted: true, id };
       });
     },
-    async configureAiRotation(input) {
+    async configureAiRotation(input, scope = "text") {
       return change(async () => {
-        const next = structuredClone(value);
+        const next = group(scope);
         if (!input || typeof input.enabled !== "boolean") throw fail("Informe se a troca automática está ativada.");
         if (input.revision !== undefined && input.revision !== next.aiKeysRevision) throw fail("A lista mudou. Atualize antes de ordenar.", 409);
         if (input.order !== undefined) {
           if (!Array.isArray(input.order) || input.order.length !== next.aiKeys.length || new Set(input.order).size !== input.order.length || input.order.some(id => !next.aiKeys.some(item => item.id === id))) throw fail("A ordem deve conter cada chave exatamente uma vez.");
           next.aiKeys = input.order.map(id => next.aiKeys.find(item => item.id === id));
         }
-        next.aiListOnly = true; next.aiRotationEnabled = input.enabled; next.aiKeysRevision++; await persist(next); return this.public();
+        next.aiListOnly = true; next.aiRotationEnabled = input.enabled; next.aiKeysRevision++; await persistGroup(next, scope); return this.public();
       });
     },
-    async markAiKey(candidate, fields) {
+    async markAiKey(candidate, fields, scope = "text") {
       await change(async () => {
-        const next = structuredClone(value), key = next.aiKeys.find(item => item.id === candidate.id);
+        const next = group(scope), key = next.aiKeys.find(item => item.id === candidate.id);
         if (!key || key.apiKey !== candidate.apiKey || key.model !== candidate.model || key.provider !== candidate.provider) return;
         Object.assign(key, fields);
-        if (fields.lastUsedAt) next.aiLastUsed = { id: key.id, label: key.label, provider: key.provider, model: key.model, at: fields.lastUsedAt };
-        await persist(next);
+        if (fields.lastUsedAt) next.aiLastUsed = { id: key.id, label: key.label, provider: key.provider, model: fields.lastUsedModel || key.model, at: fields.lastUsedAt };
+        await persistGroup(next, scope);
       });
     },
   };

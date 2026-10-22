@@ -4,7 +4,11 @@ O Zelo recebe mensagens de voz e arquivos de áudio nos modos QR Code e Cloud AP
 
 ## Configuração
 
-Ative pelo menos uma chave de Gemini, Groq ou OpenAI na lista de IA. A primeira chave compatível é usada para transcrever; os demais provedores ainda podem preparar a resposta. Não é necessário cadastrar o modelo de transcrição como modelo de conversa:
+Em **Conexões e IA → Inteligência artificial**, use as abas **Textos** e **Áudios**. Cada lista tem chaves, modelos, prioridade, pausa, validação e troca automática independentes. A lista de áudios aceita Gemini, Groq e OpenAI; a de textos continua responsável pelas respostas, inclusive após uma transcrição. Assim, Claude pode responder enquanto Groq transcreve, por exemplo. Uma lista de áudios vazia não usa as chaves de textos como reserva.
+
+Na primeira abertura após esta atualização, as chaves compatíveis já cadastradas são copiadas uma única vez para áudios, sem alterar textos. Depois disso, alterações e exclusões em uma lista não afetam a outra. As validações anteriores não são copiadas: valide o modelo de áudio na própria aba.
+
+Cadastre um modelo que aceite transcrição na conta do provedor:
 
 | Provedor | Transcrição |
 | --- | --- |
@@ -12,7 +16,9 @@ Ative pelo menos uma chave de Gemini, Groq ou OpenAI na lista de IA. A primeira 
 | Groq | `whisper-large-v3-turbo` pela API de transcrições |
 | OpenAI | `gpt-transcribe` pela API de transcrições |
 
-Com troca automática habilitada, respostas HTTP 429 ou 402 e tentativas que excedam o prazo de transcrição permitem tentar a próxima chave compatível. Arquivos de até 128 KiB têm até 20 segundos por tentativa; o limite total das chamadas de transcrição continua sendo 55 segundos. Uma tentativa que excede o prazo deixa a chave em espera por um minuto. Para limite de uso, a espera dura o prazo numérico de Retry-After, limitado a um dia, ou cinco minutos se ausente. Essa espera é independente da cota de texto, é mantida em memória e reinicia com o processo. Credenciais inválidas, arquivo recusado e falhas de conexão ficam visíveis na conversa e na fila; não provocam troca silenciosa de provedor. Uma solicitação interrompida pode já ter consumido cota no provedor.
+Com troca automática habilitada, respostas HTTP 429 ou 402 e tentativas que excedam o prazo de transcrição permitem tentar a próxima chave compatível. Arquivos de até 128 KiB têm até 20 segundos por tentativa; o limite total das chamadas de transcrição continua sendo 55 segundos. Uma tentativa que excede o prazo deixa a chave em espera por um minuto. Para limite de uso, a espera dura o prazo numérico de Retry-After, limitado a um dia, ou cinco minutos se ausente. A espera é registrada na lista de áudios e não altera a lista de textos. Os limites do provedor ainda podem ser compartilhados entre chaves do mesmo projeto. Credenciais inválidas, arquivo recusado e falhas de conexão ficam visíveis na conversa e na fila; não provocam troca silenciosa de provedor. Uma solicitação interrompida pode já ter consumido cota no provedor.
+
+O botão **Validar** na aba de áudios envia um segundo de silêncio sintético ao endpoint de transcrição do provedor. Não utiliza gravações de clientes. A validação é uma solicitação real e pode consumir cota ou créditos.
 
 ## Operação e privacidade
 

@@ -2,13 +2,14 @@ const $ = selector => document.querySelector(selector);
 const el = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
 const icon = path => { const span = el("span", "ai-button-icon"); span.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`; return span; };
 let config, providers, api, changed, busy = false, editing, revision, signature = "", editorOpener;
+let rootSettings, textProviders, audioProviders, purposeTabs, scope = "text";
 const when = time => new Date(time).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 function status(text, failure = false) { $("#ai-keys-status").textContent = text; $("#ai-keys-status").classList.toggle("catalog-error", failure); }
 async function run(task) {
-  if (busy) return; busy = true; $("#ai-key-list").inert = true; $("#add-ai-key").disabled = true; $("#ai-rotation-enabled").disabled = true; status("Salvando…");
+  if (busy) return; busy = true; $("#ai-key-list").inert = true; $("#add-ai-key").disabled = true; $("#ai-rotation-enabled").disabled = true; purposeTabs.querySelectorAll("button").forEach(button => button.disabled = true); status("Salvando…");
   try { status(await task() || "Salvo."); await changed(); }
   catch (error) { status(error.message, true); await changed().catch(() => {}); }
-  finally { busy = false; $("#ai-key-list").inert = false; $("#add-ai-key").disabled = false; $("#ai-rotation-enabled").disabled = false; }
+  finally { busy = false; $("#ai-key-list").inert = false; $("#add-ai-key").disabled = false; $("#ai-rotation-enabled").disabled = false; purposeTabs.querySelectorAll("button").forEach(button => button.disabled = false); }
 }
 function edit(key = null) {
   if (busy) return;
@@ -27,16 +28,22 @@ function providerInfo() {
   $("#ai-key-model").placeholder = info.example; $("#ai-key-console").href = info.console;
   $('#ai-key-model-help').textContent = id === 'gemini' ? `Use o ID completo, por exemplo ${info.example}. “Gemini” sozinho é o nome do provedor. A disponibilidade depende da sua conta Google.` : `Informe o ID exato do modelo disponível na sua conta. ${info.defaultModel ? 'Sugestão: ' + info.defaultModel + '.' : info.example + '.'}`;
   $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid');
+  if (scope === "audio") $("#ai-key-model-help").textContent = "Modelo de transcrição de áudio. Sugestão: " + info.defaultModel + ". Essa lista é independente da IA que responde aos clientes.";
   $("#ai-key-secret").required = !editing || editing.provider !== id;
 }
 export function renderAiKeys(settings) {
-  config = settings;
+  rootSettings = settings;
+  config = scope === "audio" ? { ...settings, aiKeys: settings.audioAiKeys, aiKeysRevision: settings.audioAiKeysRevision, aiRotationEnabled: settings.audioAiRotationEnabled, aiLastUsed: settings.audioAiLastUsed } : settings;
+  $("#provider-settings h2").textContent = scope === "audio" ? "IA para áudios" : "IA para textos";
+  $("#provider-settings .settings-section-heading p").textContent = scope === "audio" ? "Estas IAs transcrevem a voz. A resposta usa a lista de textos." : "Estas IAs elaboram as respostas, inclusive depois de um áudio ser transcrito.";
+  purposeTabs.querySelectorAll("button").forEach(button => { const selected = button.dataset.scope === scope; button.setAttribute("aria-selected", String(selected)); button.tabIndex = selected ? 0 : -1; });
+  $("#ai-purpose-content").setAttribute("aria-labelledby", "ai-purpose-" + scope);
   $("#ai-rotation-enabled").checked = config.aiRotationEnabled;
   const latest = config.aiLastUsed;
   $("#ai-rotation-summary").textContent = config.aiRotationEnabled
-    ? `Troca automática ativada. ${latest ? `Última resposta: ${latest.label} · ${providers[latest.provider].name} · ${when(latest.at)}.` : "A primeira chave ativa e liberada será utilizada."}`
+    ? `Troca automática ativada. ${latest ? `${scope === "audio" ? "Última transcrição" : "Última resposta"}: ${latest.label} · ${providers[latest.provider].name} · ${when(latest.at)}.` : "A primeira chave ativa e liberada será utilizada."}`
     : "Troca automática desativada. Apenas a primeira chave ativa da lista será utilizada.";
-  const nextSignature = JSON.stringify([config.aiKeys, config.aiKeysRevision, config.aiKeys.map(key => key.cooldownUntil > Date.now())]);
+  const nextSignature = JSON.stringify([scope, config.aiKeys, config.aiKeysRevision, config.aiKeys.map(key => key.cooldownUntil > Date.now())]);
   if (nextSignature === signature) return; signature = nextSignature;
   $("#ai-key-count").textContent = `${config.aiKeys.length} ${config.aiKeys.length === 1 ? "chave cadastrada" : "chaves cadastradas"}`;
   const ready = config.aiKeys.findIndex(key => key.enabled && key.cooldownUntil <= Date.now());
@@ -87,8 +94,24 @@ export function renderAiKeys(settings) {
     row.append(priority, content, statusArea, actions); list.append(row);
   });
 }
-export function initAiKeys(options) {
-  ({ providers, api, changed } = options);
+export async function initAiKeys(options) {
+  textProviders = options.providers; audioProviders = await options.api("/api/ai/providers?scope=audio"); providers = textProviders; changed = options.changed;
+  api = (path, data) => options.api(path + (path.includes("?") ? "&" : "?") + "scope=" + scope, data);
+  const section = $("#provider-settings"), content = el("div"); content.id = "ai-purpose-content"; content.setAttribute("role", "tabpanel"); content.append(...section.childNodes);
+  purposeTabs = el("div", "ai-purpose-tabs"); purposeTabs.setAttribute("role", "tablist"); purposeTabs.setAttribute("aria-label", "Finalidade da IA");
+  for (const [value, title] of [["text", "Textos"], ["audio", "Áudios"]]) {
+    const button = el("button", "", title); button.type = "button"; button.id = "ai-purpose-" + value; button.dataset.scope = value; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", content.id); button.setAttribute("aria-selected", String(value === scope)); button.tabIndex = value === scope ? 0 : -1;
+    button.addEventListener("click", () => {
+      if (busy || value === scope) return;
+      if (!$("#ai-key-editor").hidden) { status("Salve ou cancele a edição antes de trocar de lista.", true); return; }
+      scope = value; providers = scope === "audio" ? audioProviders : textProviders; signature = "";
+      $("#ai-key-provider").replaceChildren(...Object.entries(providers).map(([id, info]) => new Option(info.name, id)));
+      status(""); renderAiKeys(rootSettings);
+    });
+    button.addEventListener("keydown", event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const target = event.key === "Home" ? 0 : event.key === "End" ? 1 : value === "text" ? 1 : 0; const next = purposeTabs.children[target]; next.click(); if (scope === next.dataset.scope) next.focus(); } });
+    purposeTabs.append(button);
+  }
+  section.append(purposeTabs, content);
   document.addEventListener('click', event => { document.querySelectorAll('.ai-key-menu[open]').forEach(menu => { if(!menu.contains(event.target))menu.open=false; }); });
   document.addEventListener('keydown', event => { if(event.key==='Escape')document.querySelectorAll('.ai-key-menu[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();}); });
   const modelHelp = el('p', 'hint'); modelHelp.id = 'ai-key-model-help'; $('#ai-key-model').after(modelHelp); $('#ai-key-model').setAttribute('aria-describedby', modelHelp.id);

@@ -17,6 +17,8 @@ import { createWhatsAppQr } from "./whatsapp-qr.mjs";
 import { createTunnel } from "./tunnel.mjs";
 import { createAiModel } from "./ai.mjs";
 import { AI_PROVIDERS } from "./ai-providers.mjs";
+import { AUDIO_PROVIDERS } from "./audio-providers.mjs";
+import { verifyAudioKey } from "./audio.mjs";
 import { createUploads } from "./deployment/uploads.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -122,7 +124,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       }
       if (req.method === "GET" && url.pathname === "/favicon.ico") { res.writeHead(204); return res.end(); }
       if (req.method === "GET" && url.pathname === "/api/products") return json(res, 200, await runtime.catalog.list());
-      if (req.method === "GET" && url.pathname === "/api/ai/providers") return json(res, 200, AI_PROVIDERS);
+      if (req.method === "GET" && url.pathname === "/api/ai/providers") return json(res, 200, url.searchParams.get("scope") === "audio" ? AUDIO_PROVIDERS : AI_PROVIDERS);
       const fileMatch = url.pathname.match(/^\/api\/files\/([a-f0-9-]{36})$/);
       if (req.method === "GET" && fileMatch) {
         if (cloud && req.headers['x-zelo-remote'] === '1') { res.writeHead(302, { Location: await runtime.catalog.signedFile(fileMatch[1]) }); return res.end(); }
@@ -145,27 +147,30 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/templates") return json(res, 200, await whatsapp.templates());
       if (req.method === "POST") {
         const input = await body(req);
+        const aiScope = url.searchParams.get("scope") || "text";
+        if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");
         if (url.pathname === '/api/uploads') return json(res, 201, uploads.start(input, auth.session(req).key));
         const finishUpload = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})\/finish$/);
         if (finishUpload) return json(res, 201, await serial(() => uploads.finish(finishUpload[1], auth.session(req).key)));
-        if (url.pathname === "/api/ai/keys") return json(res, 201, await settings.saveAiKey(input));
-        if (url.pathname === "/api/ai/rotation") return json(res, 200, await settings.configureAiRotation(input));
+        if (url.pathname === "/api/ai/keys") return json(res, 201, await settings.saveAiKey(input, undefined, aiScope));
+        if (url.pathname === "/api/ai/rotation") return json(res, 200, await settings.configureAiRotation(input, aiScope));
         const aiKeyMatch = url.pathname.match(/^\/api\/ai\/keys\/([a-f0-9-]{36})(?:\/(verify|reset|remove))?$/);
         if (aiKeyMatch) {
-          const key = settings.get().aiKeys.find(item => item.id === aiKeyMatch[1]);
+          const key = (aiScope === "audio" ? settings.get().audioAiKeys : settings.get().aiKeys).find(item => item.id === aiKeyMatch[1]);
           if (!key) throw fail("Chave não encontrada.", 404);
-          if (aiKeyMatch[2] === "remove") return json(res, 200, await settings.removeAiKey(key.id, input.revision));
-          if (aiKeyMatch[2] === "reset") { await settings.markAiKey(key, { cooldownUntil: 0, lastError: "" }); return json(res, 200, { reset: true }); }
+          if (aiKeyMatch[2] === "remove") return json(res, 200, await settings.removeAiKey(key.id, input.revision, aiScope));
+          if (aiKeyMatch[2] === "reset") { await settings.markAiKey(key, { cooldownUntil: 0, lastError: "" }, aiScope); return json(res, 200, { reset: true }); }
           if (aiKeyMatch[2] === "verify") {
             const config = settings.get();
             try {
-              await createAiModel({ ...config, aiProvider: key.provider, apiKey: key.apiKey, model: key.model, fetchImpl: aiFetch || geminiFetch || ai.fetchImpl }).generate({ prompt: "Responda OK em message.text, sem anexos ou dados pessoais.", responseSchema: { properties: { message: {} } } });
-              await settings.markAiKey(key, { validatedAt: Date.now(), cooldownUntil: 0, lastError: "" }); return json(res, 200, { verified: true });
+              if (aiScope === "audio") await verifyAudioKey(settings, key, aiFetch || geminiFetch || ai.fetchImpl);
+              else await createAiModel({ ...config, aiProvider: key.provider, apiKey: key.apiKey, model: key.model, fetchImpl: aiFetch || geminiFetch || ai.fetchImpl }).generate({ prompt: "Responda OK em message.text, sem anexos ou dados pessoais.", responseSchema: { properties: { message: {} } } });
+              await settings.markAiKey(key, { validatedAt: Date.now(), cooldownUntil: 0, lastError: "" }, aiScope); return json(res, 200, { verified: true });
             } catch (error) {
-              await settings.markAiKey(key, { lastError: error.status ? error.message : "Falha ao validar a chave.", ...(error.fallbackEligible ? { cooldownUntil: Date.now() + error.retryAfterMs } : {}) }); throw error;
+              await settings.markAiKey(key, { lastError: error.status ? error.message : "Falha ao validar a chave.", ...(error.fallbackEligible ? { cooldownUntil: Date.now() + error.retryAfterMs } : {}) }, aiScope); throw error;
             }
           }
-          return json(res, 200, await settings.saveAiKey(input, key.id));
+          return json(res, 200, await settings.saveAiKey(input, key.id, aiScope));
         }
         if (url.pathname === "/api/products") return json(res, 201, await serial(() => runtime.catalog.save(input)));
         const productMatch = url.pathname.match(/^\/api\/products\/([a-f0-9-]{36})$/);

@@ -255,7 +255,7 @@ try {
   providers = await api("/api/ai/providers");
   initSettingsUi();
   initReplySchedule({ api, changed: () => loadDashboard() });
-  initAiKeys({ providers, api, changed: () => loadDashboard() });
+  await initAiKeys({ providers, api, changed: () => loadDashboard() });
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge;
   await initCatalog();
   workspace = await initWorkspace({ api });
