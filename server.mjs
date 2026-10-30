@@ -14,6 +14,7 @@ import { createRuntime } from "./lib/core/runtime.mjs";
 import { createSettings, fail } from "./lib/core/settings.mjs";
 import { createWhatsApp } from "./lib/whatsapp/whatsapp.mjs";
 import { createBroadcasts } from "./lib/whatsapp/broadcasts.mjs";
+import { createOptouts } from './lib/whatsapp/optouts.mjs';
 import { createWhatsAppQr } from "./lib/whatsapp/whatsapp-qr.mjs";
 import { createTunnel } from "./lib/tunnel/tunnel.mjs";
 import { createAiModel } from "./lib/ai/ai.mjs";
@@ -27,6 +28,7 @@ const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js
 assets.set("/motion.css", ["motion.css", "text/css"]);
 assets.set("/motion.js", ["motion.js", "text/javascript"]);
 assets.set("/audio-status.js", ["audio-status.js", "text/javascript"]);
+assets.set("/broadcast-suppression.js", ["broadcast-suppression.js", "text/javascript"]);
 assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
 assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
 assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
@@ -75,6 +77,8 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch });
   const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory, audioDownload: qrAudioDownload });
   const transport = () => settings.get().whatsappMode === "qr" ? qr : whatsapp;
+  const account = () => settings.get().whatsappMode === 'qr' ? `qr:${qr.state().account}` : `cloud:${settings.get().phoneNumberId || ''}`;
+  const optouts = await createOptouts(runtime.client);
   const webhook = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     try {
@@ -164,8 +168,10 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/conversation") return json(res, 200, await transport().history(url.searchParams.get("phone") || ""));
       if (req.method === "GET" && url.pathname === "/api/templates") return json(res, 200, await whatsapp.templates());
       if (req.method === "GET" && url.pathname === "/api/broadcasts") return json(res, 200, { campaigns: await broadcasts.list() });
+      if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
         const input = await body(req);
+        const actor = auth.session(req)?.userId || auth.session(req)?.username || 'operador';
         const aiScope = url.searchParams.get("scope") || "text";
         if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");
         if (url.pathname === '/api/uploads') return json(res, 201, uploads.start(input, auth.session(req).key));
@@ -219,7 +225,8 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/verify": return json(res, 200, await whatsapp.verify());
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
-          case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input)));
+          case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input, actor)));
+          case '/api/optouts': return json(res, 200, await serial(async () => { if (input.action === 'configure') { await optouts.configure(account(), input.confirmation); return { ok: true }; } return optouts.set(account(), input.phones, input.remove === true, input.reason || 'Inclusão manual', actor); }));
           case "/api/broadcasts/cancel": return json(res, 200, await serial(() => broadcasts.cancel(input.id)));
           case "/api/broadcasts/pause": return json(res, 200, await serial(() => broadcasts.pause(input.id)));
           case "/api/broadcasts/resume": return json(res, 200, await serial(() => broadcasts.resume(input.id)));

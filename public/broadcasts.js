@@ -1,3 +1,4 @@
+import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
 import { initBroadcastHistory, refreshBroadcastHistory } from '/broadcast-history.js';
 import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
@@ -30,7 +31,7 @@ function updateMessage() {
   $('broadcast-live-message').textContent = $('broadcast-text').value || 'Sua mensagem aparecerá aqui.';
 }
 export function initBroadcasts(options) {
-  api = options.api;
+  api = options.api; initSuppression({ api });
   initBroadcastImport({ changed: updateRecipients }); initBroadcastHistory({ api });
   $('broadcast-phones').addEventListener('input', updateRecipients);
   $('broadcast-clean').addEventListener('click', cleanRecipients);
@@ -100,7 +101,7 @@ export function initBroadcasts(options) {
       draft.requestId = requestId;
       $('broadcast-review-title').textContent = draft.name || 'Confira antes de enviar';
       $('broadcast-review-phones').textContent = phones.map(phone => '+' + phone).join(' · ');
-      $('broadcast-review-status').textContent = '';
+      $('broadcast-review-status').textContent = ''; $('broadcast-consent').checked = false;
       $('broadcast-review-summary').textContent = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
       $('broadcast-review-message').textContent = draft.template ? `Template: ${draft.template.name}\n${$('broadcast-template-preview').textContent}\n${$('broadcast-params').value}` : draft.text;
       $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; $('broadcast-confirm').focus();
@@ -108,6 +109,8 @@ export function initBroadcasts(options) {
   });
   $('broadcast-edit').addEventListener('click', () => { $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-phones').focus(); });
   $('broadcast-confirm').addEventListener('click', event => run(event.currentTarget, async () => {
+    if (!$('broadcast-consent').checked) throw new Error('Confirme o consentimento da lista antes de enviar.');
+    draft.consent = true;
     $('broadcast-edit').disabled = true;
     try { await api('/api/broadcasts', draft); } finally { $('broadcast-edit').disabled = false; }
     draft = null; signature = null;
