@@ -6,7 +6,7 @@ import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
-let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap;
+let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap, testId;
 const metadata = new Map();
 
 export const refreshBroadcasts = refreshBroadcastHistory;
@@ -114,6 +114,7 @@ export function initBroadcasts(options) {
         if (!Number.isFinite(scheduled.getTime()) || scheduled.getTime() <= Date.now()) throw new Error('Escolha uma data e horário futuros.');
         draft.scheduledAt = scheduled.toISOString();
       }
+      testId = crypto.randomUUID();
       review = await api('/api/broadcasts/preview', draft);
       $('broadcast-window-only').checked = false;
       renderReview();
@@ -129,6 +130,17 @@ export function initBroadcasts(options) {
     });
   });
   $('broadcast-window-only').addEventListener('change', async () => { try { draft.windowOnly = $('broadcast-window-only').checked; review = await api('/api/broadcasts/preview', draft); renderReview(); } catch (error) { $('broadcast-review-status').textContent = error.message; $('broadcast-confirm').disabled = true; } });
+  $('broadcast-test').addEventListener('click', event => run(event.currentTarget, async () => { if (!confirm('Enviar somente um teste ao próprio número identificado na conexão? Ele entra na fila e respeita a janela e os limites.')) return; await api('/api/broadcasts/test', { ...draft, requestId: testId, confirmed: true }); $('broadcast-review-status').textContent = 'Teste criado na fila. Confira a mensagem no próprio WhatsApp antes de confirmar o disparo.'; await refreshBroadcasts(); }, 'broadcast-review-status'));
+  document.addEventListener('broadcast-duplicate', event => {
+    const copy = event.detail; metadata.clear(); copy.recipients.forEach(item => metadata.set(item.phone, item));
+    $('broadcast-phones').value = copy.recipients.map(item => item.phone).join('\n'); $('broadcast-name').value = copy.name || ''; $('broadcast-text').value = copy.text || '';
+    for (const [id, value] of Object.entries({ 'broadcast-interval': copy.intervalMs / 1000, 'broadcast-jitter': copy.jitterMs / 1000, 'broadcast-minute': copy.perMinute, 'broadcast-daily': copy.dailyCap, 'broadcast-zone': copy.timezone, 'broadcast-start': copy.windowStart, 'broadcast-end': copy.windowEnd })) $(id).value = value;
+    $('broadcast-days').querySelectorAll('input').forEach(input => input.checked = copy.days.includes(Number(input.value)));
+    $('broadcast-kind').value = copy.template ? 'template' : 'text'; $('broadcast-kind').dispatchEvent(new Event('change'));
+    if (copy.template) { templates.push({ ...copy.template, language: copy.template.language.code }); $('broadcast-template').append(new Option(copy.template.name, String(templates.length - 1))); $('broadcast-template').value = String(templates.length - 1); $('broadcast-components').value = JSON.stringify(copy.template.components || []); } else $('broadcast-components').value = '';
+    $('broadcast-when').value = 'now'; $('broadcast-when').dispatchEvent(new Event('change')); $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-consent').checked = false; signature = null; requestId = null;
+    updateRecipients(); updateMessage(); $('broadcast-status').textContent = 'Cópia preparada. Revise o conteúdo e confirme um novo consentimento antes de enviar.'; $('broadcast-name').focus();
+  });
   $('broadcast-edit').addEventListener('click', () => { $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-phones').focus(); });
   $('broadcast-confirm').addEventListener('click', event => run(event.currentTarget, async () => {
     if (!review?.ready) throw new Error('Use um template ou selecione apenas os contatos na janela de 24 horas.');

@@ -32,6 +32,17 @@ function render() {
     const list = el('div', '', 'broadcast-results');
     for (const recipient of campaign.items) {
       const row = el('div', '', 'broadcast-result-row'); row.append(el('strong', `+${recipient.phone}`), el('span', labels[recipient.state]));
+      if (recipient.state === 'unknown') for (const [decision, label] of [['delivered', 'Confirmei que foi entregue'], ['retry', 'Não chegou, reenviar']]) {
+        const resolve = el('button', label, 'secondary-button'); resolve.type = 'button';
+        const requestId = crypto.randomUUID();
+        resolve.addEventListener('click', async () => {
+          if (!confirm(decision === 'retry' ? 'Confira a conversa. Reenviar um resultado incerto pode duplicar uma mensagem já entregue. Você confirma que não chegou e quer reenviar?' : 'Você conferiu a conversa e confirma que a mensagem chegou? Esta decisão ficará registrada.')) return;
+          resolve.disabled = true;
+          try { await api('/api/broadcasts/resolve', { id: campaign.id, itemId: recipient.id, decision, confirmed: true, requestId }); await refreshBroadcastHistory(true); }
+          catch (error) { $('broadcast-history-status').textContent = error.message; } finally { resolve.disabled = false; }
+        }); row.append(resolve);
+      }
+      if (recipient.resolved_by) row.append(el('p', `Decisão: ${recipient.resolution} · operador ${recipient.resolved_by}`, 'hint'));
       if (recipient.error) row.append(el('p', recipient.error, 'hint')); list.append(row);
     }
     detail.append(list); item.append(detail);
@@ -48,6 +59,12 @@ function render() {
           finally { acting = false; actions.querySelectorAll('button').forEach(item => item.disabled = false); }
         }); actions.append(button);
       }
+    }
+    const duplicate = el('button', 'Duplicar disparo', 'quiet-button'); duplicate.type = 'button';
+    duplicate.addEventListener('click', async () => { duplicate.disabled = true; try { const draft = await api('/api/broadcasts/duplicate', { id: campaign.id }); document.dispatchEvent(new CustomEvent('broadcast-duplicate', { detail: draft })); } catch (error) { $('broadcast-history-status').textContent = error.message; } finally { duplicate.disabled = false; } }); actions.append(duplicate);
+    if (count('failed')) {
+      const retry = el('button', 'Reenviar somente falhas', 'secondary-button'); retry.type = 'button'; const requestId = crypto.randomUUID();
+      retry.addEventListener('click', async () => { if (!confirm('Reenviar apenas os itens com falha? Resultados sem confirmação serão preservados para conferência individual.')) return; retry.disabled = true; try { await api('/api/broadcasts/retry-failed', { id: campaign.id, requestId }); await refreshBroadcastHistory(true); } catch (error) { $('broadcast-history-status').textContent = error.message; } finally { retry.disabled = false; } }); actions.append(retry);
     }
     actions.append(exportButton); item.append(actions); container.append(item);
   }

@@ -14,6 +14,7 @@ import { createRuntime } from "./lib/core/runtime.mjs";
 import { createSettings, fail } from "./lib/core/settings.mjs";
 import { createWhatsApp } from "./lib/whatsapp/whatsapp.mjs";
 import { createBroadcasts } from "./lib/whatsapp/broadcasts.mjs";
+import { normalizeBroadcastPhone } from './lib/whatsapp/broadcast-preview.mjs';
 import { createOptouts } from './lib/whatsapp/optouts.mjs';
 import { createWhatsAppQr } from "./lib/whatsapp/whatsapp-qr.mjs";
 import { createTunnel } from "./lib/tunnel/tunnel.mjs";
@@ -108,6 +109,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const broadcasts = await createBroadcasts({ db: runtime.client,
     connection: () => settings.get().whatsappMode === 'qr' ? (qr.state().status === 'connected' ? `qr:${qr.state().account}` : '') : `cloud:${settings.get().phoneNumberId || ''}`,
     send: input => transport().manual(input),
+    selfPhone: () => settings.get().whatsappMode === 'qr' ? normalizeBroadcastPhone(qr.state().account.split('@')[0]) : settings.get().phone?.id === settings.get().phoneNumberId ? normalizeBroadcastPhone(settings.get().phone.number) : '',
   });
   let broadcastBusy = false;
   const broadcastTimer = setInterval(() => {
@@ -171,7 +173,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/broadcasts") return json(res, 200, { campaigns: await broadcasts.list() });
       if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
-        const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview'].includes(url.pathname) ? 524288 : 64000);
+        const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview','/api/broadcasts/test'].includes(url.pathname) ? 524288 : 64000);
         const actor = auth.session(req)?.userId || auth.session(req)?.username || 'operador';
         const aiScope = url.searchParams.get("scope") || "text";
         if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");
@@ -226,6 +228,10 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/verify": return json(res, 200, await whatsapp.verify());
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
+          case '/api/broadcasts/resolve': return json(res, 200, await serial(() => broadcasts.resolve(input, actor)));
+          case '/api/broadcasts/retry-failed': return json(res, 200, await serial(() => broadcasts.retryFailed(input, actor)));
+          case '/api/broadcasts/duplicate': return json(res, 200, await serial(() => broadcasts.duplicate(input.id)));
+          case '/api/broadcasts/test': return json(res, 201, await serial(() => broadcasts.test(input, actor)));
           case '/api/broadcasts/preview': return json(res, 200, await serial(() => broadcasts.preview(input)));
           case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input, actor)));
           case '/api/optouts': return json(res, 200, await serial(async () => { if (input.action === 'configure') { await optouts.configure(account(), input.confirmation); return { ok: true }; } return optouts.set(account(), input.phones, input.remove === true, input.reason || 'Inclusão manual', actor); }));
