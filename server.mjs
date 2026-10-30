@@ -14,6 +14,7 @@ import { createRuntime } from "./lib/core/runtime.mjs";
 import { createSettings, fail } from "./lib/core/settings.mjs";
 import { createWhatsApp } from "./lib/whatsapp/whatsapp.mjs";
 import { createBroadcasts } from "./lib/whatsapp/broadcasts.mjs";
+import { createBroadcastWriter } from './lib/whatsapp/broadcast-writer.mjs';
 import { normalizeBroadcastPhone } from './lib/whatsapp/broadcast-preview.mjs';
 import { createOptouts } from './lib/whatsapp/optouts.mjs';
 import { createWhatsAppQr } from "./lib/whatsapp/whatsapp-qr.mjs";
@@ -115,6 +116,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
     send: input => transport().manual(input),
     selfPhone: () => settings.get().whatsappMode === 'qr' ? normalizeBroadcastPhone(qr.state().account.split('@')[0]) : settings.get().phone?.id === settings.get().phoneNumberId ? normalizeBroadcastPhone(settings.get().phone.number) : '',
   });
+  const broadcastWriter = await createBroadcastWriter({ db: runtime.client, catalog: runtime.catalog, settings, fetchImpl: aiFetch || geminiFetch || ai.fetchImpl });
   let broadcastBusy = false;
   const broadcastTimer = setInterval(() => {
     if (broadcastBusy) return;
@@ -241,6 +243,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case '/api/broadcasts/duplicate': return json(res, 200, await serial(() => broadcasts.duplicate(input.id)));
           case '/api/broadcasts/test': return json(res, 201, await serial(() => broadcasts.test(input, actor)));
           case '/api/broadcasts/preview': return json(res, 200, await serial(() => broadcasts.preview(input)));
+          case '/api/broadcasts/generate-message': return json(res, 200, await broadcastWriter.generate(input));
           case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input, actor)));
           case '/api/optouts': return json(res, 200, await serial(async () => { if (input.action === 'configure') { await optouts.configure(account(), input.confirmation); return { ok: true }; } return optouts.set(account(), input.phones, input.remove === true, input.reason || 'Inclusão manual', actor); }));
           case "/api/broadcasts/cancel": return json(res, 200, await serial(() => broadcasts.cancel(input.id)));

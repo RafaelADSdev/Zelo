@@ -24,7 +24,17 @@ Cada envio QR também consulta `onWhatsApp` antes de iniciar a saída. O destina
 
 O identificador da mensagem é persistido antes da transmissão, preservando confirmações de entrega que cheguem durante o envio. Recusas explícitas atualizam a saída para falha. Encontrar um número não confirma a entrega. Na investigação de 30/10/2026, uma consulta real confirmou dois destinatários no formato sem nono dígito; as mensagens anteriores foram preservadas e não foram reenviadas. Os testes de envio usam transportes controlados.
 
-Validação atual: **115 testes passando**. No navegador, foram conferidos formatação ao digitar/colar/sair do campo, envio manual com destinatário normalizado, vínculo opcional, catálogo vazio, produto arquivado, limites do texto, templates, resumo, revisão, histórico, busca, duplicação, verificação de números, remoção de ausentes, preservação do rascunho e larguras de 320 a 1440 px.
+Validação atual: **120 testes passando**. No navegador, foram conferidos geração com IA e ciência do custo, aplicação/descarte da sugestão, preservação da mensagem existente, falhas do provedor e troca de produto durante a geração, além de formatação, envio manual, produtos, importação, revisão, histórico e larguras de 320 a 1440 px. As chamadas de IA dos testes usam respostas controladas, sem cobrar créditos reais.
+
+## Criar mensagem com IA
+
+Na etapa **Mensagem**, selecionar um produto ativo habilita **Criar mensagem com IA**. A interface informa que a API pode gerar cobrança conforme provedor e modelo; **Gerar sugestão** exige marcar a ciência desse custo. O operador pode informar objetivo ou tom em até 600 caracteres. Não há geração automática ao escolher um produto ou abrir o painel.
+
+`POST /api/broadcasts/generate-message` recebe `productId`, `requestId`, `costConfirmed: true` e `instructions` opcional. A rota exige autenticação e usa o catálogo da conta e a lista/prioridade de IA já configurada. O contexto inclui somente nome, descrição, preço e links do produto selecionado. Não consulta destinatários, outras fichas nem conteúdo de imagens/PDFs. As instruções pedem preservar condições comerciais e omitir notas internas; todo resultado continua sujeito à revisão humana.
+
+A resposta contém texto de até 4.000 caracteres, identificação/revisão do produto e provedor/modelo utilizado. A sugestão é exibida separadamente: **Usar esta mensagem** substitui o texto atual somente por clique; **Descartar** o preserva. Trocar produto, revisão, formato ou orientação invalida sugestões incompatíveis. Templates aprovados mantêm seu fluxo próprio. Geração não cria campanhas, conversas ou saídas do WhatsApp.
+
+`wa_broadcast_ai_drafts` registra pedidos e resultados por identificador e impressão digital. Repetições concluídas retornam o resultado salvo, concorrentes compartilham a mesma execução e identificadores reutilizados com dados diferentes são recusados. Falhas e pedidos pendentes após reinício não são reenviados automaticamente à IA; uma nova geração requer nova ação consciente do custo. O erro “Página não encontrada” durante a implementação foi causado pelo processo antigo ainda em execução; o servidor local foi atualizado para carregar a nova rota.
 
 ## Preparar e revisar
 

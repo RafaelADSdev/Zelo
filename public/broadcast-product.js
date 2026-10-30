@@ -7,6 +7,7 @@ export function initBroadcastProduct({ api }) {
   const select = $('broadcast-product'), status = $('broadcast-product-status'), insert = $('broadcast-product-insert');
   const review = document.createElement('p'); review.id = 'broadcast-review-product'; review.className = 'broadcast-product-review'; review.hidden = true; $('broadcast-review-message').before(review);
   let products = [], selected = null, loaded = false, loading = false;
+  const writer = initProductWriter({ api, product: () => products.find(item => item.id === selected?.id) || null });
   const changed = () => select.dispatchEvent(new Event('input', { bubbles: true }));
   function render() {
     const live = products.find(item => item.id === selected?.id);
@@ -21,6 +22,7 @@ export function initBroadcastProduct({ api }) {
     $('broadcast-product-name').textContent = selected?.name || '';
     $('broadcast-product-price').textContent = selected?.price || 'Preço não informado no catálogo';
     insert.disabled = !selected || !live;
+    writer.update();
     if (unavailable) status.textContent = 'O produto foi arquivado ou removido. Escolha outro produto ou selecione “Sem produto vinculado”.';
   }
   select.addEventListener('change', () => {
@@ -30,6 +32,7 @@ export function initBroadcastProduct({ api }) {
   function kind() {
     const template = $('broadcast-kind').value === 'template'; insert.hidden = template;
     $('broadcast-product-help').textContent = template ? 'O vínculo fica salvo na campanha. A mensagem enviada segue o template aprovado selecionado abaixo.' : 'O vínculo fica salvo na campanha. Use o botão para incluir nome, preço e links públicos na mensagem. Os anexos continuam no catálogo.';
+    writer.update();
   }
   $('broadcast-kind').addEventListener('change', kind);
   insert.addEventListener('click', () => {
@@ -56,4 +59,43 @@ export function initBroadcastProduct({ api }) {
     set(product) { selected = product || null; status.textContent = ''; render(); changed(); },
     review(product) { review.hidden = !product; review.textContent = product ? `Produto vinculado: ${product.name}${product.price ? ' · ' + product.price : ''}` : ''; },
   };
+}
+
+function initProductWriter({ api, product }) {
+  const area = document.createElement('section'); area.className = 'broadcast-ai-writer';
+  area.innerHTML = '<button id="broadcast-ai-open" type="button" class="secondary-button" aria-expanded="false" aria-controls="broadcast-ai-panel">Criar mensagem com IA</button><p class="hint">A geração usa sua API e pode gerar cobrança. O custo depende do provedor e do modelo configurados.</p><div id="broadcast-ai-panel" hidden><label for="broadcast-ai-instructions">Como você quer apresentar este produto? <span class="hint">· opcional</span></label><textarea id="broadcast-ai-instructions" rows="2" maxlength="600" placeholder="Ex.: Destaque a localização, use um tom acolhedor e convide a conhecer o produto."></textarea><p class="hint">A IA usa os conhecimentos cadastrados deste produto. Revise preços, condições e informações antes de enviar.</p><label class="broadcast-check"><input id="broadcast-ai-cost" type="checkbox">Estou ciente de que esta geração pode consumir créditos ou gerar custo na minha API.</label><button id="broadcast-ai-generate" type="button" class="primary-button" disabled>Gerar sugestão</button><p id="broadcast-ai-status" role="status" aria-live="polite" class="hint"></p><div id="broadcast-ai-suggestion" hidden><label for="broadcast-ai-text">Mensagem sugerida</label><textarea id="broadcast-ai-text" rows="6" readonly></textarea><p class="hint">Ao usar a sugestão, ela substitui o texto atual da mensagem. Você poderá editá-la antes de revisar o disparo.</p><div class="broadcast-actions"><button id="broadcast-ai-use" type="button" class="secondary-button">Usar esta mensagem</button><button id="broadcast-ai-discard" type="button" class="quiet-button">Descartar sugestão</button></div></div></div>';
+  $('broadcast-product-card').append(area);
+  const toggle = $('broadcast-ai-open'), panel = $('broadcast-ai-panel'), cost = $('broadcast-ai-cost'), generate = $('broadcast-ai-generate'), status = $('broadcast-ai-status'), suggestion = $('broadcast-ai-suggestion');
+  let context = '', busy = false, generated = null;
+  const current = () => `${product()?.id || ''}:${product()?.revision || ''}:${$('broadcast-kind').value}`;
+  function buttons() { generate.disabled = busy || !cost.checked || !product(); generate.textContent = busy ? 'Criando mensagem…' : generated ? 'Gerar outra sugestão' : 'Gerar sugestão'; }
+  function update() {
+    const next = current();
+    if (next !== context) {
+      context = next; generated = null; cost.checked = false; panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); suggestion.hidden = true; status.textContent = ''; $('broadcast-ai-text').value = ''; $('broadcast-ai-instructions').value = '';
+    }
+    area.hidden = !product() || $('broadcast-kind').value !== 'text'; buttons();
+  }
+  toggle.addEventListener('click', () => { panel.hidden = !panel.hidden; toggle.setAttribute('aria-expanded', String(!panel.hidden)); if (!panel.hidden) $('broadcast-ai-instructions').focus(); });
+  cost.addEventListener('change', buttons);
+  $('broadcast-ai-instructions').addEventListener('input', () => { generated = null; suggestion.hidden = true; status.textContent = ''; buttons(); });
+  generate.addEventListener('click', async () => {
+    if (busy || !cost.checked || !product() || $('broadcast-kind').value !== 'text') return;
+    const started = context, chosen = product(), instructions = $('broadcast-ai-instructions').value.trim();
+    busy = true; generated = null; suggestion.hidden = true; status.textContent = 'Criando uma sugestão com os conhecimentos deste produto…'; panel.setAttribute('aria-busy', 'true'); buttons();
+    try {
+      const result = await api('/api/broadcasts/generate-message', { productId: chosen.id, instructions, costConfirmed: true, requestId: crypto.randomUUID() });
+      if (current() !== started || $('broadcast-ai-instructions').value.trim() !== instructions) { if (current() === started) status.textContent = 'A orientação mudou durante a geração. A sugestão anterior foi descartada.'; return; }
+      if (typeof result.text !== 'string' || !result.text.trim() || result.text.length > 4000 || result.product?.id !== chosen.id || result.product?.revision !== chosen.revision) throw new Error('O produto mudou ou a sugestão retornou incompleta. Atualize o catálogo e gere novamente.');
+      generated = { ...result, context: started }; $('broadcast-ai-text').value = result.text; suggestion.hidden = false; status.textContent = 'Sugestão pronta. Confira o texto e clique em “Usar esta mensagem” se quiser aplicá-lo.';
+    } catch (error) { if (current() === started) status.textContent = error.message; }
+    finally { busy = false; panel.setAttribute('aria-busy', 'false'); buttons(); }
+  });
+  $('broadcast-ai-use').addEventListener('click', () => {
+    if (!generated || generated.context !== current()) return;
+    $('broadcast-text').value = generated.text; $('broadcast-text').dispatchEvent(new Event('input', { bubbles: true })); $('broadcast-text').focus();
+    generated = null; suggestion.hidden = true; status.textContent = 'Mensagem aplicada. Você pode editar o texto e revisar o disparo antes de enviar.'; buttons();
+  });
+  $('broadcast-ai-discard').addEventListener('click', () => { generated = null; suggestion.hidden = true; $('broadcast-ai-text').value = ''; status.textContent = 'Sugestão descartada. A mensagem atual foi preservada.'; buttons(); });
+  update(); return { update };
 }
