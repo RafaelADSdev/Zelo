@@ -2,6 +2,12 @@
 
 Evolução sobre `6b1f36c`, preservando fila persistente, QR/Cloud, importação, agendamento, pausa e cancelamento. A revisão não enfileira mensagens: o envio da campanha exige **Confirmar e enviar**, com consentimento marcado. **Enviar teste ao próprio número** cria somente um teste separado, por ação explícita.
 
+## Organização da tela
+
+As abas **Novo disparo**, **Histórico** e **Descadastros** separam a preparação, o acompanhamento e a supressão. A campanha é montada em **Contatos → Mensagem → Envio**. Avançar valida os campos da etapa; voltar ou alternar abas preserva o rascunho. A revisão final continua sendo uma etapa separada, com consentimento obrigatório e confirmação explícita.
+
+No computador, um resumo lateral acompanha destinatários, formato, momento do envio e janela. No celular, o resumo fica recolhido abaixo do formulário. A navegação entre abas aceita setas, Home e End; a mudança de etapa mantém foco e contexto. Histórico, importação, personalização e ações de reenvio mantêm os mesmos contratos. Os 105 testes e o fluxo no navegador foram conferidos após a reorganização, incluindo larguras de 320, 768, 1024 e 1440 px.
+
 ## Preparar e revisar
 
 Cole números ou importe CSV/XLSX de até 2 MB. Escolha aba, telefone, nome e até 32 colunas extras. Somente as colunas selecionadas são enviadas ao servidor; a planilha original permanece no navegador. Cada variável aceita até 1.000 caracteres e nomes de até 200 caracteres. A carga total da revisão/criação/teste está limitada a 512 KB; demais rotas mantêm 64 KB. O aumento pontual permite transportar metadados dos contatos sem ampliar a exposição dos outros endpoints.
@@ -101,13 +107,14 @@ Para um teste manual real, use um segundo número que autorizou o contato:
 | `deployment/routes.mjs` | Permite os novos assets e endpoints no gateway. |
 | `public/index.html` | Consentimento, revisão completa, ritmo/janela, supressão, metadados e teste. |
 | `public/broadcasts.js` | Coordena prévia, consentimento, configurações e duplicação no formulário. |
+| `public/broadcast-layout.js` | Organiza as abas, as três etapas, validação de campos, foco e resumo responsivo. |
 | `public/broadcast-import.js` | Extrai telefone/nome/variáveis de forma testável. |
 | `public/broadcast-import-ui.js` | Mapeia nome e colunas extras sem importar dados não selecionados. |
 | `public/broadcast-template-map.js` | Mapeador visual das variáveis do corpo. |
 | `public/broadcast-suppression.js` | Gestão/importação/exportação e confirmação do descadastro. |
 | `public/broadcast-history.js` | Resumos e atualização por cartão alterado. |
 | `public/broadcast-results.js` | Paginação, decisões individuais e CSV com comprovantes. |
-| `public/broadcasts.css` | Ajusta controles de dias ao sistema visual existente. |
+| `public/broadcasts.css` | Define o fluxo guiado, resumo lateral e adaptação ao celular dentro do sistema visual existente. |
 | `test/broadcasts.test.mjs` | Adapta contratos de consentimento/ritmo e valida o grafo dos módulos HTTP. |
 | `test/broadcast-import.test.mjs` | Verifica seleção de nome/variáveis sem vazamento de colunas extras. |
 | `test/broadcast-optout.test.mjs` | Descadastro nos dois transportes, LID, atraso e supressão durante envio. |

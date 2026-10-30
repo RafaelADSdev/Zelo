@@ -1,6 +1,6 @@
 import { PWA_ASSETS } from '../lib/http/pwa-assets.mjs';
 import { LEGAL_ASSETS } from '../lib/http/legal-assets.mjs';
-const files = new Set(['/motion.css','/motion.js','/','/admin/access','/login','/login.js','/login.css','/app.js','/audio-status.js','/broadcast-suppression.js','/broadcast-template-map.js','/broadcast-results.js','/broadcasts.js','/broadcast-import.js','/broadcast-import-ui.js','/broadcast-history.js','/broadcasts.css','/vendor/read-excel-file.js','/workspace.js','/panel.css','/settings-ui.js','/style.css','/catalog.js','/catalog.css','/ai-keys.js','/reply-schedule.js','/brand/logo.svg','/brand/logo-light.svg','/brand/icon.svg','/favicon.ico','/webhook']);
+const files = new Set(['/motion.css','/motion.js','/','/admin/access','/login','/login.js','/login.css','/app.js','/audio-status.js','/broadcast-suppression.js','/broadcast-template-map.js','/broadcast-results.js','/broadcast-layout.js','/broadcasts.js','/broadcast-import.js','/broadcast-import-ui.js','/broadcast-history.js','/broadcasts.css','/vendor/read-excel-file.js','/workspace.js','/panel.css','/settings-ui.js','/style.css','/catalog.js','/catalog.css','/ai-keys.js','/reply-schedule.js','/brand/logo.svg','/brand/logo-light.svg','/brand/icon.svg','/favicon.ico','/webhook']);
 export function allowedPath(path) {
   if (LEGAL_ASSETS.has(path)) return true;
   if (/^\/brand\/providers\/(gemini|openai|anthropic|xai|openrouter|deepseek|groq)\.svg$/.test(path)) return true;

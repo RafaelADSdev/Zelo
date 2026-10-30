@@ -1,3 +1,4 @@
+import { initBroadcastLayout } from '/broadcast-layout.js';
 import { initTemplateMap } from '/broadcast-template-map.js';
 import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
@@ -6,7 +7,7 @@ import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
-let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap, testId;
+let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap, testId, composer;
 const metadata = new Map();
 
 export const refreshBroadcasts = refreshBroadcastHistory;
@@ -59,6 +60,7 @@ export function initBroadcasts(options) {
   templateMap = initTemplateMap({ variables: () => [...new Set([...metadata.values()].flatMap(item => Object.keys(item.vars || {})))] });
   api = options.api; initSuppression({ api });
   initBroadcastImport({ changed: updateRecipients }); initBroadcastHistory({ api });
+  composer = initBroadcastLayout({ refreshHistory: refreshBroadcasts });
   $('broadcast-phones').addEventListener('input', updateRecipients);
   $('broadcast-clean').addEventListener('click', cleanRecipients);
   $('broadcast-text').addEventListener('input', updateMessage);
@@ -137,7 +139,7 @@ export function initBroadcasts(options) {
       $('broadcast-review-status').textContent = ''; $('broadcast-consent').checked = false;
       $('broadcast-review-summary').dataset.legacy = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
       $('broadcast-review-message').textContent = reviewMessage();
-      $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; $('broadcast-confirm').focus();
+      $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; composer.review(true); $('broadcast-confirm').focus();
     });
   });
   $('broadcast-window-only').addEventListener('change', async () => { try { draft.windowOnly = $('broadcast-window-only').checked; review = await api('/api/broadcasts/preview', draft); renderReview(); } catch (error) { $('broadcast-review-status').textContent = error.message; $('broadcast-confirm').disabled = true; } });
@@ -150,9 +152,10 @@ export function initBroadcasts(options) {
     $('broadcast-kind').value = copy.template ? 'template' : 'text'; $('broadcast-kind').dispatchEvent(new Event('change'));
     if (copy.template) { templates.push({ ...copy.template, language: copy.template.language.code }); $('broadcast-template').append(new Option(copy.template.name, String(templates.length - 1))); $('broadcast-template').value = String(templates.length - 1); $('broadcast-components').value = JSON.stringify(copy.template.components || []); } else $('broadcast-components').value = '';
     $('broadcast-when').value = 'now'; $('broadcast-when').dispatchEvent(new Event('change')); $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-consent').checked = false; signature = null; requestId = null;
+    composer.pane('compose'); composer.review(false); composer.go(0);
     updateRecipients(); updateMessage(); $('broadcast-status').textContent = 'Cópia preparada. Revise o conteúdo e confirme um novo consentimento antes de enviar.'; $('broadcast-name').focus();
   });
-  $('broadcast-edit').addEventListener('click', () => { $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-phones').focus(); });
+  $('broadcast-edit').addEventListener('click', () => { $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; composer.review(false); composer.go(0); $('broadcast-phones').focus(); });
   $('broadcast-confirm').addEventListener('click', event => run(event.currentTarget, async () => {
     if (!review?.ready) throw new Error('Use um template ou selecione apenas os contatos na janela de 24 horas.');
     if (!$('broadcast-consent').checked) throw new Error('Confirme o consentimento da lista antes de enviar.');
@@ -160,7 +163,7 @@ export function initBroadcasts(options) {
     $('broadcast-edit').disabled = true;
     try { await api('/api/broadcasts', draft); } finally { $('broadcast-edit').disabled = false; }
     draft = null; signature = null;
-    $('broadcast-review').hidden = true; $('broadcast-form').hidden = false;
+    $('broadcast-review').hidden = true; $('broadcast-form').hidden = false; composer.review(false); composer.go(0); composer.pane('history', true);
     $('broadcast-status').textContent = 'Disparo criado. Acompanhe os resultados no histórico.'; await refreshBroadcasts();
   }, 'broadcast-review-status'));
   $('broadcast-refresh').addEventListener('click', event => run(event.currentTarget, () => refreshBroadcasts(true), 'broadcast-history-status'));

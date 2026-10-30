@@ -31,7 +31,9 @@ function render() {
     const badge = el('span', labels[campaign.state], 'broadcast-badge'); badge.dataset.state = campaign.state; heading.append(title, badge); item.append(heading);
     const progress = document.createElement('progress'); progress.max = campaign.total; progress.value = processed;
     progress.setAttribute('aria-label', `${processed} de ${campaign.total} destinatários processados`);
-    item.append(progress, el('p', `${count('sent')} aceitos · ${campaign.delivered} entregues · ${campaign.read} lidos · ${campaign.delivery_failed} falhas na entrega · ${count('skipped')} ignorados · ${count('pending')} pendentes · ${count('failed')} falhas · ${count('unknown')} sem confirmação${count('cancelled') ? ` · ${count('cancelled')} cancelados` : ''}`, 'broadcast-result-summary'));
+    const metrics = el('div', '', 'broadcast-result-summary');
+    for (const [value, label] of [[count('sent'), 'aceitos'], [campaign.delivered, 'entregues'], [campaign.read, 'lidos'], [count('pending'), 'pendentes'], [count('failed'), 'falhas'], [campaign.delivery_failed, 'falhas na entrega'], [count('unknown'), 'sem confirmação'], [count('skipped'), 'ignorados'], [count('cancelled'), 'cancelados']]) if (value || ['aceitos','pendentes'].includes(label)) metrics.append(el('span', `${value} ${label}`));
+    item.append(progress, metrics);
     if (['queued','paused'].includes(campaign.state) && !campaign.connectionReady) item.append(el('p', 'Aguardando a conexão original do WhatsApp. Reconecte a conta usada ao criar este disparo.', 'hint'));
     if (campaign.paused_reason) item.append(el('p', campaign.paused_reason, 'hint'));
     item.append(el('p', campaign.template ? `Template: ${campaign.template.name}` : campaign.text, 'broadcast-history-message'));

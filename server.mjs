@@ -32,6 +32,7 @@ assets.set("/audio-status.js", ["audio-status.js", "text/javascript"]);
 assets.set("/broadcast-suppression.js", ["broadcast-suppression.js", "text/javascript"]);
 assets.set("/broadcast-template-map.js", ["broadcast-template-map.js", "text/javascript"]);
 assets.set("/broadcast-results.js", ["broadcast-results.js", "text/javascript"]);
+assets.set("/broadcast-layout.js", ["broadcast-layout.js", "text/javascript"]);
 assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
 assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
 assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
