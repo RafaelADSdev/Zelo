@@ -31,6 +31,7 @@ assets.set("/motion.js", ["motion.js", "text/javascript"]);
 assets.set("/audio-status.js", ["audio-status.js", "text/javascript"]);
 assets.set("/broadcast-suppression.js", ["broadcast-suppression.js", "text/javascript"]);
 assets.set("/broadcast-template-map.js", ["broadcast-template-map.js", "text/javascript"]);
+assets.set("/broadcast-results.js", ["broadcast-results.js", "text/javascript"]);
 assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
 assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
 assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
@@ -171,6 +172,8 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/conversation") return json(res, 200, await transport().history(url.searchParams.get("phone") || ""));
       if (req.method === "GET" && url.pathname === "/api/templates") return json(res, 200, await whatsapp.templates());
       if (req.method === "GET" && url.pathname === "/api/broadcasts") return json(res, 200, { campaigns: await broadcasts.list() });
+      const broadcastDetail = url.pathname.match(/^\/api\/broadcasts\/([a-f0-9-]{36})$/);
+      if (req.method === 'GET' && broadcastDetail) return json(res, 200, await broadcasts.details(broadcastDetail[1], { page: Number(url.searchParams.get('page') || 1), limit: Number(url.searchParams.get('limit') || 50) }));
       if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
         const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview','/api/broadcasts/test'].includes(url.pathname) ? 524288 : 64000);

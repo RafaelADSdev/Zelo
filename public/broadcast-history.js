@@ -1,4 +1,4 @@
-import { downloadCsv } from '/broadcast-import-ui.js';
+import { mountResults, exportResults } from '/broadcast-results.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -16,39 +16,23 @@ function render() {
     container.append(empty); return;
   }
   for (const campaign of visible) {
-    const count = state => campaign.items.filter(item => item.state === state).length;
-    const processed = campaign.items.length - count('pending') - count('sending');
+    const count = state => campaign.counts[state] || 0;
+    const processed = campaign.total - count('pending') - count('sending');
     const item = el('article', '', 'broadcast-history-item');
     const heading = el('div', '', 'broadcast-heading'), title = el('div', '');
-    title.append(el('h3', campaign.name || (campaign.template ? `Template: ${campaign.template.name}` : 'Disparo de mensagem')), el('p', `${date(campaign.scheduled)} · ${campaign.items.length} destinatários`, 'hint'));
+    title.append(el('h3', campaign.name || (campaign.template ? `Template: ${campaign.template.name}` : 'Disparo de mensagem')), el('p', `${date(campaign.scheduled)} · ${campaign.total} destinatários`, 'hint'));
     const badge = el('span', labels[campaign.state], 'broadcast-badge'); badge.dataset.state = campaign.state; heading.append(title, badge); item.append(heading);
-    const progress = document.createElement('progress'); progress.max = campaign.items.length; progress.value = processed;
-    progress.setAttribute('aria-label', `${processed} de ${campaign.items.length} destinatários processados`);
-    item.append(progress, el('p', `${count('sent')} aceitos · ${count('pending')} pendentes · ${count('failed')} falhas · ${count('unknown')} sem confirmação${count('cancelled') ? ` · ${count('cancelled')} cancelados` : ''}`, 'broadcast-result-summary'));
+    const progress = document.createElement('progress'); progress.max = campaign.total; progress.value = processed;
+    progress.setAttribute('aria-label', `${processed} de ${campaign.total} destinatários processados`);
+    item.append(progress, el('p', `${count('sent')} aceitos · ${campaign.delivered} entregues · ${campaign.read} lidos · ${campaign.delivery_failed} falhas na entrega · ${count('skipped')} ignorados · ${count('pending')} pendentes · ${count('failed')} falhas · ${count('unknown')} sem confirmação${count('cancelled') ? ` · ${count('cancelled')} cancelados` : ''}`, 'broadcast-result-summary'));
     if (['queued','paused'].includes(campaign.state) && !campaign.connectionReady) item.append(el('p', 'Aguardando a conexão original do WhatsApp. Reconecte a conta usada ao criar este disparo.', 'hint'));
     if (campaign.paused_reason) item.append(el('p', campaign.paused_reason, 'hint'));
     item.append(el('p', campaign.template ? `Template: ${campaign.template.name}` : campaign.text, 'broadcast-history-message'));
     const detail = el('details', ''); detail.dataset.campaign = campaign.id; detail.open = open.has(campaign.id); detail.append(el('summary', 'Ver resultados por destinatário'));
-    const list = el('div', '', 'broadcast-results');
-    for (const recipient of campaign.items) {
-      const row = el('div', '', 'broadcast-result-row'); row.append(el('strong', `+${recipient.phone}`), el('span', labels[recipient.state]));
-      if (recipient.state === 'unknown') for (const [decision, label] of [['delivered', 'Confirmei que foi entregue'], ['retry', 'Não chegou, reenviar']]) {
-        const resolve = el('button', label, 'secondary-button'); resolve.type = 'button';
-        const requestId = crypto.randomUUID();
-        resolve.addEventListener('click', async () => {
-          if (!confirm(decision === 'retry' ? 'Confira a conversa. Reenviar um resultado incerto pode duplicar uma mensagem já entregue. Você confirma que não chegou e quer reenviar?' : 'Você conferiu a conversa e confirma que a mensagem chegou? Esta decisão ficará registrada.')) return;
-          resolve.disabled = true;
-          try { await api('/api/broadcasts/resolve', { id: campaign.id, itemId: recipient.id, decision, confirmed: true, requestId }); await refreshBroadcastHistory(true); }
-          catch (error) { $('broadcast-history-status').textContent = error.message; } finally { resolve.disabled = false; }
-        }); row.append(resolve);
-      }
-      if (recipient.resolved_by) row.append(el('p', `Decisão: ${recipient.resolution} · operador ${recipient.resolved_by}`, 'hint'));
-      if (recipient.error) row.append(el('p', recipient.error, 'hint')); list.append(row);
-    }
-    detail.append(list); item.append(detail);
+    mountResults({ campaign, detail, api, changed: refreshBroadcastHistory }); item.append(detail);
     const actions = el('div', '', 'broadcast-actions');
     const exportButton = el('button', 'Baixar resultados CSV', 'quiet-button'); exportButton.type = 'button';
-    exportButton.addEventListener('click', () => downloadCsv(`zelo-resultados-${campaign.id.slice(0, 8)}.csv`, [['Telefone', 'Situação', 'Mensagem de erro', 'ID da mensagem'], ...campaign.items.map(item => [item.phone, labels[item.state], item.error, item.message_id])]));
+    exportButton.addEventListener('click', async () => { exportButton.disabled = true; try { await exportResults(api, campaign.id); } catch (error) { $('broadcast-history-status').textContent = error.message; } finally { exportButton.disabled = false; } });
     if (['queued', 'paused'].includes(campaign.state)) {
       for (const [action, label] of [[campaign.state === 'paused' ? 'resume' : 'pause', campaign.state === 'paused' ? 'Retomar disparo' : 'Pausar disparo'], ['cancel', 'Cancelar pendentes']]) {
         const button = el('button', label, 'secondary-button'); button.type = 'button';
