@@ -4,114 +4,173 @@
 
 # Zelo
 
-**Um espaço para cuidar do seu atendimento no WhatsApp.**
+### Seu WhatsApp. Suas IAs. Seu jeito de atender.
 
-Produtos, materiais, inteligência artificial e controle de acesso — com a sua configuração, no seu ambiente.
+**Do primeiro contato ao acompanhamento de uma campanha, tudo no mesmo espaço.**
 
-[**Abrir o Zelo**](https://zelo-liard.vercel.app/) · [Começar](#começar-no-computador) · [Instalar no celular](#na-tela-inicial-do-seu-celular) · [Documentação](#documentação)
+Organize produtos e materiais, conecte suas IAs, acompanhe conversas e prepare disparos com revisão antes do envio.
+
+[**Abrir o Zelo ↗**](https://zelo-liard.vercel.app/) · [Começar agora](#começar-no-computador) · [Ver o painel](#o-zelo-por-dentro) · [Instalar o app](#zelo-como-app) · [Documentação](#documentação)
 
 ![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-7041db?style=flat-square)
 ![JavaScript ESM](https://img.shields.io/badge/JavaScript-ESM-24202b?style=flat-square)
+![WhatsApp](https://img.shields.io/badge/WhatsApp-QR%20%2B%20Cloud%20API-7041db?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-computador%20%2B%20celular-24202b?style=flat-square)
 ![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Postgres%20%2B%20Storage-7041db?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-instalável-24202b?style=flat-square)
 
 </div>
 
-## O atendimento, organizado
+---
 
-O Zelo conecta seu WhatsApp a uma base de informações que você controla. Cadastre produtos, reúna imagens, PDFs e links, defina as instruções do assistente e escolha quais modelos de IA podem responder.
+## Atendimento com contexto, operação com controle
 
-Na implantação com Supabase, cada conta autorizada tem seu próprio WhatsApp, suas próprias APIs e seus próprios dados. O administrador master controla os convites e os acessos.
+O Zelo reúne o que o assistente precisa saber e o que você precisa acompanhar. Seus produtos dão contexto às respostas; suas regras definem a voz do atendimento; suas chaves determinam quais modelos entram em ação. Quando precisar assumir, a conversa e o envio manual estão no mesmo painel.
 
-| Você precisa de… | O Zelo oferece |
+| Área | O que você faz |
 | --- | --- |
-| Um número conectado | Vinculação por QR Code ou WhatsApp Cloud API. |
-| Liberdade para escolher a IA | Gemini, GPT/OpenAI, Claude/Anthropic, Grok/xAI, Groq, DeepSeek e OpenRouter. |
-| Continuidade quando acaba a cota | Chaves em ordem de prioridade, troca automática por limite/créditos e pausa individual. |
-| Uma base útil para responder | Produtos com descrição, imagens, PDFs, links e informações gerais do negócio. |
-| Controle do atendimento | Ligar, desligar e programar horários, dias e períodos. |
-| Acompanhar as conversas | Histórico, busca, envio manual, pendências e eventos. |
-| Ambientes separados | Login, convites e isolamento por conta no modo de produção com Supabase. |
-| Acesso no celular | Interface adaptada para toque e instalação como PWA. |
+| **Produtos e materiais** | Cadastre descrições, preços, imagens, PDFs e links. Mantenha as informações gerais do negócio em um só lugar. |
+| **Conversas** | Busque contatos, acompanhe mensagens e áudios, responda manualmente e bloqueie a IA por pessoa. |
+| **Conexões e IA** | Configure provedores, prioridades e listas independentes para respostas em texto e transcrição de áudios. |
+| **Seu assistente** | Defina nome, tom de voz e instruções globais que acompanham os modelos. |
+| **Disparos** | Importe contatos, personalize mensagens, vincule um produto e revise a campanha antes de confirmar. |
+| **Histórico** | Acompanhe campanhas por empreendimento, filtre resultados e consulte entregas, leituras e falhas disponíveis. |
+| **Atendimento automático** | Ligue, pause e programe horários, dias e períodos de funcionamento. |
+| **Gestão de acessos** | No modo Supabase, controle convites e permissões, com dados e integrações separados por conta. |
 
-## Por dentro do painel
+## O que mudou por aqui
 
-<img src="docs/assets/painel-ias.png" alt="Painel do Zelo com prioridade de modelos de IA e status de cada chave" width="100%">
+A revisão de **30 de outubro de 2026** reúne melhorias na operação e na experiência em telas menores:
 
-*Capturas do aplicativo real em um ambiente de teste, com conta e registros sintéticos. Nenhuma credencial ou conversa de cliente é exibida.*
+- **PWA atualizado:** aviso de nova versão com **Atualizar Zelo**, recarga após escolha do usuário e recuperação quando a conexão falha.
+- **Conexões no celular:** abas compactas, formulários com ações em largura total, controles de toque ampliados e QR Code com estado inicial mais enxuto.
+- **Conversas mais claras:** contatos com avatares, busca, filtro de IA bloqueada, atividade expansível e área de envio ancorada abaixo do histórico.
+- **Disparos com mais contexto:** produto visível na preparação, sugestão de mensagem com IA mediante confirmação de custo e personalização com os nomes disponíveis dos contatos.
+- **Verificação no WhatsApp:** consulta de números pela conexão QR, sem enviar mensagens, com resultados separados entre encontrados, não encontrados e indisponíveis.
+- **Histórico organizado:** grupos recolhíveis por empreendimento, busca e filtros, com exclusão confirmada de campanhas concluídas ou canceladas, preservando os registros operacionais.
+
+Este README descreve o código do repositório. A disponibilidade dessas mudanças no site depende da implantação da versão correspondente.
+
+## O Zelo por dentro
+
+### Conexões que você controla
+
+Modelos de texto e áudio têm suas próprias listas. Veja a prioridade, o estado de cada chave e qual está disponível para a próxima tentativa.
+
+<img src="docs/assets/painel-ias.png" alt="Conexões e IA: navegação por tarefa, modelos de resposta e chaves em ordem de prioridade" width="100%">
 
 <details>
-<summary><strong>Ver a experiência no celular</strong></summary>
-<br>
-<img src="docs/assets/mobile-lista.png" alt="Lista de conversas no celular com busca e nova mensagem" width="300"> <img src="docs/assets/mobile-conversa.png" alt="Conversa aberta no celular com botão para voltar à lista" width="300">
+<summary><strong>Ver o painel de Conversas</strong></summary>
 
-No celular, a lista e a conversa aberta ocupam telas distintas. Use **Voltar** para escolher outro contato ou **Nova mensagem** para iniciar um envio manual. Campos maiores, controles de toque e margens para a área segura ajudam no uso diário.
+<br>
+<img src="docs/assets/painel-conversas.png" alt="Conversas: busca e filtros de contatos à esquerda, histórico e envio manual à direita, atividade do atendimento abaixo" width="100%">
+
+Busca, atendimento manual, bloqueio por contato e recuperação de falhas permanecem próximos da conversa. A atividade pode ser expandida quando você precisar conferir pendências e eventos.
+
 </details>
 
-## Seu primeiro atendimento
+<details>
+<summary><strong>Ver Conexões no celular</strong></summary>
 
-1. Entre na conta. Novas contas de produção precisam de convite do administrador master.
-2. Em **Produtos e materiais**, cadastre o que o assistente deve conhecer.
-3. Em **Conexões e IA → Inteligência artificial**, adicione uma chave e o ID completo do modelo, organize a prioridade e valide.
-4. Em **Seu assistente**, defina o nome e as instruções globais.
-5. Em **WhatsApp**, escolha QR Code ou Cloud API e conclua a conexão.
-6. Configure **Atendimento automático** e teste usando outro número do WhatsApp.
+<br>
+<img src="docs/assets/mobile-conexoes.png" alt="Conexões no celular: modelos, prioridade e áreas de toque ampliadas" width="280"> <img src="docs/assets/mobile-whatsapp.png" alt="WhatsApp no celular: escolha de conexão, estado compacto do QR Code e instruções de vinculação" width="280">
 
-A validação de uma chave faz uma chamada real ao provedor e pode consumir cota ou créditos. O Zelo não fornece chaves nem cotas de IA.
+As abas se adaptam à largura da tela. Os formulários mantêm campos legíveis, menus acessíveis por toque e ações em largura total. Antes de gerar o QR Code, o estado ocupa menos espaço; quando disponível, o código conserva sua área de leitura.
 
-### OpenRouter gratuito para testes
+</details>
 
-Em **Conexões e IA → Adicionar chave**, selecione **OpenRouter** e cadastre cada modelo separadamente. O modelo sugerido é `nvidia/nemotron-3-ultra-550b-a55b:free`. Ultra, Nemotron 3.5 Super VL e as versões Gemma 4 31B e 26B A4B aceitam a mesma chave em cadastros distintos. Use **Observação** para registrar porte, contexto e se o endpoint é gratuito ou pago; use as setas para definir a prioridade. Os cadastros da mesma conta compartilham a cota do OpenRouter.
+<details>
+<summary><strong>Ver Conversas no celular</strong></summary>
 
-Cada requisição especifica somente o modelo daquele cadastro, sem reserva oculta no OpenRouter. Com a troca automática ligada, o Zelo tenta o próximo cadastro ativo em caso de limite, modelo indisponível, falha transitória ou resposta inválida do OpenRouter; erros de autenticação e configuração precisam ser corrigidos. A função `responder` produz a resposta do atendimento e seu conteúdo é validado no servidor, sem executar ferramentas externas. A chave é cadastrada pelo campo protegido do painel e não volta nas respostas da API. Não a cole em chats, código do navegador ou arquivos versionados. Os modelos Embed são de busca semântica e não devem entrar na lista de respostas. Versões pagas devem permanecer pausadas se a intenção é usar somente modelos gratuitos.
+<br>
+<img src="docs/assets/mobile-lista.png" alt="Lista de conversas no celular com busca e filtro de IA bloqueada" width="280"> <img src="docs/assets/mobile-conversa.png" alt="Conversa no celular com botão Voltar, histórico e campo de envio" width="280">
 
-Use essa sugestão apenas com dados fictícios: o endpoint gratuito do Nemotron registra conteúdo e pede que não sejam enviados dados pessoais ou confidenciais. A integração não ativa nem altera chaves já cadastradas. O OpenRouter publica cotas gerais de 50 requisições/dia e 20/minuto sem compra de créditos, ou 1.000/dia após US$ 10 de compras acumuladas; disponibilidade e regras podem mudar. Confira as [condições do modelo](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free), os [limites](https://openrouter.ai/docs/api_reference/limits) e o [funcionamento da reserva](https://openrouter.ai/docs/guides/routing/model-fallbacks).
+Lista e conversa aberta ocupam telas distintas. **Voltar** retorna à busca sem apagar o rascunho; a área de envio continua junto ao histórico.
 
-## Disparos de mensagens
+</details>
 
-Em **Disparos**, cole números, escolha contatos das conversas ou importe CSV/Excel `.xlsx` de até **2 MB**. Mapeie telefone, nome e até 32 colunas extras; use `{nome}`, `{cidade}` e alternativas como `{nome|cliente}`. A planilha fica no navegador; só os dados selecionados e confirmados são enviados ao servidor. O limite continua **500 contatos por campanha**.
+*Capturas locais com contas, contatos e registros sintéticos. Os números exibidos são dados de demonstração, não métricas de uso. Origem das imagens em [docs/assets](docs/assets/README.md).*
 
-A revisão do servidor mostra duplicados, inválidos, suprimidos, duração estimada e classificação da janela de 24 horas. Variáveis ausentes sem alternativa bloqueiam a confirmação. Na Cloud API, escolha texto apenas para contatos na janela ou template aprovado para todos. O mapeador visual cobre as variáveis do corpo; componentes avançados continuam disponíveis em JSON.
+## Do cadastro ao primeiro atendimento
 
-**Confirmar e enviar** exige declarar que a lista contém pessoas que aceitaram suas mensagens. O horário e o operador ficam registrados. **SAIR**, **PARAR**, **CANCELAR**, **STOP** ou **NÃO QUERO RECEBER** registram descadastro nos dois transportes sem acionar a IA. A confirmação de saída é configurável. A lista de supressão permite inclusão, remoção, importação e exportação; é conferida também durante o envio.
+1. **Entre na conta.** Em produção com Supabase, novas contas precisam de convite do administrador master.
+2. **Monte sua base.** Em **Produtos e materiais**, cadastre o que o assistente deve conhecer.
+3. **Escolha suas IAs.** Em **Conexões e IA → Inteligência artificial**, adicione as chaves, informe os IDs dos modelos e organize a prioridade. Configure textos e áudios em suas respectivas abas.
+4. **Dê sua voz ao assistente.** Em **Seu assistente**, defina nome, instruções e regras de atendimento.
+5. **Conecte o número.** Em **WhatsApp**, escolha QR Code ou Cloud API e conclua a configuração.
+6. **Teste o atendimento.** Ajuste a programação e use outro número para conferir a conversa antes de atender clientes.
 
-O ritmo usa intervalo mais jitter, limite por minuto e teto diário persistente por conta. QR inicia no perfil conservador de **8–25 segundos**, **5/minuto** e **100 tentativas/dia**. Configure dias, janela e fuso; o padrão da janela é **08:00–20:00 em America/Sao_Paulo**. O consumo diário reinicia à meia-noite em São Paulo. Falhas consecutivas, autenticação recusada ou limite da Meta podem pausar a campanha. Ritmo não garante proteção contra bloqueio.
+A validação de chaves, a transcrição e a geração de texto fazem chamadas reais e podem consumir cota ou créditos. O Zelo usa as credenciais que você cadastra; não inclui cotas de IA.
 
-O histórico tem resumos, destinatários paginados, comprovantes de entrega/leitura quando disponíveis e CSV de resultados. Pause, retome, cancele pendentes, duplique para nova revisão ou envie um teste ao próprio número identificado na conexão. Incertos exigem conferência individual e decisão registrada; **Reenviar somente falhas** não inclui incertos. Não há reenvio automático em reinício. O QR agora registra mensagens do operador na memória da conversa.
+## Uma IA para responder. Outra, se você quiser, para ouvir.
 
-O servidor e a conexão original precisam estar ativos. Os registros participam dos snapshots existentes. Campanhas antigas sem consentimento ficam pausadas e precisam ser duplicadas e revisadas. Mídia em campanhas, checagem `onWhatsApp` e filtros/listas/etiquetas avançados permanecem pendentes; os motivos e limites estão no guia.
+**Respostas em texto:** Gemini, OpenAI, Anthropic, xAI, Groq, DeepSeek e OpenRouter, conforme os modelos configurados.
 
-[Operação, riscos, pendências e roteiro de teste →](docs/disparos.md)
+**Transcrição de áudios:** lista própria com Gemini, Groq e OpenAI. O áudio recebido vira texto identificado no histórico; a IA da lista de textos prepara a resposta.
 
-## Controle por contato
+- Ordene as chaves e ative a troca automática quando quiser usar as reservas elegíveis.
+- Edite, pause, valide ou remova cada cadastro pelo painel.
+- Use **Observação** para registrar a finalidade de cada modelo.
+- Mantenha instruções globais para dar continuidade ao atendimento mesmo quando o modelo mudar.
 
-Em **Conversas**, use **Bloquear IA** para impedir respostas e transcrições para uma pessoa, mantendo o atendimento manual. O filtro de contatos bloqueados e o botão **Desbloquear IA** ajudam a gerenciar a lista. O bloqueio fica salvo por ambiente e WhatsApp conectado; desbloquear libera novas mensagens, sem responder às antigas em lote.
+As listas de texto e áudio são independentes. A troca depende do tipo de falha e do provedor; erros de autenticação e configuração exigem correção. Chaves do mesmo projeto podem compartilhar a mesma cota.
 
-[Detalhes do bloqueio de contatos →](docs/bloqueio-de-contatos.md)
+<details>
+<summary><strong>Usar modelos do OpenRouter</strong></summary>
 
-## Mensagens de voz
+Cadastre cada modelo separadamente, com seu ID completo. Você pode usar a mesma chave em cadastros distintos e organizar a prioridade pelo painel; isso não cria cotas independentes.
 
-O assistente entende áudios recebidos no WhatsApp, por QR Code e Cloud API, e responde em texto. A transcrição aparece no histórico com a identificação **Áudio transcrito**. Use uma chave ativa de Gemini, Groq ou OpenAI; o Zelo respeita a ordem entre as chaves compatíveis e tenta uma reserva por limite quando a troca automática está ligada. Transcrever também consome cota ou créditos.
+Cada requisição usa o modelo daquele cadastro. A chave é informada no campo protegido e não volta nas respostas da API. Modelos de embeddings não entram na lista de respostas. Se quiser testar apenas endpoints gratuitos, mantenha cadastros pagos pausados e confira as condições de cada modelo.
 
-Arquivos de até **10 MB**; áudios vazios, inacessíveis, incompreensíveis ou recusados pelo provedor ficam com erro na fila para revisão. O atendimento pausado ou fora do horário não baixa nem transcreve automaticamente. O operador pode retomar pela fila. O arquivo é processado em memória; o texto reconhecido permanece no histórico. Confira as condições de privacidade do provedor antes de usar dados reais.
+O endpoint gratuito do Nemotron sugerido pelo projeto deve ser usado somente com dados fictícios, conforme o aviso exibido na interface. Consulte os [limites do OpenRouter](https://openrouter.ai/docs/api_reference/limits) e as condições do endpoint antes de enviar dados reais.
 
-[Funcionamento, limites e testes de áudio →](docs/audio.md)
+</details>
 
-## Na tela inicial do seu celular
+Áudios de até **10 MB** são processados em memória, sem salvar o arquivo binário no catálogo. Falhas, pausas e transcrições ficam identificadas; o operador pode revisar e retomar o atendimento. Transcrições permanecem no histórico conforme a política de guarda do ambiente.
 
-Abra o [site em HTTPS](https://zelo-liard.vercel.app/) no navegador do dispositivo:
+[Guia de áudio →](docs/audio.md) · [Bloqueio de IA por contato →](docs/bloqueio-de-contatos.md)
 
-- **Android:** use **Instalar Zelo**, quando disponível, ou a opção de instalar no menu do navegador compatível.
-- **iPhone / iPad:** no Safari, use **Compartilhar → Adicionar à Tela de Início**.
-- **Computador:** use o ícone de instalação ou o menu de aplicativos do navegador compatível.
+## Disparos, da lista ao resultado
 
-O app abre em janela própria e usa a mesma autenticação do site. A promoção e a disponibilidade da instalação dependem do navegador.
+O fluxo segue **Contatos → Mensagem → Envio → Revisão**. Avançar valida a etapa; voltar preserva o rascunho. A campanha só entra na fila depois da confirmação final.
 
-**Offline com privacidade:** o service worker guarda apenas recursos públicos da tela de recuperação e da identidade do aplicativo. Conversas, produtos, arquivos, APIs e páginas autenticadas não entram no cache offline. Sem conexão, aparece uma tela para tentar novamente; mensagens não são enfileiradas no navegador.
+| Etapa | Recursos |
+| --- | --- |
+| **Contatos** | Cole números, selecione conversas ou importe CSV/XLSX de até **2 MB**. Até **500 contatos por campanha** e 32 colunas extras para personalização. |
+| **Conferência** | Consulte números no WhatsApp pela conexão QR, sem enviar mensagens. Remova os não encontrados por decisão explícita. |
+| **Mensagem** | Vincule um produto, insira informações do catálogo, use variáveis como `{nome}` e `{nome\|cliente}` ou gere uma sugestão com IA após confirmar o custo. |
+| **Envio** | Escolha início, dias, horários, fuso, ritmo e limites. O servidor mantém a fila e a conexão original da campanha. |
+| **Revisão** | Confira personalização, duplicados, inválidos, suprimidos e estimativa de duração. Declare o consentimento antes de **Confirmar e enviar**. |
+| **Histórico** | Abra os grupos por empreendimento, busque, filtre, consulte destinatários e exporte resultados em CSV. |
 
-> Instalar o PWA não mantém o WhatsApp funcionando no celular por conta própria. O atendimento depende do servidor, do WhatsApp conectado e das APIs disponíveis.
+O nome informado na importação tem prioridade. Quando faltar, o Zelo usa o nome disponível nos contatos da conta conectada; se não houver, respeita a alternativa da mensagem. A sugestão da IA só substitui seu texto quando você escolhe aplicá-la.
 
-[Detalhes de instalação, cache e atualização →](docs/pwa.md)
+**Controle depois de confirmar:** pause, retome, cancele pendentes ou duplique para nova revisão. O reenvio em lote considera falhas; resultados incertos exigem conferência individual. Excluir do histórico é permitido para campanhas concluídas ou canceladas sem itens pendentes ou em envio e preserva os registros operacionais.
+
+**Descadastro integrado:** palavras como **SAIR**, **PARAR**, **CANCELAR**, **STOP** e **NÃO QUERO RECEBER** registram a saída sem acionar a IA. A supressão é verificada na revisão e durante o envio. A confirmação de saída é configurável.
+
+**Limites do recurso:** verificar um número não confirma entrega; aceite, entrega e leitura são estados diferentes. Os comprovantes dependem do transporte. Mídia em campanhas e filtros/listas/etiquetas avançados permanecem pendentes.
+
+[Configuração, limites, ritmo e operação de Disparos →](docs/disparos.md)
+
+## Zelo como app
+
+Abra o [Zelo em HTTPS](https://zelo-liard.vercel.app/) no navegador do dispositivo:
+
+| Dispositivo | Como instalar |
+| --- | --- |
+| **Android** | Toque em **Instalar Zelo**, quando disponível, ou use a opção de instalação do navegador. |
+| **iPhone / iPad** | No Safari, use **Compartilhar → Adicionar à Tela de Início**. |
+| **Computador** | Use o ícone de instalação ou o menu de aplicativos do navegador compatível. |
+
+O PWA abre em janela própria e usa a mesma autenticação do site. A oferta de instalação depende do navegador.
+
+**Atualizar no seu tempo.** Quando houver uma nova versão em espera, aparece **Atualizar Zelo**, com um aviso para salvar suas edições. O app não recarrega sozinho durante o uso; a janela que pediu a atualização recarrega após a ativação.
+
+**Sem conexão, com recuperação.** O cache guarda apenas recursos públicos da tela de recuperação e da identidade do app. Conversas, produtos, anexos, APIs e páginas autenticadas ficam fora dele. Não há fila de mensagens offline no navegador.
+
+> O PWA facilita o acesso. O atendimento automático continua dependendo do servidor ativo, do WhatsApp conectado e das APIs disponíveis.
+
+[Instalação, atualizações e experiência móvel →](docs/pwa.md)
 
 ## Começar no computador
 
@@ -124,78 +183,98 @@ npm ci --ignore-scripts
 npm start
 ```
 
-Acesse [127.0.0.1:4173](http://127.0.0.1:4173). O servidor local inicia um ambiente único. Crie o administrador com o código gerado em `.wappy/primeiro-acesso.txt` e configure suas integrações pelo painel. No Windows, também há `INICIAR.cmd` e `PARAR.cmd`.
+Abra **[127.0.0.1:4173](http://127.0.0.1:4173)**. No primeiro acesso, crie o administrador com o código gerado em `.wappy/primeiro-acesso.txt` e configure as integrações pelo painel.
 
-O modo local não exige Supabase para começar. Não reutilize a mesma sessão do WhatsApp de uma implantação de produção ativa.
+No Windows, use também **`INICIAR.cmd`** e **`PARAR.cmd`**. O modo local inicia um ambiente único e não exige Supabase para começar. Não reutilize nele a sessão de WhatsApp de uma produção ativa.
 
-## Produção e arquitetura
+## Como o Zelo roda
 
 ```mermaid
 flowchart LR
-    A["Navegador / PWA"] --> B["Function HTTP · Vercel"]
+    A["Navegador / PWA"] --> B["HTTP · Vercel Function"]
     B --> C["Worker contínuo · Zelo"]
-    C --> D["WhatsApp QR / Cloud API"]
+    C --> D["WhatsApp · QR / Cloud API"]
     C --> E["Provedores de IA"]
-    C --> F["Supabase Auth / Postgres / Storage"]
+    C --> F["Supabase · Auth / Postgres / Storage"]
     C --> G["SQLite por ambiente"]
-    G --> H["Snapshots cifrados por conta"]
+    G --> H["Snapshots cifrados"]
     H --> F
 ```
 
-A interface usa HTML, CSS e JavaScript em módulos, sem compilação do frontend. O worker mantém filas, memória e conexões de longa duração. Produtos e anexos usam o Supabase; snapshots cifrados permitem restaurar o atendimento.
+**Interface:** HTML, CSS e JavaScript em módulos, sem etapa de compilação do frontend. **Servidor:** Node.js com filas persistentes, memória e conexões de longa duração. **Produção:** Supabase para autenticação, catálogo e materiais, com snapshots cifrados do atendimento.
 
-A implantação atual separa uma Function HTTP e um Daemon. Uma Function isolada não substitui o processo contínuo necessário ao WhatsApp. Configure as variáveis de servidor em [`.env.example`](.env.example), aplique as migrações e siga os guias de [implantação](docs/vercel.md) e [ambientes privados](docs/workspaces.md).
+A implantação separa uma Function HTTP e um Daemon. Uma Function isolada não substitui o processo contínuo necessário ao WhatsApp. Para configurar a produção, consulte [`.env.example`](.env.example), aplique as migrações e siga os guias de [Vercel](docs/vercel.md) e [ambientes privados](docs/workspaces.md).
 
-**As chaves secretas ficam no servidor.** Não use prefixos públicos nas variáveis, não publique `.env`, `.wappy` ou backups e preserve `SUPABASE_BACKUP_KEY` para recuperar os snapshots.
+Chaves secretas ficam no servidor. Mantenha `.env`, `.wappy`, materiais e backups fora do Git; preserve `SUPABASE_BACKUP_KEY` para recuperar os snapshots.
 
-## Qualidade e validação
+## Qualidade com evidência
 
 ```sh
 npm test
+```
+
+Na verificação local de **30/10/2026**, **132 testes passaram**. A suíte cobre autenticação, isolamento, convites, chaves e prioridades de IA, áudio, persistência, filas, WhatsApp, uploads, programação, campanhas, histórico e política de cache do PWA. Os envios e chamadas de IA usam transportes controlados.
+
+Conexões foi conferida no navegador em **320, 390, 768 e 1440 px**, incluindo formulários, rascunhos entre abas, menus, Cloud API e estados do QR Code. O PWA também teve a atualização por clique e a recuperação offline verificadas em tela de celular emulada. Isso não equivale a teste de instalação em aparelho físico.
+
+Para consultar dependências, execute separadamente:
+
+```sh
 npm audit --omit=dev
 ```
 
-Os testes cobrem autenticação, isolamento, convites, prioridade de IA, persistência, filas, WhatsApp, uploads, programação, movimento acessível e a política de cache do PWA. Transportes controlados evitam enviar mensagens reais durante a suíte.
+O resultado da auditoria depende das dependências instaladas e da base consultada; não representa uma certificação de segurança do projeto.
 
-## Limites que importam
+## Limites da operação
 
-- O QR usa **Baileys**, integração não oficial com o WhatsApp Web, sujeita a mudanças, desconexões e bloqueio. Ritmo e jitter não eliminam esse risco.
-- Disparos exigem declaração de consentimento e respeitam a supressão. Isso não comprova a origem da autorização nem substitui os procedimentos do responsável pelos dados. Uma mensagem já entregue ao transporte antes do descadastro não pode ser desfeita.
-- Reenviar um resultado incerto pode duplicar uma mensagem já recebida. A ação exige conferência explícita; o Zelo bloqueia o reenvio quando já dispõe de comprovante de entrega/leitura.
-- Imagens e PDFs são anexos disponíveis para envio; seu conteúdo não é extraído automaticamente para a base de conhecimento.
-- A troca de IA trata limites/créditos elegíveis. Chaves inválidas e modelos incorretos precisam ser corrigidos.
-- Memória, filas e credenciais QR têm snapshots periódicos. Uma queda abrupta pode perder alterações posteriores ao último backup; catálogo e materiais remotos são persistidos diretamente no Supabase.
-- A disponibilidade depende do servidor, da hospedagem, do WhatsApp e das cotas dos provedores.
+- **WhatsApp por QR:** usa Baileys, uma integração não oficial com o WhatsApp Web. Mudanças, desconexões e bloqueios podem ocorrer; ritmo e jitter não eliminam esse risco.
+- **Consentimento:** a declaração registrada no envio não comprova a origem da autorização dos contatos. Uma mensagem já entregue ao transporte antes do descadastro não pode ser desfeita.
+- **Resultados incertos:** reenviar pode duplicar uma mensagem já recebida. O operador precisa conferir o contato antes de decidir.
+- **Materiais:** imagens e PDFs ficam disponíveis como anexos; seu conteúdo não é extraído automaticamente para a base de conhecimento.
+- **Provedores:** disponibilidade, cobrança, cotas e condições de uso dependem de cada serviço. Confira o tratamento de dados do plano antes de usar conversas reais.
+- **Recuperação:** memória, filas e credenciais QR têm snapshots periódicos. Uma queda abrupta pode perder alterações posteriores ao último backup; catálogo e materiais remotos são persistidos diretamente no Supabase.
 
-## Organização do projeto
+## Mapa do projeto
 
-- `server.mjs`: entrada do servidor local; `INICIAR.cmd` e `PARAR.cmd` continuam na raiz.
-- `lib/`: módulos agrupados por responsabilidade em `ai/`, `audio/`, `auth/`, `catalog/`, `atendimento/`, `core/`, `supabase/`, `whatsapp/`, `http/`, `tunnel/` e `workspaces/`.
-- `public/`: interface e arquivos públicos; identidade visual em `public/brand/`.
-- `api/` e `deployment/`: entradas e infraestrutura de hospedagem.
-- `supabase/`: migração e histórico de migrations.
-- `test/`: testes automatizados; execute com `npm test`.
-- `docs/`: documentação de produto, design e operação.
+| Caminho | Responsabilidade |
+| --- | --- |
+| `public/` | Interface, estilos, módulos do navegador, identidade visual e PWA. |
+| `lib/` | IA, áudio, autenticação, catálogo, atendimento, WhatsApp, HTTP e ambientes. |
+| `server.mjs` | Entrada do servidor local. |
+| `api/` e `deployment/` | Entradas e infraestrutura de hospedagem. |
+| `supabase/` | Migrações e configuração de persistência remota. |
+| `test/` | Suíte automatizada, executada com `npm test`. |
+| `docs/` | Guias de produto, design, implantação e operação. |
 
-Os dados locais continuam em `.wappy/`, e os materiais em `materiais/`; ambas as pastas são ignoradas pelo Git.
+Dados locais ficam em `.wappy/`, e materiais em `materiais/`; ambas as pastas são ignoradas pelo Git.
 
 ## Documentação
 
-| Guia | Conteúdo |
+| Quero… | Abrir |
 | --- | --- |
-| [Disparos v2](docs/disparos.md) | Consentimento, descadastro, ritmo, janelas, auditoria e pendências. |
-| [Produto](docs/product.md) | Público, propósito e restrições do produto. |
-| [Design geral](docs/design.md) | Registro visual geral do projeto. |
-| [PWA e mobile](docs/pwa.md) | Instalação, funcionamento offline, atualização e navegação móvel. |
-| [Ambientes privados](docs/workspaces.md) | Convites, administrador master, isolamento e recuperação. |
-| [Vercel](docs/vercel.md) | Function, worker, variáveis e limites da implantação. |
-| [Operação detalhada](docs/guia-operacao.md) | Configuração local e detalhes da instalação original. |
-| [Sistema visual](docs/settings/DESIGN.md) | Componentes, estados, responsividade e movimento. |
+| Configurar o ambiente local | [Guia de operação](docs/guia-operacao.md) |
+| Entender campanhas e seus limites | [Disparos](docs/disparos.md) |
+| Configurar transcrição | [Áudios e listas de IA](docs/audio.md) |
+| Assumir um contato manualmente | [Bloqueio de IA por contato](docs/bloqueio-de-contatos.md) |
+| Instalar e atualizar o app | [PWA e mobile](docs/pwa.md) |
+| Gerenciar contas e convites | [Ambientes privados](docs/workspaces.md) |
+| Implantar em produção | [Vercel, Function e worker](docs/vercel.md) |
+| Conhecer o produto | [Propósito e restrições](docs/product.md) |
+| Consultar o visual do projeto | [Design geral](docs/design.md) · [Sistema visual](docs/settings/DESIGN.md) |
+| Conferir a origem das capturas | [Imagens do README](docs/assets/README.md) |
 
 ## Créditos
 
-Construído sobre [Wappy](https://github.com/csr1010/wappy-kit), [Baileys](https://github.com/WhiskeySockets/Baileys) e [Supabase](https://supabase.com/). Logos dos provedores por [Lobe Icons](https://github.com/lobehub/lobe-icons), com licença e origem em [`public/brand/providers`](public/brand/providers). Cada dependência e marca mantém seus respectivos termos.
+Construído sobre [Wappy](https://github.com/csr1010/wappy-kit), [Baileys](https://github.com/WhiskeySockets/Baileys) e [Supabase](https://supabase.com/). Logos dos provedores por [Lobe Icons](https://github.com/lobehub/lobe-icons), com origem e licença em [`public/brand/providers`](public/brand/providers). Cada dependência e marca mantém seus respectivos termos.
 
 ---
 
-<div align="center"><strong>Zelo · Conversas que conectam.</strong></div>
+<div align="center">
+
+**Zelo · Conversas que conectam.**
+
+Sua base. Sua voz. Seu atendimento.
+
+[Voltar ao início ↑](#zelo)
+
+</div>
