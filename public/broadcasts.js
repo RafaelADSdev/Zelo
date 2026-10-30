@@ -42,6 +42,7 @@ export function initBroadcasts(options) {
     $('broadcast-phones').value = [...phones].join('\n'); updateRecipients();
     $('broadcast-contacts').querySelectorAll('input').forEach(input => input.checked = true);
   });
+  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach((text, index) => { const label = el('label', text); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = String(index + 1); checkbox.checked = true; label.prepend(checkbox); $('broadcast-days').append(label); });
   updateRecipients(); updateMessage();
   $('broadcast-timezone').textContent = `Fuso horário: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`;
   $('broadcast-kind').addEventListener('change', () => {
@@ -78,7 +79,7 @@ export function initBroadcasts(options) {
       const lines = $('broadcast-phones').value.split(/[\n;,]+/).map(line => line.trim()).filter(Boolean);
       if (!lines.length || lines.length > 500 || lines.some(line => !/^\+?[\d\s().-]+$/.test(line) || !/^[1-9]\d{6,14}$/.test(line.replace(/\D/g, '')))) throw new Error('Informe de 1 a 500 números válidos, com DDI e DDD.');
       const phones = [...new Set(lines.map(line => line.replace(/\D/g, '')))];
-      draft = { name: $('broadcast-name').value.trim(), phones: phones.join('\n'), text: $('broadcast-text').value.trim() };
+      draft = { intervalMs: Number($('broadcast-interval').value) * 1000, jitterMs: Number($('broadcast-jitter').value) * 1000, perMinute: Number($('broadcast-minute').value), dailyCap: Number($('broadcast-daily').value), timezone: $('broadcast-zone').value, windowStart: $('broadcast-start').value, windowEnd: $('broadcast-end').value, days: [...$('broadcast-days').querySelectorAll('input:checked')].map(input => Number(input.value)), name: $('broadcast-name').value.trim(), phones: phones.join('\n'), text: $('broadcast-text').value.trim() };
       if ($('broadcast-kind').value === 'template') {
         if ($('broadcast-template').value === '') throw new Error('Selecione um template aprovado.');
         const template = templates[Number($('broadcast-template').value)];

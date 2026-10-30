@@ -17,7 +17,7 @@ test('disparos validam, deduplicam, persistem e não repetem resultados incertos
     return { status: 'sent', messageId: 'm1' };
   } };
   let broadcasts = await createBroadcasts(options);
-  const input = { requestId: randomUUID(), consent: true, phones: '+55 (11) 98888-7777\n5511988887777\n5511977776666', text: 'Olá' };
+  const input = { requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '+55 (11) 98888-7777\n5511988887777\n5511977776666', text: 'Olá' };
   try {
     await assert.rejects(broadcasts.create({ ...input, phones: 'número inválido' }), /número/i);
     const campaign = await broadcasts.create(input);
@@ -26,17 +26,17 @@ test('disparos validam, deduplicam, persistem e não repetem resultados incertos
     await assert.rejects(broadcasts.create({ ...input, text: 'Mudou' }), /identificador/i);
     await broadcasts.tick(); assert.equal(sent.length, 1);
     await broadcasts.tick(); assert.equal(sent.length, 1);
-    account = 'qr:account-b'; now += 3000;
+    account = 'qr:account-b'; now += 30000;
     await broadcasts.tick(); assert.equal(sent.length, 1);
     account = 'qr:account-a'; uncertain = true;
     await broadcasts.tick(); assert.equal(sent.length, 2);
     broadcasts = await createBroadcasts(options);
-    now += 3000; await broadcasts.tick(); assert.equal(sent.length, 2);
+    now += 30000; await broadcasts.tick(); assert.equal(sent.length, 2);
     const result = await broadcasts.get(campaign.id);
     assert.deepEqual(result.items.map(item => item.state), ['sent', 'unknown']);
     assert.equal(result.state, 'completed');
     const second = await broadcasts.create({ ...input, requestId: randomUUID() });
-    await broadcasts.cancel(second.id); now += 3000; await broadcasts.tick();
+    await broadcasts.cancel(second.id); now += 30000; await broadcasts.tick();
     assert.equal(sent.length, 2);
     assert.ok((await broadcasts.get(second.id)).items.every(item => item.state === 'cancelled'));
   } finally { db.close(); }
@@ -48,10 +48,10 @@ test('agendamento aguarda o horário e retoma pendentes após reinício sem repe
   const options = { db, connection: () => 'cloud:123', clock: () => now, send: async () => { sends++; return { messageId: 'test' }; } };
   try {
     let service = await createBroadcasts(options);
-    const input = { requestId: randomUUID(), consent: true, phones: '5511999999999\n5521999999999', template: { name: 'hello_world', language: { code: 'pt_BR' } }, scheduledAt: new Date(now + 60000).toISOString() };
+    const input = { requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '5511999999999\n5521999999999', template: { name: 'hello_world', language: { code: 'pt_BR' } }, scheduledAt: new Date(now + 60000).toISOString() };
     const campaign = await service.create(input);
     await service.tick(); assert.equal(sends, 0);
-    await assert.rejects(service.create({ ...input, requestId: randomUUID(), consent: true, scheduledAt: 'inválido' }), /data/i);
+    await assert.rejects(service.create({ ...input, requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', scheduledAt: 'inválido' }), /data/i);
     await db.execute({ sql: "UPDATE wa_broadcast_items SET state='sending' WHERE id=?", args: [campaign.items[0].id] });
     service = await createBroadcasts(options);
     now += 60001;
@@ -83,10 +83,10 @@ test('API autenticada cria, agenda, cancela e envia pelo transporte QR existente
     assert.ok(allowedPath('/api/broadcasts')); assert.ok(allowedPath('/api/broadcasts/cancel')); assert.ok(allowedPath('/broadcasts.js'));
     await app.settings.update({ whatsappMode: 'qr' }); await app.qr.connect();
     sockets[0].ev.emit('connection.update', { connection: 'open' }); await app.qr.idle();
-    const input = { requestId: randomUUID(), consent: true, phones: '5511888888888', text: 'Mensagem de campanha' };
+    const input = { requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '5511888888888', text: 'Mensagem de campanha' };
     assert.equal((await post('/api/broadcasts', input)).status, 201);
     assert.equal((await post('/api/broadcasts', input)).status, 201);
-    const scheduled = { ...input, requestId: randomUUID(), consent: true, scheduledAt: new Date(Date.now() + 3600000).toISOString() };
+    const scheduled = { ...input, requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', scheduledAt: new Date(Date.now() + 3600000).toISOString() };
     assert.equal((await post('/api/broadcasts', scheduled)).status, 201);
     const until = Date.now() + 6000;
     while (!sent.length && Date.now() < until) await new Promise(resolve => setTimeout(resolve, 50));
@@ -106,13 +106,14 @@ test('Cloud API envia template e mantém bloqueio de texto fora da janela', asyn
   } });
   try {
     await app.settings.update({ whatsappMode: 'cloud', accessToken: 'test-token', appSecret: 'test-secret', phoneNumberId: '123456789' });
-    const service = await createBroadcasts({ db: app.runtime.client, connection: () => 'cloud:123456789', send: input => app.whatsapp.manual(input) });
-    const template = await service.create({ requestId: randomUUID(), consent: true, phones: '5511888888888', template: { name: 'hello_world', language: { code: 'pt_BR' } } });
+    let cloudNow = Date.now();
+    const service = await createBroadcasts({ clock: () => cloudNow, db: app.runtime.client, connection: () => 'cloud:123456789', send: input => app.whatsapp.manual(input) });
+    const template = await service.create({ requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '5511888888888', template: { name: 'hello_world', language: { code: 'pt_BR' } } });
     await service.tick();
     assert.equal(posts.length, 1); assert.equal(posts[0].template.name, 'hello_world');
     assert.equal((await service.get(template.id)).items[0].state, 'sent');
-    const text = await service.create({ requestId: randomUUID(), consent: true, phones: '5511777777777', text: 'Fora da janela' });
-    await service.tick();
+    const text = await service.create({ requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '5511777777777', text: 'Fora da janela' });
+    cloudNow += 30000; await service.tick();
     assert.equal(posts.length, 1);
     assert.equal((await service.get(text.id)).items[0].state, 'failed');
     assert.match((await service.get(text.id)).items[0].error, /24 horas/);
@@ -123,16 +124,16 @@ test('pausar preserva pendentes, retomar continua uma vez e cancelar também fun
   const db = createClient({ url: 'file::memory:' }); let now = Date.now(), sent = 0;
   const service = await createBroadcasts({ db, connection: () => 'qr:abc', clock: () => now, send: async () => { sent++; return { messageId: 'test' }; } });
   try {
-    const input = { requestId: randomUUID(), consent: true, name: 'Campanha de novembro', phones: '5511988887777\n5511977776666', text: 'Olá' };
+    const input = { requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', name: 'Campanha de novembro', phones: '5511988887777\n5511977776666', text: 'Olá' };
     const campaign = await service.create(input); assert.equal(campaign.name, input.name);
     await service.tick(); assert.equal(sent, 1);
-    await service.pause(campaign.id); now += 4000; await service.tick(); assert.equal(sent, 1);
+    await service.pause(campaign.id); now += 30000; await service.tick(); assert.equal(sent, 1);
     assert.equal((await service.get(campaign.id)).state, 'paused');
     await service.resume(campaign.id); await service.tick(); assert.equal(sent, 2);
     const other = await service.create({ ...input, requestId: randomUUID() });
     await service.pause(other.id); await service.cancel(other.id);
     assert.equal((await service.get(other.id)).state, 'cancelled');
     await assert.rejects(service.resume(other.id), /pausado/);
-    await assert.rejects(service.create({ ...input, requestId: randomUUID(), consent: true, name: 'x'.repeat(101) }), /nome/i);
+    await assert.rejects(service.create({ ...input, requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', name: 'x'.repeat(101) }), /nome/i);
   } finally { db.close(); }
 });

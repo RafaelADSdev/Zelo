@@ -78,3 +78,5 @@
   #view-broadcasts button, #view-broadcasts .broadcast-file-button { min-height: 44px; }
   .broadcast-result-row { grid-template-columns: 1fr; }
 }
+
+#view-broadcasts .broadcast-days{border:0;padding:0;margin:16px 0}#view-broadcasts .broadcast-days label{display:flex;align-items:center;gap:8px;margin:0;min-height:44px}#view-broadcasts .broadcast-days input{width:18px;height:18px}

@@ -26,6 +26,7 @@ function render() {
     progress.setAttribute('aria-label', `${processed} de ${campaign.items.length} destinatários processados`);
     item.append(progress, el('p', `${count('sent')} aceitos · ${count('pending')} pendentes · ${count('failed')} falhas · ${count('unknown')} sem confirmação${count('cancelled') ? ` · ${count('cancelled')} cancelados` : ''}`, 'broadcast-result-summary'));
     if (['queued','paused'].includes(campaign.state) && !campaign.connectionReady) item.append(el('p', 'Aguardando a conexão original do WhatsApp. Reconecte a conta usada ao criar este disparo.', 'hint'));
+    if (campaign.paused_reason) item.append(el('p', campaign.paused_reason, 'hint'));
     item.append(el('p', campaign.template ? `Template: ${campaign.template.name}` : campaign.text, 'broadcast-history-message'));
     const detail = el('details', ''); detail.dataset.campaign = campaign.id; detail.open = open.has(campaign.id); detail.append(el('summary', 'Ver resultados por destinatário'));
     const list = el('div', '', 'broadcast-results');
