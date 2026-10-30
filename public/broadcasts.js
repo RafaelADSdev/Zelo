@@ -34,12 +34,23 @@ function updateMessage() {
   $('broadcast-text-count').textContent = `${$('broadcast-text').value.length.toLocaleString('pt-BR')} / 4.000 caracteres`;
   $('broadcast-live-message').textContent = $('broadcast-text').value || 'Sua mensagem aparecerá aqui.';
 }
+function reviewMessage() {
+  const output = review.recipients[0]?.preview;
+  if (!output?.template) return output?.text || draft.text || '';
+  const approved = templates[Number($('broadcast-template').value)];
+  const rendered = (approved?.components || []).filter(component => component.text).map(component => {
+    const params = output.template.components?.find(item => item.type.toLowerCase() === component.type.toLowerCase())?.parameters || [];
+    return component.text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) => params.find((item, index) => (item.parameter_name || String(index + 1)) === key)?.text || match);
+  }).join('\n');
+  return `[Template: ${output.template.name}]\n${rendered || 'Parâmetros: ' + (output.template.components || []).flatMap(component => (component.parameters || []).map(item => item.text || item.type)).join(' · ')}`;
+}
 function renderReview() {
   $('broadcast-confirm').disabled = !review.ready;
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
   $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
   $('broadcast-review-phones').textContent = review.recipients.map(item => '+' + item.phone).join(' · ');
-  $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ');
+  $('broadcast-review-message').textContent = reviewMessage();
+  $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ') || (!review.recipients.length ? 'Nenhum destinatário disponível. Confira a lista de supressão e a seleção da janela.' : '');
   const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
   $('broadcast-review-estimate').textContent = `Duração estimada pelo ritmo: ${Math.max(1, Math.ceil(minutes))} min, sem contar esperas de janela, limite diário ou conexão. ${draft.scheduledAt ? 'Agendado para ' + date(Date.parse(draft.scheduledAt)) : 'Envio após confirmação'}.`;
   $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas. Intervalo ${draft.intervalMs / 1000}–${(draft.intervalMs + draft.jitterMs) / 1000} s, até ${draft.perMinute}/min.`;
@@ -92,8 +103,8 @@ export function initBroadcasts(options) {
     event.preventDefault();
     run($('broadcast-submit'), async () => {
       const lines = $('broadcast-phones').value.split(/[\n;,]+/).map(line => line.trim()).filter(Boolean);
-      if (!lines.length || lines.length > 500 || lines.some(line => !/^\+?[\d\s().-]+$/.test(line) || !/^[1-9]\d{6,14}$/.test(line.replace(/\D/g, '')))) throw new Error('Informe de 1 a 500 números válidos, com DDI e DDD.');
-      const phones = [...new Set(lines.map(line => line.replace(/\D/g, '')))];
+      if (!lines.length || lines.length > 500) throw new Error('Informe de 1 a 500 números válidos, com DDI e DDD.');
+      const phones = [...new Set(lines.map(line => phoneNumber(line) || line))];
       draft = { intervalMs: Number($('broadcast-interval').value) * 1000, jitterMs: Number($('broadcast-jitter').value) * 1000, perMinute: Number($('broadcast-minute').value), dailyCap: Number($('broadcast-daily').value), timezone: $('broadcast-zone').value, windowStart: $('broadcast-start').value, windowEnd: $('broadcast-end').value, days: [...$('broadcast-days').querySelectorAll('input:checked')].map(input => Number(input.value)), name: $('broadcast-name').value.trim(), phones: phones.join('\n'), text: $('broadcast-text').value.trim() };
       draft.recipients = phones.map(phone => metadata.get(phone) || { phone });
       if ($('broadcast-kind').value === 'template') {
@@ -125,7 +136,7 @@ export function initBroadcasts(options) {
 
       $('broadcast-review-status').textContent = ''; $('broadcast-consent').checked = false;
       $('broadcast-review-summary').dataset.legacy = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
-      $('broadcast-review-message').textContent = review.recipients[0]?.preview?.text || (draft.template ? `Template: ${draft.template.name}\n${$('broadcast-template-preview').textContent}\n${$('broadcast-params').value}` : draft.text);
+      $('broadcast-review-message').textContent = reviewMessage();
       $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; $('broadcast-confirm').focus();
     });
   });
@@ -152,5 +163,5 @@ export function initBroadcasts(options) {
     $('broadcast-review').hidden = true; $('broadcast-form').hidden = false;
     $('broadcast-status').textContent = 'Disparo criado. Acompanhe os resultados no histórico.'; await refreshBroadcasts();
   }, 'broadcast-review-status'));
-  $('broadcast-refresh').addEventListener('click', event => run(event.currentTarget, refreshBroadcasts, 'broadcast-history-status'));
+  $('broadcast-refresh').addEventListener('click', event => run(event.currentTarget, () => refreshBroadcasts(true), 'broadcast-history-status'));
 }

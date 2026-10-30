@@ -177,6 +177,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
         const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview','/api/broadcasts/test'].includes(url.pathname) ? 524288 : 64000);
+        if ((url.pathname.startsWith('/api/broadcasts') || url.pathname === '/api/optouts') && (!input || typeof input !== 'object' || Array.isArray(input))) throw fail('Informe os dados da operação em um objeto JSON.');
         const actor = auth.session(req)?.userId || auth.session(req)?.username || 'operador';
         const aiScope = url.searchParams.get("scope") || "text";
         if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");

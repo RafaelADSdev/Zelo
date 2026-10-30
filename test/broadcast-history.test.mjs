@@ -13,6 +13,8 @@ test('histórico agrega em uma consulta e lê entrega QR/Cloud com páginas limi
     const list = await service.list(); assert.equal(list[0].total, 2); assert.equal(list[0].counts.sent, 2); assert.equal(list[0].delivered, 2); assert.equal(list[0].read, 1); assert.equal('items' in list[0], false);
     const first = await service.details(campaign.id, { limit: 1, page: 1 }), second = await service.details(campaign.id, { limit: 1, page: 2 });
     assert.equal(first.items[0].delivery_status, 'read'); assert.notEqual(first.items[0].id, second.items[0].id);
+    await db.execute({ sql: "UPDATE wa_broadcast_items SET state='unknown' WHERE id=?", args: [first.items[0].id] });
+    await assert.rejects(service.resolve({ id: campaign.id, itemId: first.items[0].id, requestId: randomUUID(), decision: 'retry', confirmed: true }), /já confirmou a entrega/);
     await assert.rejects(service.details(campaign.id, { limit: 101 }), /Paginação/);
     const cloud = await createBroadcasts({ db, connection: () => 'cloud:123', clock: () => now, send: async () => { await db.execute("INSERT INTO wa_statuses VALUES('cloud-id','read')"); return { messageId: 'cloud-id' }; } });
     const other = await cloud.create({ requestId: randomUUID(), consent: true, phones: '5511988887777', template: { name: 'hello', language: { code: 'pt_BR' } } }); await cloud.tick();

@@ -58,6 +58,15 @@ export function inspectNumbers(rows, { column = 0, header = false, country = '' 
   }
   return { phones, invalid, duplicates, empty };
 }
+export function importRecipients(rows, { column = 0, nameColumn = null, header = false, country = '', variables = [] } = {}) {
+  const recipients = [], seen = new Set();
+  for (let index = header ? 1 : 0; index < rows.length; index++) {
+    const phone = phoneNumber(rows[index][column], country);
+    if (!phone || seen.has(phone)) continue; seen.add(phone);
+    recipients.push({ phone, name: nameColumn == null ? '' : String(rows[index][nameColumn] ?? ''), vars: Object.fromEntries(variables.map(item => [item.key, String(rows[index][item.column] ?? '')])) });
+  }
+  return recipients;
+}
 
 // Bound the ZIP expansion before passing an XLSX archive to the parser.
 function checkXlsxArchive(buffer) {

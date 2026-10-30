@@ -3,22 +3,29 @@ const $ = id => document.getElementById(id);
 const el = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const labels = { queued: 'Na fila', paused: 'Pausado', completed: 'Concluído', cancelled: 'Cancelado', pending: 'Pendente', sending: 'Enviando', sent: 'Envio aceito', failed: 'Falhou', unknown: 'Sem confirmação' };
+const cards = new Map();
 let api, campaigns = [], lastHistory = '', refreshing = false, acting = false;
 function render() {
   const container = $('broadcast-history');
   const open = new Set([...container.querySelectorAll('details[open]')].map(item => item.dataset.campaign));
   const search = $('broadcast-search').value.trim().toLocaleLowerCase('pt-BR'), filter = $('broadcast-filter').value;
   const visible = campaigns.filter(item => (filter === 'all' || item.state === filter) && `${item.name || ''} ${item.text} ${item.template?.name || ''}`.toLocaleLowerCase('pt-BR').includes(search));
-  container.replaceChildren();
+  const visibleIds = new Set(visible.map(item => item.id));
+  [...container.children].forEach(child => { if (!visibleIds.has(child.dataset.campaignId)) child.remove(); });
+  for (const id of cards.keys()) if (!campaigns.some(item => item.id === id)) cards.delete(id);
+  const place = (node, index) => { if (container.children[index] !== node) container.insertBefore(node, container.children[index] || null); };
   if (!visible.length) {
     const empty = el('div', '', 'broadcast-empty');
     empty.append(el('h3', campaigns.length ? 'Nenhum disparo encontrado' : 'Sua primeira mensagem começa acima.'), el('p', campaigns.length ? 'Tente outro nome ou altere o filtro de situação.' : 'Prepare a lista e revise o envio. O progresso e os resultados aparecerão aqui.'));
     container.append(empty); return;
   }
-  for (const campaign of visible) {
+  for (const [index, campaign] of visible.entries()) {
+    const fingerprint = JSON.stringify(campaign), cached = cards.get(campaign.id);
+    if (cached?.fingerprint === fingerprint) { place(cached.node, index); continue; }
+    [...container.children].find(child => child.dataset.campaignId === campaign.id)?.remove();
     const count = state => campaign.counts[state] || 0;
     const processed = campaign.total - count('pending') - count('sending');
-    const item = el('article', '', 'broadcast-history-item');
+    const item = el('article', '', 'broadcast-history-item'); item.dataset.campaignId = campaign.id;
     const heading = el('div', '', 'broadcast-heading'), title = el('div', '');
     title.append(el('h3', campaign.name || (campaign.template ? `Template: ${campaign.template.name}` : 'Disparo de mensagem')), el('p', `${date(campaign.scheduled)} · ${campaign.total} destinatários`, 'hint'));
     const badge = el('span', labels[campaign.state], 'broadcast-badge'); badge.dataset.state = campaign.state; heading.append(title, badge); item.append(heading);
@@ -50,7 +57,7 @@ function render() {
       const retry = el('button', 'Reenviar somente falhas', 'secondary-button'); retry.type = 'button'; const requestId = crypto.randomUUID();
       retry.addEventListener('click', async () => { if (!confirm('Reenviar apenas os itens com falha? Resultados sem confirmação serão preservados para conferência individual.')) return; retry.disabled = true; try { await api('/api/broadcasts/retry-failed', { id: campaign.id, requestId }); await refreshBroadcastHistory(true); } catch (error) { $('broadcast-history-status').textContent = error.message; } finally { retry.disabled = false; } }); actions.append(retry);
     }
-    actions.append(exportButton); item.append(actions); container.append(item);
+    actions.append(exportButton); item.append(actions); cards.set(campaign.id, { node: item, fingerprint }); place(item, index);
   }
 }
 export async function refreshBroadcastHistory(force = false) {
@@ -60,7 +67,7 @@ export async function refreshBroadcastHistory(force = false) {
     const data = await api('/api/broadcasts');
     const signature = JSON.stringify(data.campaigns);
     if (lastHistory === signature && !force) return;
-    lastHistory = signature; campaigns = data.campaigns; render();
+    lastHistory = signature; campaigns = data.campaigns; if (force === true) cards.clear(); render();
     $('broadcast-history-status').textContent = `${campaigns.length} disparo(s) no histórico recente.`;
   } finally { refreshing = false; }
 }

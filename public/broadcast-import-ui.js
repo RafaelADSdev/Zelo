@@ -1,4 +1,4 @@
-import { readContactFile, inspectNumbers, phoneNumber } from '/broadcast-import.js';
+import { readContactFile, inspectNumbers, phoneNumber, importRecipients } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 export function downloadCsv(name, rows) {
@@ -73,12 +73,7 @@ export function initBroadcastImport({ changed }) {
     if (unique.size > 500) { $('broadcast-import-status').textContent = 'Somando à lista atual, são mais de 500 destinatários. Reduza a lista antes de adicionar.'; return; }
     const extras = [...$('broadcast-variable-columns').querySelectorAll('input:checked')];
     if (extras.length > 32) { $('broadcast-import-status').textContent = 'Selecione até 32 colunas para personalização.'; return; }
-    const recipients = [], seen = new Set(), rows = currentRows();
-    for (let index = $('broadcast-header').checked ? 1 : 0; index < rows.length; index++) {
-      const phone = phoneNumber(rows[index][Number($('broadcast-column').value)], $('broadcast-country').value);
-      if (!phone || seen.has(phone)) continue; seen.add(phone);
-      recipients.push({ phone, name: $('broadcast-name-column').value === '' ? '' : String(rows[index][Number($('broadcast-name-column').value)] ?? ''), vars: Object.fromEntries(extras.map(input => [input.dataset.key, String(rows[index][Number(input.value)] ?? '')])) });
-    }
+    const recipients = importRecipients(currentRows(), { column: Number($('broadcast-column').value), nameColumn: $('broadcast-name-column').value === '' ? null : Number($('broadcast-name-column').value), header: $('broadcast-header').checked, country: $('broadcast-country').value, variables: extras.map(input => ({ key: input.dataset.key, column: Number(input.value) })) });
     $('broadcast-phones').value = [...unique].join('\n'); changed({ recipients });
     $('broadcast-import-preview').hidden = true;
     $('broadcast-import-status').textContent = `${added} números adicionados. ${result.phones.length - added} já estavam na lista. ${result.invalid.length} linhas inválidas não foram importadas.`;

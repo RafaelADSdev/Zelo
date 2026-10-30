@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, inspectNumbers, phoneNumber, spreadsheetRows, readContactFile } from '../public/broadcast-import.js';
+import { parseCsv, inspectNumbers, phoneNumber, spreadsheetRows, readContactFile, importRecipients } from '../public/broadcast-import.js';
 
 test('CSV aceita BOM, separadores brasileiros, aspas, quebras de linha e arquivo sem cabeçalho', () => {
   assert.deepEqual(parseCsv('\uFEFFsep=;\r\nNome;Telefone\r\n"Ana; Silva";"+55 (11) 98888-7777"\r\n"Bia\nSouza";5511977776666'), [['Nome','Telefone'],['Ana; Silva','+55 (11) 98888-7777'],['Bia\nSouza','5511977776666']]);
@@ -8,6 +8,12 @@ test('CSV aceita BOM, separadores brasileiros, aspas, quebras de linha e arquivo
   assert.deepEqual(parseCsv('5511988887777\n5511977776666'), [['5511988887777'], ['5511977776666']]);
   assert.deepEqual(parseCsv('Nome\tCelular\nAna\t5511988887777'), [['Nome','Celular'],['Ana','5511988887777']]);
   assert.throws(() => parseCsv('Nome,telefone\n"não termina'), /aspas/);
+});
+test('mapeamento importa nome e somente as variáveis selecionadas, preservando o primeiro contato único', () => {
+  const rows = parseCsv('Nome;Telefone;Cidade;Não importar\nAna;5511988887777;São Paulo;Privado\nOutra;5511988887777;Rio;Privado\nBia;5511977776666;Recife;Privado');
+  const result = importRecipients(rows, { column: 1, nameColumn: 0, header: true, variables: [{ key: 'cidade', column: 2 }] });
+  assert.equal(result.length, 2); assert.equal(result[0].name, 'Ana'); assert.deepEqual(result[0].vars, { cidade: 'São Paulo' });
+  assert.equal(JSON.stringify(result).includes('Privado'), false);
 });
 test('importação separa inválidos, vazios e duplicados, usa só a coluna escolhida e preserva DDI', () => {
   const data = [['ID','WhatsApp'], ['1000','(11) 98888-7777'], ['1001','5511988887777'], ['1002','abc'], ['1003', null], ['1004', 5521977776666]];

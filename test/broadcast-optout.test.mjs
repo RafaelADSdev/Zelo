@@ -35,7 +35,7 @@ for (const mode of ['qr', 'cloud']) test(`descadastro ${mode}: persiste, confirm
   try {
     if (mode === 'qr') { await service.connect(); socket.ev.emit('connection.update', { connection: 'open' }); await service.idle(); }
     const receive = async () => {
-      if (mode === 'qr') { socket.ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { id: 'optout-message', remoteJid: `${phone}@s.whatsapp.net` }, message: { conversation: 'Não quero receber' }, messageTimestamp: Math.floor(Date.now() / 1000) }] }); await service.idle(); }
+      if (mode === 'qr') { socket.ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { id: 'optout-message', remoteJid: '123456789012345@lid', remoteJidAlt: `${phone}@s.whatsapp.net` }, message: { conversation: 'Não quero receber' }, messageTimestamp: Math.floor(Date.now() / 1000) - 120 }] }); await service.idle(); }
       else { const raw = Buffer.from(JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: { metadata: { phone_number_id: config.phoneNumberId }, messages: [{ id: 'optout-message', from: phone, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: 'SAIR' } }] } }] }] })); await service.accept(raw, 'sha256=' + createHmac('sha256', config.appSecret).update(raw).digest('hex')); await service.idle(); }
     };
     await receive(); await receive();
