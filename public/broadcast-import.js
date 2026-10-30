@@ -9,6 +9,46 @@ export function phoneNumber(value, country = '') {
   if (country === '55' && [10, 11].includes(phone.length) && !value.trim().startsWith('+')) phone = '55' + phone;
   return /^[1-9]\d{6,14}$/.test(phone) ? phone : null;
 }
+export function formatPhone(value, country = '55') {
+  const phone = phoneNumber(value, country), original = String(value ?? '');
+  if (!phone) return original;
+  if (phone.startsWith('55') && [12, 13].includes(phone.length)) return `+55 ${phone.slice(2, 4)} ${phone.slice(4, -4)}-${phone.slice(-4)}`;
+  return original.trim().startsWith('+') || phone.length > 11 ? '+' + phone : original;
+}
+export function formatPhoneList(value, country = '55') {
+  return value.split(/[\n;,]/).map(line => formatPhone(line.trim(), country)).join('\n');
+}
+export function bindPhoneFormatting(control, { multiple = false } = {}) {
+  control.placeholder = multiple ? '+55 81 8593-2808\n+55 11 99999-9999' : '+55 81 8593-2808';
+  if (!multiple) { control.inputMode = 'tel'; control.autocomplete = 'tel'; }
+  function format() {
+    const original = control.value, next = multiple ? formatPhoneList(original) : formatPhone(original);
+    if (original === next) return;
+    const atEnd = control.selectionStart === original.length && control.selectionEnd === original.length;
+    const start = control.selectionStart, end = control.selectionEnd;
+    control.value = next;
+    // Full international numbers keep every digit; preserve edits in the middle.
+    const caret = index => {
+      const digits = original.slice(0, index).replace(/\D/g, '').length;
+      if (!digits) return 0;
+      let seen = 0;
+      for (let i = 0; i < next.length; i++) if (/\d/.test(next[i]) && ++seen === digits) return i + 1;
+      return next.length;
+    };
+    if (atEnd) control.setSelectionRange(next.length, next.length);
+    else control.setSelectionRange(caret(start), caret(end));
+    control.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  control.addEventListener('blur', format);
+  control.addEventListener('change', format);
+  control.addEventListener('input', event => {
+    if (event.isComposing) return;
+    // Do not add a country code mid-typing: the user may still be entering 55.
+    const fullBrazilian = /^55\d{10,11}$/.test(control.value.replace(/[+\s().-]/g, ''));
+    if (['insertFromPaste', 'insertFromDrop'].includes(event.inputType) || fullBrazilian) format();
+  });
+  return format;
+}
 export function spreadsheetRows(rows) {
   if (!Array.isArray(rows) || rows.length > 5001) throw new Error('Use uma planilha com até 5.000 linhas de dados. Divida o arquivo em listas menores.');
   if (rows.some(row => !Array.isArray(row) || row.length > 60)) throw new Error('Use uma planilha com até 60 colunas.');

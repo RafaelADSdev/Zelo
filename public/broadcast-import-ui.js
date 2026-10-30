@@ -1,4 +1,4 @@
-import { readContactFile, inspectNumbers, phoneNumber, importRecipients } from '/broadcast-import.js';
+import { readContactFile, inspectNumbers, phoneNumber, importRecipients, formatPhone } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 export function downloadCsv(name, rows) {
@@ -14,7 +14,7 @@ export function initBroadcastImport({ changed }) {
     $('broadcast-import-summary').textContent = `${result.phones.length} válidos · ${result.duplicates} duplicados · ${result.invalid.length} inválidos · ${result.empty} vazios`;
     const rows = $('broadcast-import-rows'); rows.replaceChildren();
     if (result.phones.length) {
-      const list = el('ul', ''); result.phones.slice(0, 8).forEach(phone => list.append(el('li', `+${phone}`))); rows.append(list);
+      const list = el('ul', ''); result.phones.slice(0, 8).forEach(phone => list.append(el('li', formatPhone(phone, '')))); rows.append(list);
     } else rows.append(el('p', 'Nenhum número válido nesta coluna. Escolha a coluna dos telefones.'));
     if (result.invalid.length) rows.append(el('p', `Revise as linhas ${result.invalid.slice(0, 6).map(item => item.row).join(', ')}${result.invalid.length > 6 ? '…' : ''}. Baixe as linhas inválidas para corrigir a lista.`));
     $('broadcast-import-apply').disabled = result.phones.length === 0 || result.phones.length > 500;

@@ -4,6 +4,7 @@ import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
 import { audioStatus, audioPreview, canRetryJob } from "/audio-status.js";
+import { bindPhoneFormatting, phoneNumber } from "/broadcast-import.js";
 let refreshBroadcasts = async () => {};
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -256,11 +257,12 @@ $("#approved-template").addEventListener("change", () => {
   $("#template-name").value = template.name; $("#template-language").value = template.language;
   $("#template-preview").textContent = template.components?.map(component => component.text || component.type).join("\n") || "";
 });
+bindPhoneFormatting($("#wa-to"));
 $("#wa-send-form").addEventListener("submit", async event => {
   event.preventDefault(); if (waBusy) return;
   let input;
   try {
-    input = { phone: $("#wa-to").value.trim() };
+    input = { phone: phoneNumber($("#wa-to").value, '55') || $("#wa-to").value.trim() };
     if ($("#wa-kind").value === "template") {
       let components = [];
       if ($("#template-components").value.trim()) components = JSON.parse($("#template-components").value);

@@ -16,13 +16,15 @@ O servidor resolve `productId` no catálogo, rejeita produtos inexistentes ou ar
 
 ## Verificação de números no QR Code
 
+Os campos de destinatário em Disparos e Conversas formatam números completos com DDI, DDD e hífen. Ao colar ou sair do campo, `8185932808` vira `+55 81 8593-2808`; números brasileiros já com DDI são formatados durante a digitação. Não se adiciona nem se remove o nono dígito por aparência. Listas importadas, revisão e resultados da consulta usam a mesma apresentação, preservando nomes, variáveis, números internacionais com `+` e identificadores recebidos do WhatsApp. O envio continua usando apenas dígitos ou o identificador do contato; a consulta do cadastro segue separada da máscara visual.
+
 Em **Contatos**, **Verificar números no WhatsApp** consulta a lista em lotes de até cinco pela rota autenticada `POST /api/whatsapp/check-numbers`. Mostra encontrados, não encontrados e consultas sem resposta separadamente, sem enviar mensagens ou criar conversas. A remoção de números não encontrados depende de clique. Se a lista mudar durante a consulta, o resultado é descartado. A consulta exige uma conexão QR ativa; não é uma checagem da Cloud API.
 
 Cada envio QR também consulta `onWhatsApp` antes de iniciar a saída. O destinatário retornado deve corresponder ao telefone informado, considerando o formato brasileiro com ou sem nono dígito; se ambos estiverem registrados, o formato exato tem prioridade. Contatos recebidos por LID continuam usando seu identificador. Número inexistente ou consulta indisponível impedem o envio, sem registrar uma conversa de sucesso. Supressão, bloqueio e conta original são conferidos novamente após a consulta.
 
 O identificador da mensagem é persistido antes da transmissão, preservando confirmações de entrega que cheguem durante o envio. Recusas explícitas atualizam a saída para falha. Encontrar um número não confirma a entrega. Na investigação de 30/10/2026, uma consulta real confirmou dois destinatários no formato sem nono dígito; as mensagens anteriores foram preservadas e não foram reenviadas. Os testes de envio usam transportes controlados.
 
-Validação atual: **113 testes passando**. No navegador, foram conferidos vínculo opcional, catálogo vazio, produto arquivado, limites do texto, templates, resumo, revisão, histórico, busca, duplicação, verificação de números, remoção de ausentes, preservação do rascunho e larguras de 320 a 1440 px.
+Validação atual: **115 testes passando**. No navegador, foram conferidos formatação ao digitar/colar/sair do campo, envio manual com destinatário normalizado, vínculo opcional, catálogo vazio, produto arquivado, limites do texto, templates, resumo, revisão, histórico, busca, duplicação, verificação de números, remoção de ausentes, preservação do rascunho e larguras de 320 a 1440 px.
 
 ## Preparar e revisar
 

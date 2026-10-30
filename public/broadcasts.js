@@ -5,7 +5,7 @@ import { initTemplateMap } from '/broadcast-template-map.js';
 import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
 import { initBroadcastHistory, refreshBroadcastHistory } from '/broadcast-history.js';
-import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
+import { inspectNumbers, phoneNumber, bindPhoneFormatting, formatPhoneList, formatPhone } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
@@ -20,10 +20,11 @@ async function run(button, action, status = 'broadcast-status') {
 }
 const recipientLines = () => $('broadcast-phones').value.split(/[\n;,]+/).map(line => line.trim()).filter(Boolean);
 function updateRecipients(imported) {
+  if (imported?.type !== 'input') $('broadcast-phones').value = formatPhoneList($('broadcast-phones').value, '');
   imported?.recipients?.forEach(item => metadata.set(item.phone, item));
   if (templateMap && $('broadcast-template').value !== '') templateMap.render(templates[Number($('broadcast-template').value)]);
   const result = inspectNumbers(recipientLines().map(value => [value]));
-  $('broadcast-list-summary').textContent = recipientLines().length ? `${result.phones.length} contatos válidos · ${result.duplicates} duplicados · ${result.invalid.length} inválidos${result.phones.length > 500 ? ' · Limite de 500 excedido' : ''}` : 'Adicione os contatos para começar.';
+  $('broadcast-list-summary').textContent = recipientLines().length ? `${result.phones.length} contato${result.phones.length === 1 ? ' válido' : 's válidos'}${result.duplicates ? ` · ${result.duplicates} duplicados` : ''}${result.invalid.length ? ` · ${result.invalid.length} inválidos` : ''}${result.phones.length > 500 ? ' · Limite de 500 excedido' : ''}` : 'Adicione os contatos para começar.';
   $('broadcast-clean').disabled = recipientLines().length === 0;
   $('broadcast-contacts').querySelectorAll('input').forEach(input => { input.checked = result.phones.includes(input.value); });
 }
@@ -52,7 +53,7 @@ function renderReview() {
   $('broadcast-confirm').disabled = !review.ready;
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
   $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
-  $('broadcast-review-phones').textContent = review.recipients.map(item => '+' + item.phone).join(' · ');
+  $('broadcast-review-phones').textContent = review.recipients.map(item => formatPhone(item.phone, '')).join(' · ');
   $('broadcast-review-message').textContent = reviewMessage();
   $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ') || (!review.recipients.length ? 'Nenhum destinatário disponível. Confira a lista de supressão e a seleção da janela.' : '');
   const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
@@ -66,6 +67,7 @@ export function initBroadcasts(options) {
   product = initBroadcastProduct({ api });
   initBroadcastNumberCheck({ api });
   composer = initBroadcastLayout({ refreshHistory: refreshBroadcasts });
+  bindPhoneFormatting($('broadcast-phones'), { multiple: true });
   $('broadcast-phones').addEventListener('input', updateRecipients);
   $('broadcast-clean').addEventListener('click', cleanRecipients);
   $('broadcast-text').addEventListener('input', updateMessage);

@@ -1,4 +1,4 @@
-import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
+import { inspectNumbers, phoneNumber, formatPhone } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 export function initBroadcastNumberCheck({ api }) {
   const area = document.createElement('div'); area.className = 'broadcast-number-check';
@@ -20,11 +20,11 @@ export function initBroadcastNumberCheck({ api }) {
       }
       const list = details.querySelector('ul'); list.replaceChildren();
       for (const item of results) {
-        const row = document.createElement('li'); row.textContent = `+${item.phone} · ${item.exists === true ? 'Encontrado' + (item.whatsappPhone !== item.phone ? ` · WhatsApp usa +${item.whatsappPhone}` : '') : item.exists === false ? 'Não encontrado no WhatsApp' : 'Consulta indisponível: ' + item.error}`; list.append(row);
+        const row = document.createElement('li'); row.textContent = `${formatPhone(item.phone, '')} · ${item.exists === true ? 'Encontrado' + (item.whatsappPhone !== item.phone ? ` · WhatsApp usa ${formatPhone(item.whatsappPhone, '')}` : '') : item.exists === false ? 'Não encontrado no WhatsApp' : 'Consulta indisponível: ' + item.error}`; list.append(row);
       }
       const found = results.filter(item => item.exists === true).length, missing = results.filter(item => item.exists === false).length;
       status.textContent = `${found} encontrados · ${missing} não encontrados · ${results.length - found - missing} sem resposta. O envio usa o número confirmado pelo WhatsApp.`;
-      checkedSource = source; remove.hidden = !missing; details.hidden = false; details.open = missing > 0 || results.length <= 5;
+      checkedSource = source; remove.hidden = !missing; details.hidden = false; details.open = missing > 0;
     } catch (error) { status.textContent = error.message; }
     finally { button.disabled = false; }
   });

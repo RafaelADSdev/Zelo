@@ -1,6 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, inspectNumbers, phoneNumber, spreadsheetRows, readContactFile, importRecipients } from '../public/broadcast-import.js';
+import { parseCsv, inspectNumbers, phoneNumber, formatPhone, formatPhoneList, spreadsheetRows, readContactFile, importRecipients } from '../public/broadcast-import.js';
+
+test('formatação exibe DDI, DDD e hífen sem acrescentar ou retirar o nono dígito', () => {
+  for (const value of ['8185932808', '(81) 8593-2808', '558185932808', '+55 81 8593-2808']) assert.equal(formatPhone(value), '+55 81 8593-2808');
+  assert.equal(formatPhone('81985932808'), '+55 81 98593-2808');
+  assert.equal(formatPhone('5581985932808'), '+55 81 98593-2808');
+  assert.equal(phoneNumber(formatPhone('81985932808')), '5581985932808');
+  assert.equal(formatPhone('+1 202 555 0123'), '+12025550123');
+  for (const value of ['', '81', '5581', 'inválido', '1.23e12', '279623946485862@lid', '558185932808@s.whatsapp.net']) assert.equal(formatPhone(value), value);
+});
+
+test('listas formatadas continuam válidas para envio, importação e deduplicação sem perder linhas inválidas', () => {
+  const list = formatPhoneList('8185932808; +1 202 555 0123\n558185932808\ninválido');
+  assert.equal(list, '+55 81 8593-2808\n+12025550123\n+55 81 8593-2808\ninválido');
+  const checked = inspectNumbers(list.split('\n').map(phone => [phone]));
+  assert.deepEqual(checked.phones, ['558185932808', '12025550123']); assert.equal(checked.duplicates, 1); assert.equal(checked.invalid[0].value, 'inválido');
+  assert.equal(formatPhoneList('8185932808', ''), '8185932808');
+});
 
 test('CSV aceita BOM, separadores brasileiros, aspas, quebras de linha e arquivo sem cabeçalho', () => {
   assert.deepEqual(parseCsv('\uFEFFsep=;\r\nNome;Telefone\r\n"Ana; Silva";"+55 (11) 98888-7777"\r\n"Bia\nSouza";5511977776666'), [['Nome','Telefone'],['Ana; Silva','+55 (11) 98888-7777'],['Bia\nSouza','5511977776666']]);
