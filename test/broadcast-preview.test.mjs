@@ -23,3 +23,18 @@ test('preview normaliza BR, classifica 24h e cria somente dentro da janela com e
     assert.equal(normalizeBroadcastPhone('+1 202 555 0123'), '12025550123');
   } finally { db.close(); }
 });
+test('personalização valida todos os contatos, usa fallback e resolve componentes por destinatário', async () => {
+  const db = createClient({ url: ':memory:' }); const sent = []; let now = Date.parse('2026-10-30T15:00:00Z');
+  try {
+    const service = await createBroadcasts({ db, connection: () => 'qr:a', clock: () => now, send: async input => { sent.push(input); return {}; } });
+    const input = { requestId: randomUUID(), consent: true, recipients: [{ phone: '5511988887777', name: 'Ana', vars: { cidade: 'São Paulo' } }, { phone: '5511977776666', vars: { cidade: 'Rio' } }], text: 'Olá {nome|cliente} de {cidade}.' };
+    const preview = await service.preview(input); assert.equal(preview.errors.length, 0); assert.equal(preview.recipients[0].preview.text, 'Olá Ana de São Paulo.');
+    await service.create(input); await service.tick(); now += 30000; await service.tick();
+    assert.deepEqual(sent.map(item => item.text), ['Olá Ana de São Paulo.', 'Olá cliente de Rio.']);
+    const bad = { ...input, requestId: randomUUID(), text: '{nome}' };
+    assert.equal((await service.preview(bad)).ready, false); await assert.rejects(service.create(bad), /variável/);
+    const cloud = await createBroadcasts({ db, connection: () => 'cloud:123', clock: () => now, send: async input => { sent.push(input); return {}; } });
+    await cloud.create({ ...input, requestId: randomUUID(), template: { name: 'saudacao', language: { code: 'pt_BR' }, components: [{ type: 'body', parameters: [{ type: 'text', text: '{nome|cliente}' }] }] } });
+    await cloud.tick(); assert.equal(sent.at(-1).template.components[0].parameters[0].text, 'Ana');
+  } finally { db.close(); }
+});

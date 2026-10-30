@@ -1,3 +1,4 @@
+import { initTemplateMap } from '/broadcast-template-map.js';
 import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
 import { initBroadcastHistory, refreshBroadcastHistory } from '/broadcast-history.js';
@@ -5,7 +6,8 @@ import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
-let api, templates = [], draft, signature, requestId, contacts = [], review;
+let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap;
+const metadata = new Map();
 
 export const refreshBroadcasts = refreshBroadcastHistory;
 async function run(button, action, status = 'broadcast-status') {
@@ -14,7 +16,9 @@ async function run(button, action, status = 'broadcast-status') {
   finally { button.disabled = false; }
 }
 const recipientLines = () => $('broadcast-phones').value.split(/[\n;,]+/).map(line => line.trim()).filter(Boolean);
-function updateRecipients() {
+function updateRecipients(imported) {
+  imported?.recipients?.forEach(item => metadata.set(item.phone, item));
+  if (templateMap && $('broadcast-template').value !== '') templateMap.render(templates[Number($('broadcast-template').value)]);
   const result = inspectNumbers(recipientLines().map(value => [value]));
   $('broadcast-list-summary').textContent = recipientLines().length ? `${result.phones.length} contatos válidos · ${result.duplicates} duplicados · ${result.invalid.length} inválidos${result.phones.length > 500 ? ' · Limite de 500 excedido' : ''}` : 'Adicione os contatos para começar.';
   $('broadcast-clean').disabled = recipientLines().length === 0;
@@ -35,12 +39,13 @@ function renderReview() {
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
   $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
   $('broadcast-review-phones').textContent = review.recipients.map(item => '+' + item.phone).join(' · ');
-  $('broadcast-review-exclusions').textContent = review.invalid.map(item => `Linha ${item.row}: ${item.reason}`).join(' ');
+  $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ');
   const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
   $('broadcast-review-estimate').textContent = `Duração estimada pelo ritmo: ${Math.max(1, Math.ceil(minutes))} min, sem contar esperas de janela, limite diário ou conexão. ${draft.scheduledAt ? 'Agendado para ' + date(Date.parse(draft.scheduledAt)) : 'Envio após confirmação'}.`;
   $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas.`;
 }
 export function initBroadcasts(options) {
+  templateMap = initTemplateMap({ variables: () => [...new Set([...metadata.values()].flatMap(item => Object.keys(item.vars || {})))] });
   api = options.api; initSuppression({ api });
   initBroadcastImport({ changed: updateRecipients }); initBroadcastHistory({ api });
   $('broadcast-phones').addEventListener('input', updateRecipients);
@@ -82,7 +87,7 @@ export function initBroadcasts(options) {
     $('broadcast-template').replaceChildren(new Option('Selecione um template', ''));
     templates.forEach((template, i) => $('broadcast-template').append(new Option(`${template.name} · ${template.language}`, String(i))));
   }));
-  $('broadcast-template').addEventListener('change', () => { $('broadcast-template-preview').textContent = $('broadcast-template').value === '' ? '' : templates[Number($('broadcast-template').value)]?.components?.map(item => item.text || item.type).join('\n') || ''; });
+  $('broadcast-template').addEventListener('change', () => { templateMap.render(templates[Number($('broadcast-template').value)]); $('broadcast-template-preview').textContent = $('broadcast-template').value === '' ? '' : templates[Number($('broadcast-template').value)]?.components?.map(item => item.text || item.type).join('\n') || ''; });
   $('broadcast-form').addEventListener('submit', event => {
     event.preventDefault();
     run($('broadcast-submit'), async () => {
@@ -90,6 +95,7 @@ export function initBroadcasts(options) {
       if (!lines.length || lines.length > 500 || lines.some(line => !/^\+?[\d\s().-]+$/.test(line) || !/^[1-9]\d{6,14}$/.test(line.replace(/\D/g, '')))) throw new Error('Informe de 1 a 500 números válidos, com DDI e DDD.');
       const phones = [...new Set(lines.map(line => line.replace(/\D/g, '')))];
       draft = { intervalMs: Number($('broadcast-interval').value) * 1000, jitterMs: Number($('broadcast-jitter').value) * 1000, perMinute: Number($('broadcast-minute').value), dailyCap: Number($('broadcast-daily').value), timezone: $('broadcast-zone').value, windowStart: $('broadcast-start').value, windowEnd: $('broadcast-end').value, days: [...$('broadcast-days').querySelectorAll('input:checked')].map(input => Number(input.value)), name: $('broadcast-name').value.trim(), phones: phones.join('\n'), text: $('broadcast-text').value.trim() };
+      draft.recipients = phones.map(phone => metadata.get(phone) || { phone });
       if ($('broadcast-kind').value === 'template') {
         if ($('broadcast-template').value === '') throw new Error('Selecione um template aprovado.');
         const template = templates[Number($('broadcast-template').value)];
@@ -100,6 +106,7 @@ export function initBroadcasts(options) {
         } else if ($('broadcast-params').value.trim()) components = [{ type: 'body', parameters: $('broadcast-params').value.split('\n').filter(line => line.trim()).map(line => {
           const match = line.match(/^([a-zA-Z_][\w]*)=(.*)$/); return match ? { type: 'text', parameter_name: match[1], text: match[2] } : { type: 'text', text: line };
         }) }];
+        else components = templateMap.components();
         draft.template = { name: template.name, language: { code: template.language }, components }; delete draft.text;
       }
       if ($('broadcast-when').value === 'later') {
@@ -117,7 +124,7 @@ export function initBroadcasts(options) {
 
       $('broadcast-review-status').textContent = ''; $('broadcast-consent').checked = false;
       $('broadcast-review-summary').dataset.legacy = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
-      $('broadcast-review-message').textContent = draft.template ? `Template: ${draft.template.name}\n${$('broadcast-template-preview').textContent}\n${$('broadcast-params').value}` : draft.text;
+      $('broadcast-review-message').textContent = review.recipients[0]?.preview?.text || (draft.template ? `Template: ${draft.template.name}\n${$('broadcast-template-preview').textContent}\n${$('broadcast-params').value}` : draft.text);
       $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; $('broadcast-confirm').focus();
     });
   });

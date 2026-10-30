@@ -25,10 +25,17 @@ export function initBroadcastImport({ changed }) {
   function columns() {
     const rows = currentRows(), width = Math.max(0, ...rows.map(row => row.length));
     const header = $('broadcast-header').checked, select = $('broadcast-column'); select.replaceChildren();
+    $('broadcast-name-column').replaceChildren(new Option('Não importar nome', '')); $('broadcast-variable-columns').replaceChildren(); const keys = new Set();
     let suggested = 0, best = -1;
     for (let i = 0; i < width; i++) {
       const label = header ? String(rows[0]?.[i] ?? '').slice(0, 70) : '';
       select.append(new Option(`${String.fromCharCode(65 + Math.floor(i / 26) - 1).replace('@', '')}${String.fromCharCode(65 + i % 26)}${label ? ` · ${label}` : ''}`, String(i)));
+      $('broadcast-name-column').append(new Option(`${i + 1} · ${label || 'Coluna'}`, String(i)));
+      if (/^(nome|name|cliente)$/i.test(label.trim())) $('broadcast-name-column').value = String(i);
+      let key = (label || 'coluna_' + (i + 1)).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').slice(0, 32);
+      if (!/^[a-z]/.test(key) || ['nome','constructor','prototype','__proto__'].includes(key)) key = 'coluna_' + (i + 1);
+      if (keys.has(key)) key += '_' + i; keys.add(key);
+      const wrap = el('label', `{${key}}`), check = document.createElement('input'); check.type = 'checkbox'; check.value = String(i); check.dataset.key = key; check.checked = false; check.addEventListener('change', preview); wrap.prepend(check); $('broadcast-variable-columns').append(wrap);
       const score = /telefone|celular|whats|phone|numero|número/i.test(label) ? 10000 : rows.slice(header ? 1 : 0, 51).filter(row => phoneNumber(row[i])).length;
       if (score > best) { best = score; suggested = i; }
     }
@@ -56,6 +63,7 @@ export function initBroadcastImport({ changed }) {
   $('broadcast-header').addEventListener('change', columns);
   $('broadcast-column').addEventListener('change', preview);
   $('broadcast-country').addEventListener('change', preview);
+  $('broadcast-name-column').addEventListener('change', preview);
   $('broadcast-import-close').addEventListener('click', () => { $('broadcast-import-preview').hidden = true; $('broadcast-import-status').textContent = 'Prévia fechada. A lista atual foi mantida.'; $('broadcast-file').focus(); });
   $('broadcast-import-apply').addEventListener('click', () => {
     if (!result || !result.phones.length || result.phones.length > 500) return;
@@ -63,7 +71,15 @@ export function initBroadcastImport({ changed }) {
     const unique = new Set(existing.map(line => phoneNumber(line) || line)); let added = 0;
     result.phones.forEach(phone => { if (!unique.has(phone)) { unique.add(phone); added++; } });
     if (unique.size > 500) { $('broadcast-import-status').textContent = 'Somando à lista atual, são mais de 500 destinatários. Reduza a lista antes de adicionar.'; return; }
-    $('broadcast-phones').value = [...unique].join('\n'); changed();
+    const extras = [...$('broadcast-variable-columns').querySelectorAll('input:checked')];
+    if (extras.length > 32) { $('broadcast-import-status').textContent = 'Selecione até 32 colunas para personalização.'; return; }
+    const recipients = [], seen = new Set(), rows = currentRows();
+    for (let index = $('broadcast-header').checked ? 1 : 0; index < rows.length; index++) {
+      const phone = phoneNumber(rows[index][Number($('broadcast-column').value)], $('broadcast-country').value);
+      if (!phone || seen.has(phone)) continue; seen.add(phone);
+      recipients.push({ phone, name: $('broadcast-name-column').value === '' ? '' : String(rows[index][Number($('broadcast-name-column').value)] ?? ''), vars: Object.fromEntries(extras.map(input => [input.dataset.key, String(rows[index][Number(input.value)] ?? '')])) });
+    }
+    $('broadcast-phones').value = [...unique].join('\n'); changed({ recipients });
     $('broadcast-import-preview').hidden = true;
     $('broadcast-import-status').textContent = `${added} números adicionados. ${result.phones.length - added} já estavam na lista. ${result.invalid.length} linhas inválidas não foram importadas.`;
     $('broadcast-phones').focus();
