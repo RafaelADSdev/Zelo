@@ -15,5 +15,36 @@
 }
 
 @media(max-width:380px){#view-settings .settings-tabs button{white-space:normal;min-width:0;padding:9px 4px;font-size:10px;line-height:1.4}#view-settings .settings-tabs{overflow:visible}}
+.mobile-qr-help{display:none}
+@media(max-width:800px){
+  #view-settings :is(.settings-explanation,.connection-management,.ai-key-error)>summary{display:flex;align-items:center;min-height:44px;padding:10px 0;line-height:1.6}
+  #view-settings :is(.settings-explanation,.connection-management,.ai-key-error)>summary:before{content:"";width:7px;height:7px;margin-right:10px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);flex:none}
+  #view-settings :is(.settings-explanation,.connection-management,.ai-key-error)[open]>summary:before{transform:rotate(45deg)}
+  #view-settings .inline-switch{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+  #view-settings .inline-switch input{inset:0;width:44px;height:44px;min-height:44px}
+  #view-settings .inline-switch span{position:relative;width:42px;flex:none}
+  #view-settings .ai-key-editor,#view-settings [role=tabpanel]{min-width:0}
+  #view-settings .settings-explanation p,#view-settings .field-caption,#view-settings .privacy-field-note{overflow-wrap:anywhere}
+  #view-settings .mobile-qr-help{display:block;font-size:12px;line-height:1.7;color:var(--muted);margin:12px 0 0}
+  #view-settings .qr-layout:has(.qr-frame[data-state=connected]) .mobile-qr-help{display:none}
+}
+@media(max-width:580px){
+  #view-settings .ai-purpose-tabs button{gap:4px}
+  #view-settings .ai-purpose-tabs span{display:none}
+  #view-settings .ai-purpose-tabs button{min-height:48px;padding:12px 6px}
+  #view-settings .ai-list-heading{flex-wrap:wrap;row-gap:4px}
+  #view-settings .ai-action-menu{max-width:calc(100vw - 64px);top:48px}
+  #view-settings .ai-action-menu button{min-height:44px;font-size:13px}
+  #view-settings .qr-layout{gap:20px;padding-bottom:20px}
+  #view-settings .qr-frame:has(#qr-image[hidden]){width:100%;min-height:0;padding:16px}
+  #view-settings .qr-frame:has(#qr-image[hidden]) #qr-placeholder{display:grid;grid-template-columns:32px minmax(0,1fr);gap:4px 12px;width:100%;text-align:left;padding:0}
+  #view-settings .qr-frame:has(#qr-image[hidden]) #qr-placeholder svg{grid-column:1;grid-row:1 / span 2;width:32px;height:32px}
+  #view-settings .qr-frame:has(#qr-image[hidden]) #qr-placeholder :is(strong,span){grid-column:2;max-width:none}
+  #view-settings .qr-frame:has(#qr-image:not([hidden])){width:min(100%,280px);padding:16px;background:white}
+  #view-settings #qr-connect{min-height:48px}
+  #view-settings :is(.integration-card,.ai-key-editor,.assistant-card) .button-row{align-items:stretch;flex-direction:column}
+  #view-settings :is(.integration-card,.ai-key-editor,.assistant-card) .button-row button{width:100%}
+  #view-settings .settings-save-bar{padding-bottom:env(safe-area-inset-bottom)}
+}
 @media(max-width:640px){.login-shell .identity{padding-top:max(22px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}.login-shell .access{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right));padding-bottom:max(38px,env(safe-area-inset-bottom))}}
 @media(min-width:641px) and (max-width:900px){.login-shell .identity{padding-top:max(38px,env(safe-area-inset-top));padding-bottom:max(38px,env(safe-area-inset-bottom));padding-left:max(32px,env(safe-area-inset-left));padding-right:max(32px,env(safe-area-inset-right))}.login-shell .access{padding-top:max(48px,env(safe-area-inset-top));padding-bottom:max(48px,env(safe-area-inset-bottom));padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}}

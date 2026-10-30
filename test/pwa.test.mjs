@@ -8,7 +8,7 @@ import { allowedPath } from '../deployment/routes.mjs';
 const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
 function worker() {
   const listeners = new Map(), stores = new Map(), writes = [], removed = [];
-  let offline = false, responseStatus = 200, claimed = false;
+  let offline = false, responseStatus = 200, claimed = false, skipped = false;
   const fetch = async request => { if (offline) throw new Error('offline'); const path = new URL(typeof request === 'string' ? request : request.url, 'https://zelo.test').pathname; return new Response(path === '/offline' ? 'PUBLIC OFFLINE PAGE' : 'RESPONSE '+path, { status: responseStatus }); };
   const caches = {
     async open(name) { if (!stores.has(name)) stores.set(name,new Map()); const data = stores.get(name); return {
@@ -18,9 +18,11 @@ function worker() {
     }; },
     async keys() { return [...stores.keys()]; }, async delete(name) { removed.push(name); return stores.delete(name); },
   };
-  runInNewContext(source, { self: { location: { origin: 'https://zelo.test' }, clients: { claim: async () => { claimed = true; } }, addEventListener: (name,callback) => listeners.set(name,callback) }, caches, fetch, URL, Response,
+  runInNewContext(source, { self: { skipWaiting: async () => { skipped = true; }, location: { origin: 'https://zelo.test' }, clients: { claim: async () => { claimed = true; } }, addEventListener: (name,callback) => listeners.set(name,callback) }, caches, fetch, URL, Response,
     Request: class extends Request { constructor(path, options) { super(new URL(path,'https://zelo.test'), options); } } });
   return { writes, stores, removed, offline: value => { offline = value; }, status: value => { responseStatus = value; }, claimed: () => claimed,
+    skipped: () => skipped,
+    async message(data) { let work; listeners.get('message')({ data, waitUntil: promise => { work = promise; } }); await work; },
     async lifecycle(name) { let work; listeners.get(name)({ waitUntil: promise => { work = promise; } }); await work; },
     async request(path, options = {}) { let result; listeners.get('fetch')({ request: { url: new URL(path,'https://zelo.test').href, method: 'GET', mode: 'cors', headers: new Headers(), ...options }, respondWith: promise => { result = promise; } }); return result; },
   };
@@ -54,14 +56,15 @@ test('PWA manifest has correct PNG sizes, maskable icon and exact public routes'
 });
 
 const clientSource = await readFile(new URL('../public/pwa.js',import.meta.url),'utf8');
-function client(ios = false) {
+function client(ios = false, registration = { addEventListener() {}, async update() {} }) {
   const listeners = new Map(), nodes = [], registrations = [];
+  const serviceListeners = new Map(), documentListeners = new Map(); let reloads = 0;
   const media = { matches: false, addEventListener() {} };
-  const document = { createElement(tag) { const node = { tag, hidden: false, children: [], append(...children) { this.children.push(...children); }, setAttribute() {} }; nodes.push(node); return node; }, querySelector: () => ({ append() {} }) };
+  const document = { visibilityState: 'visible', addEventListener: (name, callback) => documentListeners.set(name,callback), createElement(tag) { const node = { tag, hidden: false, children: [], append(...children) { this.children.push(...children); }, setAttribute() {} }; nodes.push(node); return node; }, querySelector: () => ({ append() {} }) };
   const navigator = { userAgent: ios ? 'iPhone' : 'Desktop', platform: ios ? 'iPhone' : 'Win32', maxTouchPoints: 0, onLine: true,
-    serviceWorker: { register: async (...args) => { registrations.push(args); } } };
-  runInNewContext(clientSource,{ document,navigator,matchMedia: () => media,window: { isSecureContext: true,addEventListener: (name,callback) => listeners.set(name,callback) } });
-  return { listeners, registrations, container:nodes[0], button:nodes[1], status:nodes[2], help:nodes[3] };
+    serviceWorker: { controller: {}, addEventListener: (name,callback) => serviceListeners.set(name,callback), register: async (...args) => { registrations.push(args); return registration; } } };
+  runInNewContext(clientSource,{ document,navigator,matchMedia: () => media,window: { location: { reload() { reloads++; } }, isSecureContext: true,addEventListener(name,callback) { const previous = listeners.get(name); listeners.set(name, (...args) => { previous?.(...args); callback(...args); }); } } });
+  return { listeners, registrations, serviceListeners, documentListeners, document, navigator, reloads: () => reloads, container:nodes[0], button:nodes[1], status:nodes[2], help:nodes[3], update:nodes[4], updateButton:nodes[6] };
 }
 test('PWA installation waits for explicit click, unsupported browsers stay uncluttered and connectivity updates', async () => {
   const c=client(); assert.equal(c.button.hidden,true); assert.equal(c.container.hidden,true); assert.equal(c.registrations[0][0],'/sw.js');
@@ -76,4 +79,31 @@ test('PWA iOS help is user-controlled and appinstalled hides install UI', async 
   const c=client(true); assert.equal(c.button.hidden,false); assert.equal(c.help.hidden,true);
   await c.button.onclick(); assert.equal(c.help.hidden,false); assert.match(c.help.textContent,/Safari/);
   c.listeners.get('appinstalled')(); assert.equal(c.button.hidden,true); assert.equal(c.help.hidden,true); assert.equal(c.container.hidden,true);
+});
+
+test('PWA activates a waiting version only after an explicit update message', async () => {
+  const w = worker(); await w.lifecycle('install'); assert.equal(w.skipped(),false);
+  await w.message({ type: 'OTHER' }); assert.equal(w.skipped(),false);
+  await w.message({ type: 'ACTIVATE_UPDATE' }); assert.equal(w.skipped(),true);
+});
+
+test('PWA offers a waiting update and reloads once only after the update click', async () => {
+  const messages = [];
+  const c = client(false, { waiting: { postMessage: value => messages.push(value.type) }, addEventListener() {} });
+  await Promise.resolve();
+  assert.equal(c.update.hidden,false); assert.equal(c.container.hidden,false); assert.deepEqual(messages,[]);
+  c.serviceListeners.get('controllerchange')(); assert.equal(c.reloads(),0);
+  c.updateButton.onclick(); c.updateButton.onclick(); assert.deepEqual(messages,['ACTIVATE_UPDATE']); assert.equal(c.reloads(),0);
+  c.serviceListeners.get('controllerchange')(); c.serviceListeners.get('controllerchange')(); assert.equal(c.reloads(),1);
+});
+
+test('PWA detects updates installed after load and checks again on return without polling offline', async () => {
+  const events = new Map(); let stateChanged, checks = 0;
+  const registration = { waiting: null, installing: { addEventListener(name, callback) { stateChanged = callback; } }, addEventListener: (name,callback) => events.set(name,callback), update: async () => { checks++; } };
+  const c = client(false,registration); await Promise.resolve();
+  assert.equal(c.update.hidden,true);
+  events.get('updatefound')(); registration.waiting = {}; stateChanged(); assert.equal(c.update.hidden,false);
+  c.navigator.onLine = false; c.listeners.get('online')(); assert.equal(checks,0);
+  c.navigator.onLine = true; c.document.visibilityState = 'hidden'; c.documentListeners.get('visibilitychange')(); assert.equal(checks,0);
+  c.document.visibilityState = 'visible'; c.documentListeners.get('visibilitychange')(); c.listeners.get('online')(); assert.equal(checks,1);
 });

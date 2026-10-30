@@ -1,8 +1,11 @@
-const CACHE = 'zelo-public-v1';
+const CACHE = 'zelo-public-v3';
 const PUBLIC_FILES = ['/offline', '/offline.css', '/brand/icon.svg', '/manifest.webmanifest', '/brand/pwa/icon-192.png', '/brand/pwa/icon-512.png', '/brand/pwa/maskable-512.png', '/brand/pwa/apple-touch-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(PUBLIC_FILES.map(path => new Request(path, { cache: 'reload', credentials: 'omit' })))));
   // Do not replace a running version underneath unsaved forms.
+});
+self.addEventListener('message', event => {
+  if (event.data?.type === 'ACTIVATE_UPDATE') event.waitUntil(self.skipWaiting());
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {

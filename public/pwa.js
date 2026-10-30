@@ -9,7 +9,7 @@ const help = document.createElement('p'); help.className = 'pwa-install-help'; h
 container.append(status, button, help);
 (document.querySelector('.main-topbar') || document.querySelector('.login-card'))?.append(container);
 const installed = () => appInstalled || standalone.matches || navigator.standalone === true;
-function sync() { button.hidden = installed() || (!installation && !ios); button.textContent = installation ? 'Instalar Zelo' : 'Adicionar à tela inicial'; container.hidden = button.hidden && status.hidden && help.hidden; }
+function sync() { button.hidden = installed() || (!installation && !ios); button.textContent = installation ? 'Instalar Zelo' : 'Adicionar à tela inicial'; container.hidden = button.hidden && status.hidden && help.hidden && update.hidden; }
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installation = event; sync(); });
 window.addEventListener('appinstalled', () => { appInstalled = true; installation = undefined; help.hidden = true; sync(); });
 standalone.addEventListener('change', sync);
@@ -22,7 +22,40 @@ button.onclick = async () => {
 };
 window.addEventListener('online', () => { status.hidden = true; sync(); });
 window.addEventListener('offline', () => { status.hidden = false; sync(); });
+const update = document.createElement('div'); update.className = 'pwa-update'; update.hidden = true; update.role = 'status';
+const updateText = document.createElement('span'); updateText.textContent = 'Nova versão disponível. Salve o que estiver editando antes de atualizar.';
+const updateButton = document.createElement('button'); updateButton.type = 'button'; updateButton.className = 'pwa-install'; updateButton.textContent = 'Atualizar Zelo';
+update.append(updateText, updateButton);
+container.append(update);
 sync();
-if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(() => {
-  // Installation is progressive enhancement; a failed registration never blocks login.
-});
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  let registration, applying = false, lastCheck = 0;
+  const showUpdate = () => { update.hidden = !registration?.waiting || !navigator.serviceWorker.controller; sync(); };
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (applying) { applying = false; window.location.reload(); }
+    else { update.hidden = true; sync(); }
+  });
+  updateButton.onclick = () => {
+    const waiting = registration?.waiting;
+    if (!waiting || applying) return;
+    applying = true;
+    try { waiting.postMessage({ type: 'ACTIVATE_UPDATE' }); }
+    catch { applying = false; updateText.textContent = 'Não foi possível atualizar. Tente novamente ou feche e reabra o Zelo.'; }
+  };
+  const checkUpdate = () => {
+    if (!registration || !navigator.onLine || document.visibilityState === 'hidden' || Date.now() - lastCheck < 60000) return;
+    lastCheck = Date.now();
+    registration.update().catch(() => {});
+  };
+  window.addEventListener('online', checkUpdate);
+  document.addEventListener('visibilitychange', checkUpdate);
+  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(value => {
+    registration = value;
+    showUpdate();
+    const watch = () => registration.installing?.addEventListener('statechange', showUpdate);
+    registration.addEventListener('updatefound', watch);
+    watch();
+  }).catch(() => {
+    // Installation is progressive enhancement; a failed registration never blocks login.
+  });
+}
