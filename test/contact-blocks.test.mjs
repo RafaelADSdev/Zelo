@@ -41,7 +41,7 @@ for (const mode of ["qr", "cloud"]) test(`bloqueio ${mode}: impede IA, áudio, r
   };
   const service = mode === "qr" ? await createWhatsAppQr({ runtime, settings,
     audioDownload: async () => { downloads++; return Readable.from([data]); },
-    socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async sendMessage() { sends++; return { key: { id: `sent-${sends}` } }; } }),
+    socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage() { sends++; return { key: { id: `sent-${sends}` } }; } }),
   }) : await createWhatsApp({ runtime, settings, fetchImpl: async () => { sends++; return Response.json({ messages: [{ id: `sent-${sends}` }] }); } });
   async function receive(id, audio = false) {
     if (mode === "qr") socket.ev.emit("messages.upsert", { type: "notify", messages: [{ key: { id, remoteJid: `${phone}@s.whatsapp.net` }, messageTimestamp: Math.floor(Date.now() / 1000), message: audio ? { audioMessage: { mimetype: "audio/ogg", directPath: "/v/test", mediaKey: Buffer.alloc(32, 1), fileSha256: createHash("sha256").update(data).digest() } } : { conversation: "Olá" } }] });

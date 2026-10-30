@@ -64,7 +64,7 @@ test('agendamento aguarda o horário e retoma pendentes após reinício sem repe
 test('API autenticada cria, agenda, cancela e envia pelo transporte QR existente', async () => {
   const sent = [], sockets = [];
   const app = await startTestServer({ port: 0, dataDir: await testDirectory(), qrSocketFactory: () => {
-    const socket = { ev: new EventEmitter(), user: { id: '5511999999999:1@s.whatsapp.net' }, end() {}, async sendMessage(jid, content) { sent.push({ jid, content }); return { key: { id: 'test-broadcast' } }; } };
+    const socket = { ev: new EventEmitter(), user: { id: '5511999999999:1@s.whatsapp.net' }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage(jid, content) { sent.push({ jid, content }); return { key: { id: 'test-broadcast' } }; } };
     sockets.push(socket); return socket;
   } });
   const post = async (path, body) => authenticatedFetch(app.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

@@ -31,7 +31,7 @@ for (const mode of ["qr", "cloud"]) test(`áudio rápido ${mode}: dois contatos 
   }, async whatsapp(message, send) { await send(message.contactId, { text: message.text }); } };
   const service = mode === "qr" ? await createWhatsAppQr({ runtime, settings,
     audioDownload: async descriptor => Readable.from([Buffer.from(descriptor.directPath.slice(1))]),
-    socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async sendMessage(_jid, content) { sent.push(content.text); return { key: { id: `sent-${sent.length}` } }; } }),
+    socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage(_jid, content) { sent.push(content.text); return { key: { id: `sent-${sent.length}` } }; } }),
   }) : await createWhatsApp({ runtime, settings, fetchImpl: async (url, options) => {
     if (url.includes("/messages")) { sent.push(JSON.parse(options.body).text.body); return Response.json({ messages: [{ id: `sent-${sent.length}` }] }); }
     const id = new URL(url).pathname.split("/").at(-1);

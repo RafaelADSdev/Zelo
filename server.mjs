@@ -34,6 +34,7 @@ assets.set("/broadcast-template-map.js", ["broadcast-template-map.js", "text/jav
 assets.set("/broadcast-results.js", ["broadcast-results.js", "text/javascript"]);
 assets.set("/broadcast-layout.js", ["broadcast-layout.js", "text/javascript"]);
 assets.set("/broadcast-product.js", ["broadcast-product.js", "text/javascript"]);
+assets.set("/broadcast-number-check.js", ["broadcast-number-check.js", "text/javascript"]);
 assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
 assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
 assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
@@ -234,6 +235,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/verify": return json(res, 200, await whatsapp.verify());
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
+          case '/api/whatsapp/check-numbers': return json(res, 200, await qr.checkNumbers(input?.phones));
           case '/api/broadcasts/resolve': return json(res, 200, await serial(() => broadcasts.resolve(input, actor)));
           case '/api/broadcasts/retry-failed': return json(res, 200, await serial(() => broadcasts.retryFailed(input, actor)));
           case '/api/broadcasts/duplicate': return json(res, 200, await serial(() => broadcasts.duplicate(input.id)));

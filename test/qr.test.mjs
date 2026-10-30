@@ -13,7 +13,7 @@ test("QR: credenciais persistidas, novas mensagens, dedupe, isolamento e envio i
     const socket = {
       ev: new EventEmitter(), user: { id: "5511999999999:1@s.whatsapp.net" }, options,
       end() {}, async logout() {},
-      async sendMessage(jid, content) {
+      async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage(jid, content) {
         sent.push({ jid, content });
         if (uncertain) throw new Error("sensitive transport failure");
         return { key: { id: `sent-${sent.length}` } };

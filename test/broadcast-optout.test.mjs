@@ -30,7 +30,7 @@ for (const mode of ['qr', 'cloud']) test(`descadastro ${mode}: persiste, confirm
   const config = { whatsappMode: mode, autoReply: true, accessToken: 'test-token', appSecret: 'test-secret', phoneNumberId: '123456789', graphVersion: 'v23.0' };
   const settings = { get: () => ({ ...config }), mark: async value => Object.assign(config, value) };
   const runtime = { client: db, memory: { append: async item => memory.push(item) }, whatsapp: async () => { calls++; }, state: async () => ({ history: [] }) };
-  const service = mode === 'qr' ? await createWhatsAppQr({ runtime, settings, socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: '5511999999999@s.whatsapp.net' }, end() {}, async sendMessage() { sent++; return { key: { id: 'ack' } }; } }) }) : await createWhatsApp({ runtime, settings, fetchImpl: async () => { sent++; return Response.json({ messages: [{ id: 'ack' }] }); } });
+  const service = mode === 'qr' ? await createWhatsAppQr({ runtime, settings, socketFactory: () => (socket = { ev: new EventEmitter(), user: { id: '5511999999999@s.whatsapp.net' }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage() { sent++; return { key: { id: 'ack' } }; } }) }) : await createWhatsApp({ runtime, settings, fetchImpl: async () => { sent++; return Response.json({ messages: [{ id: 'ack' }] }); } });
   const phone = '5511988887777';
   try {
     if (mode === 'qr') { await service.connect(); socket.ev.emit('connection.update', { connection: 'open' }); await service.idle(); }

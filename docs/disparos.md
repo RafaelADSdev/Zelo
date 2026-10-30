@@ -14,6 +14,16 @@ Na etapa **Mensagem**, o seletor opcional carrega produtos ativos do catálogo a
 
 O servidor resolve `productId` no catálogo, rejeita produtos inexistentes ou arquivados e salva uma fotografia de ID, nome, preço e revisão no payload da campanha, incluindo-a na identidade idempotente. Resumo, revisão, histórico, busca e duplicação preservam o produto. A cópia exige nova validação e consentimento. Alterar ou arquivar o produto posteriormente não altera a campanha já confirmada nem a mensagem da fila. Não há migração de banco, e campanhas anteriores continuam válidas.
 
+## Verificação de números no QR Code
+
+Em **Contatos**, **Verificar números no WhatsApp** consulta a lista em lotes de até cinco pela rota autenticada `POST /api/whatsapp/check-numbers`. Mostra encontrados, não encontrados e consultas sem resposta separadamente, sem enviar mensagens ou criar conversas. A remoção de números não encontrados depende de clique. Se a lista mudar durante a consulta, o resultado é descartado. A consulta exige uma conexão QR ativa; não é uma checagem da Cloud API.
+
+Cada envio QR também consulta `onWhatsApp` antes de iniciar a saída. O destinatário retornado deve corresponder ao telefone informado, considerando o formato brasileiro com ou sem nono dígito; se ambos estiverem registrados, o formato exato tem prioridade. Contatos recebidos por LID continuam usando seu identificador. Número inexistente ou consulta indisponível impedem o envio, sem registrar uma conversa de sucesso. Supressão, bloqueio e conta original são conferidos novamente após a consulta.
+
+O identificador da mensagem é persistido antes da transmissão, preservando confirmações de entrega que cheguem durante o envio. Recusas explícitas atualizam a saída para falha. Encontrar um número não confirma a entrega. Na investigação de 30/10/2026, uma consulta real confirmou dois destinatários no formato sem nono dígito; as mensagens anteriores foram preservadas e não foram reenviadas. Os testes de envio usam transportes controlados.
+
+Validação atual: **113 testes passando**. No navegador, foram conferidos vínculo opcional, catálogo vazio, produto arquivado, limites do texto, templates, resumo, revisão, histórico, busca, duplicação, verificação de números, remoção de ausentes, preservação do rascunho e larguras de 320 a 1440 px.
+
 ## Preparar e revisar
 
 Cole números ou importe CSV/XLSX de até 2 MB. Escolha aba, telefone, nome e até 32 colunas extras. Somente as colunas selecionadas são enviadas ao servidor; a planilha original permanece no navegador. Cada variável aceita até 1.000 caracteres e nomes de até 200 caracteres. A carga total da revisão/criação/teste está limitada a 512 KB; demais rotas mantêm 64 KB. O aumento pontual permite transportar metadados dos contatos sem ampliar a exposição dos outros endpoints.
@@ -72,7 +82,7 @@ Mensagens QR manuais e de campanha entram na memória como `agent`, com idempot�
 
 | Item | Estado e motivo |
 | --- | --- |
-| Checagem `onWhatsApp` no QR | Pendente. Precisa de uma fila própria com ritmo, cancelamento e resultados persistidos; consultar centenas de contatos na revisão HTTP bloquearia a operação. Normalização não é prova de existência. |
+| Fila persistente de verificações | A consulta básica em lotes e a validação antes do envio estão implementadas. Persistir consultas longas com retomada após reinício e histórico próprio continua pendente. |
 | Imagem/PDF com legenda na campanha | Pendente. Os transportes já enviam materiais em outros fluxos; ainda falta estender a identidade da tentativa, o upload e a legenda das campanhas com testes de interrupção antes/depois do upload. Não há um controle de mídia parcialmente funcional na tela. |
 | Filtros avançados de conversas, listas salvas e etiquetas | Pendente. A seleção simples permanece; o serviço atual limita a lista de conversas a 100. Filtros globais e listas reutilizáveis precisam de consulta paginada e armazenamento próprios. |
 | Template com mídia/cabeçalho/botões parametrizados | Mapeador visual cobre o corpo. Componentes avançados permanecem em JSON; a prévia textual não representa arquivos externos. |

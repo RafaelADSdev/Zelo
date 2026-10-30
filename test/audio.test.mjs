@@ -104,7 +104,7 @@ test("áudio QR: transcrição vira contexto e histórico, sem duplicar; pausa n
   const dataDir = await testDirectory(); let socket, downloads = 0, transcriptions = 0, replies = 0, sends = 0, failReply = false;
   const app = await startTestServer({ port: 0, dataDir, ai: { apiKey: "test-gemini" },
     qrAudioDownload: async () => { downloads++; return Readable.from([bytes]); },
-    qrSocketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async sendMessage() { sends++; return { key: { id: `sent-${sends}` } }; } }),
+    qrSocketFactory: () => (socket = { ev: new EventEmitter(), user: { id: "5511999999999@s.whatsapp.net" }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage() { sends++; return { key: { id: `sent-${sends}` } }; } }),
     aiFetch: async (_url, options) => {
       const body = JSON.parse(options.body);
       if (body.contents[0].parts[1]?.inlineData) { transcriptions++; return Response.json({ candidates: [{ content: { parts: [{ text: "Quero conhecer o Sopro." }] } }] }); }

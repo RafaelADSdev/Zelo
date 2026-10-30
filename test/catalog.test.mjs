@@ -25,7 +25,7 @@ test("catálogo aceita galeria com mais de 20 arquivos e PDF acima de 10 MB, pre
 
 test("catálogo: produtos isolados, anexos validados, consulta pela IA e arquivamento", async () => {
   const dataDir = await testDirectory(); let materialId, prompt = "";
-  const sent = [], socket = { ev: new EventEmitter(), user: { id: "5511999999999:1@s.whatsapp.net" }, end() {}, async sendMessage(jid, content) { sent.push({ jid, content }); return { key: { id: `catalog-${sent.length}` } }; } };
+  const sent = [], socket = { ev: new EventEmitter(), user: { id: "5511999999999:1@s.whatsapp.net" }, end() {}, async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage(jid, content) { sent.push({ jid, content }); return { key: { id: `catalog-${sent.length}` } }; } };
   const app = await startServer({ port: 0, dataDir, qrSocketFactory: () => socket, ai: { apiKey: "test-catalog-key" }, geminiFetch: async (_url, options) => {
     const request = JSON.parse(options.body); prompt = request.contents.at(-1).parts[0].text;
     return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ formatRationale: "Material solicitado", message: { text: "Segue o material do produto Aurora." }, materialIds: [materialId, "inventado"] }) }] } }] });

@@ -1,5 +1,6 @@
 import { initBroadcastLayout } from '/broadcast-layout.js';
 import { initBroadcastProduct } from '/broadcast-product.js';
+import { initBroadcastNumberCheck } from '/broadcast-number-check.js';
 import { initTemplateMap } from '/broadcast-template-map.js';
 import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
@@ -63,6 +64,7 @@ export function initBroadcasts(options) {
   api = options.api; initSuppression({ api });
   initBroadcastImport({ changed: updateRecipients }); initBroadcastHistory({ api });
   product = initBroadcastProduct({ api });
+  initBroadcastNumberCheck({ api });
   composer = initBroadcastLayout({ refreshHistory: refreshBroadcasts });
   $('broadcast-phones').addEventListener('input', updateRecipients);
   $('broadcast-clean').addEventListener('click', cleanRecipients);
