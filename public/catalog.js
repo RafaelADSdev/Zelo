@@ -51,20 +51,21 @@ function render() {
   $("#catalog-count").textContent = `${products.filter(product => product.active).length} ativo(s) · ${products.length} cadastrado(s)`;
   $("#catalog-summary").textContent = query ? `${selected.length} ${selected.length === 1 ? "produto encontrado" : "produtos encontrados"}` : `${products.length} ${products.length === 1 ? "produto" : "produtos"} · ${products.filter(product => product.active).length} ${products.filter(product => product.active).length === 1 ? "ativo" : "ativos"}`;
   if (!selected.length) {
-    const empty = el("div", "catalog-empty"); empty.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z"/><path d="m3 8 9 5 9-5M12 13v8M7.5 5.5l9 5"/></svg>';
-    empty.append(el("h3", "", products.length ? "Nenhum resultado por aqui" : "Seu catálogo começa aqui"), el("p", "hint", products.length ? "Tente buscar por outro nome ou descrição." : "Adicione um produto com suas informações e materiais para a IA consultar.")); list.append(empty);
+    const row = el('tr'); const cell = el('td'); cell.colSpan = 4;
+    const empty = el("div", "catalog-empty"); empty.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7l-4-4ZM14 3v5h4"/></svg>';
+    empty.append(el("h3", "", products.length ? "Nenhum resultado por aqui" : "Seu catálogo começa aqui"), el("p", "hint", products.length ? "Tente buscar por outro nome ou descrição." : "Adicione um produto com suas informações e materiais para a IA consultar.")); cell.append(empty); row.append(cell); list.append(row);
   }
   for (const product of selected) {
-    const card = el("article", "product-card");
-    const images = product.files.filter(file => file.mime.startsWith("image/"));
-    if (images[0]) { const image = el("img", "product-cover"); image.src = images[0].url; image.alt = product.name; image.loading = "lazy"; card.append(image); }
-    if (!images.length) { const cover = el("div", "product-cover-empty"); cover.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z"/><path d="m3 8 9 5 9-5M12 13v8M7.5 5.5l9 5"/></svg><span>Adicione uma imagem à ficha</span>'; card.append(cover); }
-    const info = el("div", "product-card-body");
-    info.append(el("span", "product-badge", product.active ? "Disponível para a IA" : "Arquivado"), el("h3", "", product.name));
-    if (product.price) info.append(el("p", "product-price", product.price));
-    info.append(el("p", "hint product-description", product.description.slice(0, 170) + (product.description.length > 170 ? "…" : "")));
-    info.append(el("p", "hint product-material-count", `${images.length} ${images.length === 1 ? "imagem" : "imagens"} · ${product.files.filter(file => file.mime === "application/pdf").length} PDFs · ${product.links.length} ${product.links.length === 1 ? "link" : "links"}`));
-    const button = el("button", "secondary-button", "Abrir ficha do produto"); const arrow = document.createElement("span"); arrow.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>'; button.append(arrow); button.type = "button"; button.setAttribute("aria-label", `Abrir ficha de ${product.name}`); button.addEventListener("click", () => open(product)); info.append(button); card.append(info); list.append(card);
+    const row = el('tr', 'product-row');
+    const name = el('th'); name.scope = 'row';
+    const title = el('button', 'product-name-button'); title.type = 'button';
+    const symbol = el('span', 'product-file-symbol'); symbol.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7l-4-4ZM14 3v5h4"/></svg>';
+    title.append(symbol, el('span', '', product.name)); title.addEventListener('click', () => open(product)); name.append(title);
+    const state = el('td'); state.append(el('span', product.active ? 'product-state is-active' : 'product-state', product.active ? 'Ativo' : 'Arquivado'));
+    const materials = el('td', 'product-table-materials', `${product.files.length} ${product.files.length === 1 ? 'arquivo' : 'arquivos'}${product.links.length ? ` · ${product.links.length} ${product.links.length === 1 ? 'link' : 'links'}` : ''}`);
+    const actions = el('td'); const edit = el('button', 'product-row-action'); edit.type = 'button'; edit.setAttribute('aria-label', `Editar ${product.name}`); edit.title = `Editar ${product.name}`;
+    edit.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>';
+    edit.addEventListener('click', () => open(product)); actions.append(edit); row.append(name, state, materials, actions); list.append(row);
   }
 }
 export async function refreshCatalog() { products = await request("/api/products"); render(); }

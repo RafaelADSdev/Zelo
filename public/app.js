@@ -4,6 +4,7 @@ import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
 import { initCatalog, refreshCatalog } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
 import { audioStatus, audioPreview, canRetryJob } from "/audio-status.js";
+let refreshBroadcasts = async () => {};
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let workspace, dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
@@ -14,6 +15,14 @@ const aiName = () => providers[activeAi().provider]?.name || "Lista de IAs";
 const date = value => value ? new Date(Number(value)).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Ainda não";
 const labels = { pending: "Na fila", requested: "Na fila do operador", processing: "Processando", done: "Respondida", failed: "Falhou", manual: "Atendimento manual", blocked: "IA bloqueada", unknown: "Envio sem confirmação", sending: "Enviando", sent: "Envio aceito", delivered: "Entregue", read: "Lida" };
 function node(tag, className, text) { const item = document.createElement(tag); if (className) item.className = className; if (text !== undefined) item.textContent = text; return item; }
+const broadcastNav = node('button', 'nav-button');
+const broadcastIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+broadcastIcon.setAttribute('class', 'icon'); broadcastIcon.setAttribute('viewBox', '0 0 24 24'); broadcastIcon.setAttribute('aria-hidden', 'true');
+const broadcastPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+broadcastPath.setAttribute('d', 'm3 11 18-8-8 18-2-8-8-2Zm8 2L21 3'); broadcastIcon.append(broadcastPath);
+broadcastNav.append(broadcastIcon, node('span', '', 'Disparos'));
+broadcastNav.type = 'button'; broadcastNav.dataset.view = 'broadcasts';
+document.querySelector('.nav-button[data-view="whatsapp"]').after(broadcastNav);
 const blockContactButton = node("button", "secondary-button contact-block-button", "Bloquear IA");
 blockContactButton.type = "button"; blockContactButton.hidden = true;
 $("#wa-window").closest("header").append(blockContactButton);
@@ -94,7 +103,7 @@ function renderDashboard() {
       button.dataset.blocked = String(Boolean(contact.blocked));
       button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto"));
       if (contact.blocked) button.querySelector("strong").after(node("span", "contact-block-badge", "IA bloqueada"));
-      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus(); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
+      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".message-options").open = false; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus({ preventScroll: true }); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
   filterContacts();
@@ -150,7 +159,8 @@ async function loadConversation() {
   if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa.")); container.scrollTop = container.scrollHeight;
 }
 function updatePage(next) {
-  const pages = { knowledge: ["Produtos e materiais", "Tudo que sua IA precisa saber, organizado em um só lugar.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
+  const pages = { knowledge: ["Produtos e materiais", "Organize os produtos e arquivos que a IA usa no atendimento.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
+  pages.broadcasts = ['Disparos', 'Prepare sua mensagem, escolha os contatos e envie no momento certo.', 'Mensagens em lote'];
   const [title, description, badge] = pages[next];
   $("#page-title").textContent = title; $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
   $(".mode-badge").textContent = badge;
@@ -164,6 +174,7 @@ $("#contact-search").addEventListener("input", filterContacts);
 $('#wa-contact').tabIndex = -1;
 $('#mobile-chat-back').onclick = () => { $('.inbox-layout').dataset.contactSelected = 'false'; $('#contact-search').focus(); };
 $('#new-wa-conversation').onclick = () => {
+  $('.message-options').open = true;
   blockContactButton.hidden = true;
   currentPhone = ''; lastWaHistory = ''; $('.inbox-layout').dataset.contactSelected = 'true';
   $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
@@ -172,9 +183,11 @@ $('#new-wa-conversation').onclick = () => {
 };
 
 async function showView(next) {
+  $('.account-menu').open = false;
   if (next === "access" && !workspace?.isMaster) return;
-  updatePage(next);
-  view = next; $$(".view").forEach(item => { item.hidden = item.id !== "view-" + next; });
+  updatePage(next); window.scrollTo(0, 0);
+  view = next; document.querySelector(".shell").dataset.view = next; $$(".view").forEach(item => { item.hidden = item.id !== "view-" + next; });
+  if (next === 'broadcasts') { try { await refreshBroadcasts(); } catch (failure) { error(failure.message); } }
   document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
   history.replaceState(null, "", next === "access" ? "/admin/access" : "/");
   $(".reply-control").hidden = next === "access";
@@ -219,7 +232,19 @@ $("#start-tunnel").addEventListener("click", event => action(event.currentTarget
 $("#stop-tunnel").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await api("/api/tunnel/stop", {}); await loadDashboard(); return "Túnel encerrado."; }));
 $("#publicUrl").addEventListener("input", updateCallback);
 $("#copy-token").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await navigator.clipboard.writeText($("#verifyToken").value); return "Token copiado. Cole no campo de verificação do webhook na Meta."; }));
-$("#knowledge-form").addEventListener("submit", event => { event.preventDefault(); action(event.submitter, "#knowledge-status", async () => { await api("/api/knowledge", { text: $("#knowledge").value }); return "Informações salvas. As próximas respostas consultarão esta base."; }); });
+$('#edit-business').addEventListener('click', () => {
+  $('#knowledge-business-name').readOnly = false; $('#knowledge').readOnly = false;
+  $('#edit-business').hidden = true; $('#save-business').hidden = false; $('#knowledge-business-name').focus();
+});
+$('#knowledge-form').addEventListener('submit', event => { event.preventDefault(); action(event.submitter, '#knowledge-status', async () => {
+  const businessName = $('#knowledge-business-name').value.trim();
+  if (businessName !== (dashboard.settings.businessName || '')) await api('/api/settings', { businessName });
+  await api('/api/knowledge', { text: $('#knowledge').value });
+  dashboard.settings.businessName = businessName;
+  $('#knowledge-business-name').readOnly = true; $('#knowledge').readOnly = true;
+  $('#edit-business').hidden = false; $('#save-business').hidden = true;
+  return 'Informações salvas. As próximas respostas consultarão esta base.';
+}); });
 $("#refresh-inbox").addEventListener("click", async () => { try { await loadDashboard(); await loadConversation(); } catch (failure) { error(failure.message); } });
 $("#wa-kind").addEventListener("change", () => { $("#text-fields").hidden = $("#wa-kind").value !== "text"; $("#template-fields").hidden = $("#wa-kind").value !== "template"; });
 $("#load-templates").addEventListener("click", event => action(event.currentTarget, "#wa-send-status", async () => {
@@ -252,19 +277,31 @@ $("#wa-send-form").addEventListener("submit", async event => {
   }); waBusy = false;
 });
 try {
+  try {
+    const broadcasts = await import('/broadcasts.js');
+    broadcasts.initBroadcasts({ api }); refreshBroadcasts = broadcasts.refreshBroadcasts;
+  } catch {
+    broadcastNav.disabled = true;
+    error('A área de disparos não carregou. Reinicie o servidor do Zelo e atualize esta página. As outras áreas continuam disponíveis.');
+  }
   providers = await api("/api/ai/providers");
   initSettingsUi();
   initReplySchedule({ api, changed: () => loadDashboard() });
   await initAiKeys({ providers, api, changed: () => loadDashboard() });
-  await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge;
+  await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge; $("#knowledge-business-name").value = dashboard.settings.businessName || "";
   await initCatalog();
   workspace = await initWorkspace({ api });
   if (location.pathname === "/admin/access") await showView("access");
-  updatePage(view);
+  await showView(view);
 } catch (failure) { error("Não foi possível carregar o painel. " + failure.message); }
 setInterval(async () => {
   if (pollBusy || document.hidden) return; pollBusy = true;
-  try { await loadDashboard(); if (view === "whatsapp") await loadConversation(); } catch {} finally { pollBusy = false; }
+  try { await loadDashboard(); if (view === "whatsapp") await loadConversation(); if (view === 'broadcasts') await refreshBroadcasts(); } catch {} finally { pollBusy = false; }
 }, 5000);
 
 $("#logout").addEventListener("click", async event => { event.currentTarget.disabled = true; try { await api("/api/auth/logout", {}); location.replace("/login"); } catch (failure) { error(failure.message); event.currentTarget.disabled = false; } });
+
+// Keep hidden recipient options reachable when native form validation needs them.
+$('#wa-send-form').addEventListener('invalid', event => { if ($('.message-options').contains(event.target)) $('.message-options').open = true; }, true);
+$('.account-menu').addEventListener('keydown', event => { if (event.key === 'Escape') { $('.account-menu').open = false; $('.account-menu > summary').focus(); } });
+document.addEventListener('click', event => { if (!$('.account-menu').contains(event.target)) $('.account-menu').open = false; });

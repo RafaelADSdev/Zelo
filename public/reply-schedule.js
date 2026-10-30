@@ -19,7 +19,17 @@ export function initReplySchedule(options) {
   <div class="reply-fields"><label>Das<input id="reply-start" type="time" required></label><label>Até<input id="reply-end" type="time" required></label><label class="checkbox-row"><input id="reply-all-day" type="checkbox">Dia inteiro</label></div>
   <div class="reply-fields"><label>A partir de (opcional)<input id="reply-from" type="date"></label><label>Até o dia (opcional)<input id="reply-until" type="date"></label></div>
   <p>Se o horário final for menor que o inicial, o atendimento segue até o dia seguinte. Mensagens recebidas fora da programação ficam para atendimento manual.</p><p>O servidor de atendimento precisa permanecer ativo e conectado ao WhatsApp.</p><button type="submit" class="primary-button">Salvar e ativar programação</button></form><p id="reply-feedback" role="status"></p>`;
-  $(".connection-notice").after(card);
+  $(".page-heading").after(card);
+  const controls = document.createElement('details');
+  controls.className = 'reply-actions-disclosure';
+  const controlsSummary = document.createElement('summary');
+  controlsSummary.textContent = 'Controles';
+  controls.append(controlsSummary, card.querySelector('.reply-actions'));
+  card.querySelector('.reply-control-head').append(controls);
+  const compact = matchMedia('(max-width:580px)');
+  const adaptControls = () => { controls.open = !compact.matches; };
+  adaptControls();
+  compact.addEventListener('change', adaptControls);
   card.querySelectorAll('button').forEach(button => button.disabled = true);
   $("#reply-program").onclick = () => {
     const form = $("#reply-program-form"); form.hidden = !form.hidden;

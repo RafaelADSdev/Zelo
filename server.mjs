@@ -13,6 +13,7 @@ import { loadEnvFile } from "node:process";
 import { createRuntime } from "./lib/core/runtime.mjs";
 import { createSettings, fail } from "./lib/core/settings.mjs";
 import { createWhatsApp } from "./lib/whatsapp/whatsapp.mjs";
+import { createBroadcasts } from "./lib/whatsapp/broadcasts.mjs";
 import { createWhatsAppQr } from "./lib/whatsapp/whatsapp-qr.mjs";
 import { createTunnel } from "./lib/tunnel/tunnel.mjs";
 import { createAiModel } from "./lib/ai/ai.mjs";
@@ -26,6 +27,12 @@ const assets = new Map([["/", ["index.html", "text/html"]], ["/app.js", ["app.js
 assets.set("/motion.css", ["motion.css", "text/css"]);
 assets.set("/motion.js", ["motion.js", "text/javascript"]);
 assets.set("/audio-status.js", ["audio-status.js", "text/javascript"]);
+assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
+assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
+assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
+assets.set("/broadcast-history.js", ["broadcast-history.js", "text/javascript"]);
+assets.set("/broadcasts.css", ["broadcasts.css", "text/css"]);
+assets.set("/vendor/read-excel-file.js", ["../node_modules/read-excel-file/bundle/read-excel-file.min.js", "text/javascript"]);
 assets.set("/panel.css", ["panel.css", "text/css"]);
 assets.set("/settings-ui.js", ["settings-ui.js", "text/javascript"]);
 assets.set("/workspace.js", ["workspace.js", "text/javascript"]);
@@ -93,10 +100,21 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const tunnel = createTunnel({ dataDir, port: webhook.address().port, settings });
   let adminQueue = Promise.resolve();
   const serial = fn => { const result = adminQueue.then(fn); adminQueue = result.catch(() => {}); return result; };
+  const broadcasts = await createBroadcasts({ db: runtime.client,
+    connection: () => settings.get().whatsappMode === 'qr' ? (qr.state().status === 'connected' ? `qr:${qr.state().account}` : '') : `cloud:${settings.get().phoneNumberId || ''}`,
+    send: input => transport().manual(input),
+  });
+  let broadcastBusy = false;
+  const broadcastTimer = setInterval(() => {
+    if (broadcastBusy) return;
+    broadcastBusy = true;
+    serial(() => broadcasts.tick()).catch(() => {}).finally(() => { broadcastBusy = false; });
+  }, 3000);
+  broadcastTimer.unref();
   const server = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store"); res.setHeader("X-Content-Type-Options", "nosniff"); res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-    if (cloud && req.headers['x-zelo-remote'] === '1') res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: ${cloud.origin}; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`);
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    if (cloud && req.headers['x-zelo-remote'] === '1') res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: ${cloud.origin}; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`);
     const allowed = [`127.0.0.1:${server.address().port}`, `localhost:${server.address().port}`];
     if (!allowed.includes(req.headers.host) || Object.keys(req.headers).some(key => ["forwarded", "x-forwarded-for", "x-forwarded-host", "cf-connecting-ip"].includes(key)) || (req.headers.origin && !allowed.map(host => `http://${host}`).includes(req.headers.origin))) return json(res, 403, { error: "Painel disponível somente neste computador." });
     try {
@@ -145,6 +163,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/dashboard") return json(res, 200, { app: "wappy", instanceId, storageProvider: cloud ? "supabase" : "local", settings: settings.public(), replyStatus: replyStatus(settings.get()), qr: qr.state(), tunnel: tunnel.state(), webhookPort: webhook.address().port, conversations: await transport().conversations(), ...await transport().status() });
       if (req.method === "GET" && url.pathname === "/api/conversation") return json(res, 200, await transport().history(url.searchParams.get("phone") || ""));
       if (req.method === "GET" && url.pathname === "/api/templates") return json(res, 200, await whatsapp.templates());
+      if (req.method === "GET" && url.pathname === "/api/broadcasts") return json(res, 200, { campaigns: await broadcasts.list() });
       if (req.method === "POST") {
         const input = await body(req);
         const aiScope = url.searchParams.get("scope") || "text";
@@ -200,6 +219,10 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/verify": return json(res, 200, await whatsapp.verify());
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
+          case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input)));
+          case "/api/broadcasts/cancel": return json(res, 200, await serial(() => broadcasts.cancel(input.id)));
+          case "/api/broadcasts/pause": return json(res, 200, await serial(() => broadcasts.pause(input.id)));
+          case "/api/broadcasts/resume": return json(res, 200, await serial(() => broadcasts.resume(input.id)));
           case "/api/whatsapp/retry": return json(res, 200, await transport().retry(input.id));
           case "/api/whatsapp/block": return json(res, 200, await transport().setBlocked(input));
           case "/api/tunnel/start": return json(res, 200, await tunnel.start());
@@ -218,10 +241,10 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       json(res, 404, { error: "Página não encontrada." });
     } catch (error) { if (!res.headersSent) json(res, error.status || 500, { error: error.status ? error.message : "Falha interna. Confira o estado da conexão e tente novamente." }); else res.end(); }
   });
-  try { await listen(server, port); } catch (error) { await closeServer(webhook); await qr.close(); await whatsapp.close(); await runtime.close(); throw error; }
+  try { await listen(server, port); } catch (error) { clearInterval(broadcastTimer); await adminQueue; await closeServer(webhook); await qr.close(); await whatsapp.close(); await runtime.close(); throw error; }
   return {
     server, settings, whatsapp, qr, runtime, url: `http://127.0.0.1:${server.address().port}`, webhookUrl: `http://127.0.0.1:${webhook.address().port}/webhook`,
-    async close() { tunnel.stop(); await closeServer(server); await closeServer(webhook); await adminQueue; await qr.close(); await whatsapp.close(); await runtime.close(); },
+    async close() { clearInterval(broadcastTimer); tunnel.stop(); await closeServer(server); await closeServer(webhook); await adminQueue; await qr.close(); await whatsapp.close(); await runtime.close(); },
   };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -67,6 +67,22 @@ Cada requisição especifica somente o modelo daquele cadastro, sem reserva ocul
 
 Use essa sugestão apenas com dados fictícios: o endpoint gratuito do Nemotron registra conteúdo e pede que não sejam enviados dados pessoais ou confidenciais. A integração não ativa nem altera chaves já cadastradas. O OpenRouter publica cotas gerais de 50 requisições/dia e 20/minuto sem compra de créditos, ou 1.000/dia após US$ 10 de compras acumuladas; disponibilidade e regras podem mudar. Confira as [condições do modelo](https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free), os [limites](https://openrouter.ai/docs/api_reference/limits) e o [funcionamento da reserva](https://openrouter.ai/docs/guides/routing/model-fallbacks).
 
+## Disparos de mensagens
+
+Em **Disparos**, cole uma lista de números com DDI e DDD ou abra **Selecionar contatos das conversas**. Escreva uma mensagem e escolha **Agora** ou **Agendar data e horário**. O Zelo mostra a quantidade de destinatários únicos e o conteúdo para revisão antes de confirmar.
+
+Use **Importar lista** para abrir CSV ou Excel **.xlsx** de até **2 MB**. O arquivo é lido no navegador, sem upload da planilha. Escolha a aba e a coluna dos telefones, indique se a primeira linha é um cabeçalho e confira a prévia. Para números brasileiros com DDD e sem DDI, selecione **Adicionar +55 (Brasil)**. Só os números válidos confirmados são adicionados; duplicados são removidos e linhas inválidas podem ser baixadas para correção. A importação aceita até 5.000 linhas e 60 colunas para análise, mantendo o limite de 500 destinatários por disparo, sem cortar listas maiores silenciosamente. Arquivos `.xls` antigos precisam ser salvos como `.xlsx` ou CSV. O botão **Baixar modelo CSV** fornece um exemplo de preenchimento.
+
+O formulário separa **Destinatários**, **Mensagem** e **Envio**, com nome opcional, contagem de contatos, organização da lista, contador de caracteres e prévia da mensagem. No histórico, busque por nome ou mensagem, filtre a situação, acompanhe o progresso e baixe os resultados em CSV. **Pausar disparo** preserva os pendentes e **Retomar disparo** continua a mesma fila; as ações não repetem mensagens já processadas. Disparos manuais funcionam com a IA desligada.
+
+Até **500 números por disparo**, com remoção de duplicados dentro da lista. O envio acontece em sequência, pelo WhatsApp conectado, sem depender de IA. O histórico mostra os 30 disparos mais recentes e o resultado de cada destinatário; **Cancelar pendentes** interrompe somente mensagens que ainda não começaram a ser enviadas.
+
+No QR Code, use texto. Na Cloud API, texto livre continua exigindo uma mensagem recebida do contato nas últimas 24 horas; fora dessa janela, selecione um template aprovado. É possível carregar templates, preencher variáveis do corpo e fornecer componentes avançados em JSON. O aceite do envio não comprova entrega: acompanhe os status em **Conversas**.
+
+O agendamento usa o fuso indicado na tela, a partir do dispositivo. O servidor deve permanecer ativo e a conexão original do WhatsApp deve estar disponível. A fila aguarda a reconexão e retoma envios pendentes após reinício, inclusive os horários que passaram durante a interrupção. Envios interrompidos ou sem confirmação ficam visíveis para conferência e não são repetidos automaticamente. A fila fica no banco de cada ambiente e participa dos snapshots existentes; a recuperação em outro servidor tem os mesmos limites de periodicidade dos backups.
+
+Use listas de pessoas que aceitaram receber suas mensagens e respeite pedidos para interromper o contato. Esta função não fornece garantia contra restrições do WhatsApp.
+
 ## Controle por contato
 
 Em **Conversas**, use **Bloquear IA** para impedir respostas e transcrições para uma pessoa, mantendo o atendimento manual. O filtro de contatos bloqueados e o botão **Desbloquear IA** ajudam a gerenciar a lista. O bloqueio fica salvo por ambiente e WhatsApp conectado; desbloquear libera novas mensagens, sem responder às antigas em lote.
