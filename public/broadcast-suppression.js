@@ -10,9 +10,9 @@ export function initSuppression({ api }) {
     const container = $('broadcast-optout-list'); container.replaceChildren();
     for (const item of items.slice(0, 100)) {
       const row = document.createElement('div'); row.className = 'broadcast-result-row';
-      const text = document.createElement('span'); text.textContent = `+${item.phone} · ${item.reason}`;
+      const text = document.createElement('span'); text.textContent = `${item.phone.startsWith('lid:') ? 'ID sem telefone: ' + item.phone.slice(4) + ' · campanhas bloqueadas até conferência' : '+' + item.phone} · ${item.reason}`;
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'quiet-button'; remove.textContent = 'Remover da supressão';
-      remove.addEventListener('click', () => action(async () => { if (!confirm('Remover da supressão? Faça isso somente após obter nova autorização do contato.')) return; await api('/api/optouts', { phones: [item.phone], remove: true }); await load(); }));
+      remove.addEventListener('click', () => action(async () => { if (!confirm('Remover da supressão? Para um ID sem telefone, primeiro registre o telefone real descadastrado. Nos demais casos, remova somente após nova autorização do contato.')) return; await api('/api/optouts', { phones: [item.phone], remove: true }); await load(); }));
       row.append(text, remove); container.append(row);
     }
   }

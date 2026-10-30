@@ -45,6 +45,26 @@ for (const mode of ['qr', 'cloud']) test(`descadastro ${mode}: persiste, confirm
     await assert.rejects(service.manual({ phone, text: 'Campanha', broadcast: true, requestId: randomUUID() }), /suprimido/);
     assert.equal(sent, 1);
     await store.set(account, [phone], true); await receive(); assert.equal(await store.blocked(account, phone), false);
+    const execute = db.execute.bind(db); let intercepted = false;
+    db.execute = async statement => {
+      const result = await execute(statement);
+      if (!intercepted && typeof statement === 'object' && /(?:INSERT INTO qr_outbox|UPDATE wa_outbox SET state='sending')/.test(statement.sql) && String(statement.args[0]).startsWith('broadcast:')) {
+        intercepted = true; await store.set(account, [phone]);
+      }
+      return result;
+    };
+    await assert.rejects(service.manual({ phone, text: 'Campanha em curso', broadcast: true, requestId: randomUUID() }), /suprimido/);
+    assert.equal(intercepted, true); assert.equal(sent, 1); db.execute = execute;
+    await assert.rejects(service.manual({ phone, text: 'Outra conexão', expectedAccount: 'other', broadcast: true, requestId: randomUUID() }), /conexão original/);
     if (mode === 'qr') { await service.manual({ phone, text: 'Mensagem do operador', requestId: randomUUID() }); assert.equal(memory.at(-1).role, 'agent'); assert.equal(memory.at(-1).text, 'Mensagem do operador'); }
   } finally { await service.close(); db.close(); }
+});
+test('descadastro com LID não resolvido bloqueia campanhas da conta até conferência', async () => {
+  const db = createClient({ url: ':memory:' });
+  try {
+    const store = await createOptouts(db); await store.receive('qr:a', '123456789012345@lid', 'message');
+    assert.equal(await store.blocked('qr:a', '5511988887777'), true);
+    assert.equal(await store.blocked('qr:b', '5511988887777'), false);
+    assert.equal((await store.list('qr:a'))[0].phone, 'lid:123456789012345');
+  } finally { db.close(); }
 });

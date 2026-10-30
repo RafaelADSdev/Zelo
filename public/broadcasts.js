@@ -42,7 +42,7 @@ function renderReview() {
   $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ');
   const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
   $('broadcast-review-estimate').textContent = `Duração estimada pelo ritmo: ${Math.max(1, Math.ceil(minutes))} min, sem contar esperas de janela, limite diário ou conexão. ${draft.scheduledAt ? 'Agendado para ' + date(Date.parse(draft.scheduledAt)) : 'Envio após confirmação'}.`;
-  $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas.`;
+  $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas. Intervalo ${draft.intervalMs / 1000}–${(draft.intervalMs + draft.jitterMs) / 1000} s, até ${draft.perMinute}/min.`;
 }
 export function initBroadcasts(options) {
   templateMap = initTemplateMap({ variables: () => [...new Set([...metadata.values()].flatMap(item => Object.keys(item.vars || {})))] });

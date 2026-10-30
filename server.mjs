@@ -117,7 +117,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
     if (broadcastBusy) return;
     broadcastBusy = true;
     serial(() => broadcasts.tick()).catch(() => {}).finally(() => { broadcastBusy = false; });
-  }, 3000);
+  }, 1000);
   broadcastTimer.unref();
   const server = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store"); res.setHeader("X-Content-Type-Options", "nosniff"); res.setHeader("Referrer-Policy", "no-referrer");

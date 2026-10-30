@@ -26,3 +26,14 @@ test('resolução auditada é idempotente, falhas nunca incluem incertos e cada 
     assert.equal(own.consent_by, 'usuario');
   } finally { db.close(); }
 });
+test('confirmação manual de entrega é auditada e não gera envio', async () => {
+  const db = createClient({ url: ':memory:' });
+  try {
+    const service = await createBroadcasts({ db, connection: () => 'qr:a', clock: () => Date.parse('2026-10-30T15:00:00Z'), send: async () => { throw Object.assign(new Error('Incerto'), { status: 504 }); } });
+    const campaign = await service.create({ requestId: randomUUID(), consent: true, phones: '5511988887777', text: 'Olá' }); await service.tick();
+    const input = { id: campaign.id, itemId: campaign.items[0].id, decision: 'delivered', confirmed: true, requestId: randomUUID() };
+    await service.resolve(input, 'auditor'); await service.resolve(input, 'auditor');
+    const item = (await service.get(campaign.id)).items[0]; assert.equal(item.state, 'sent'); assert.equal(item.resolved_by, 'auditor');
+    assert.equal((await db.execute('SELECT COUNT(*) n FROM wa_broadcast_audit')).rows[0].n, 1);
+  } finally { db.close(); }
+});
