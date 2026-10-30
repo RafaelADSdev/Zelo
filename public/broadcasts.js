@@ -53,6 +53,7 @@ function renderReview() {
   $('broadcast-confirm').disabled = !review.ready;
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
   $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
+  ($('broadcast-review-list-details') || $('broadcast-review-summary')).textContent += ` ${review.named || 0} com nome disponível · ${review.withoutName || 0} sem nome. Contatos sem nome usam a alternativa indicada na mensagem.`;
   $('broadcast-review-phones').textContent = review.recipients.map(item => formatPhone(item.phone, '')).join(' · ');
   $('broadcast-review-message').textContent = reviewMessage();
   $('broadcast-review-exclusions').textContent = [...review.invalid, ...review.errors].map(item => `Linha ${item.row}: ${item.reason}`).join(' ') || (!review.recipients.length ? 'Nenhum destinatário disponível. Confira a lista de supressão e a seleção da janela.' : '');
@@ -92,7 +93,8 @@ export function initBroadcasts(options) {
     for (const contact of dashboard.conversations) {
       const phone = contact.phone.replace(/@s\.whatsapp\.net$/, '');
       if (!/^[1-9]\d{6,14}$/.test(phone)) continue;
-      contacts.push({ phone });
+      const known = { phone, name: contact.name && contact.name !== phone && contact.name !== contact.phone && !phoneNumber(contact.name) ? contact.name : '' };
+      contacts.push(known); if (known.name && !metadata.get(phone)?.name) metadata.set(phone, { ...(metadata.get(phone) || {}), ...known });
       const label = el('label', ''); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = phone;
       const numbers = () => recipientLines().map(value => phoneNumber(value) || value);
       checkbox.checked = numbers().includes(phone);
@@ -137,6 +139,8 @@ export function initBroadcasts(options) {
       }
       testId = crypto.randomUUID();
       review = await api('/api/broadcasts/preview', draft);
+      const resolvedNames = new Map(review.normalized.map(item => [item.row, item.name]));
+      draft.recipients = draft.recipients.map((item, index) => ({ ...item, name: item.name || resolvedNames.get(index + 1) || '' }));
       $('broadcast-window-only').checked = false;
       renderReview();
       const nextSignature = JSON.stringify(draft);

@@ -112,6 +112,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   let adminQueue = Promise.resolve();
   const serial = fn => { const result = adminQueue.then(fn); adminQueue = result.catch(() => {}); return result; };
   const broadcasts = await createBroadcasts({ db: runtime.client, catalog: runtime.catalog,
+    resolveNames: (phones, account) => qr.contactNames(phones, account.slice(3)),
     connection: () => settings.get().whatsappMode === 'qr' ? (qr.state().status === 'connected' ? `qr:${qr.state().account}` : '') : `cloud:${settings.get().phoneNumberId || ''}`,
     send: input => transport().manual(input),
     selfPhone: () => settings.get().whatsappMode === 'qr' ? normalizeBroadcastPhone(qr.state().account.split('@')[0]) : settings.get().phone?.id === settings.get().phoneNumberId ? normalizeBroadcastPhone(settings.get().phone.number) : '',

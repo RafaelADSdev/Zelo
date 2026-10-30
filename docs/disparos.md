@@ -24,7 +24,15 @@ Cada envio QR também consulta `onWhatsApp` antes de iniciar a saída. O destina
 
 O identificador da mensagem é persistido antes da transmissão, preservando confirmações de entrega que cheguem durante o envio. Recusas explícitas atualizam a saída para falha. Encontrar um número não confirma a entrega. Na investigação de 30/10/2026, uma consulta real confirmou dois destinatários no formato sem nono dígito; as mensagens anteriores foram preservadas e não foram reenviadas. Os testes de envio usam transportes controlados.
 
-Validação atual: **120 testes passando**. No navegador, foram conferidos geração com IA e ciência do custo, aplicação/descarte da sugestão, preservação da mensagem existente, falhas do provedor e troca de produto durante a geração, além de formatação, envio manual, produtos, importação, revisão, histórico e larguras de 320 a 1440 px. As chamadas de IA dos testes usam respostas controladas, sem cobrar créditos reais.
+Validação atual: **125 testes passando**. No navegador, foram conferidos nome automático na revisão e no envio sem coluna de nome importada, geração com IA e ciência do custo, aplicação/descarte da sugestão, preservação da mensagem existente, falhas do provedor e troca de produto durante a geração, além de formatação, envio manual, produtos, importação, revisão, histórico e larguras de 320 a 1440 px. Os testes de envio e IA usam transportes controlados, sem mensagens ou créditos reais.
+
+## Nome automático dos destinatários
+
+`{nome}` e `{nome|cliente}` usam primeiro o nome explicitamente importado ou informado na lista. Se estiver vazio, a revisão busca o nome disponível na conta conectada: contatos/perfis recebidos na Cloud API ou agenda e conversas sincronizadas no QR. O QR também consulta os mapeamentos locais entre telefone e LID, incluindo o formato brasileiro com ou sem nono dígito. Um número, identificador ou contato de outra conta não vira nome. Se nenhum nome estiver disponível, permanece a alternativa escrita na mensagem; o sistema não inventa nomes nem garante acesso ao perfil de qualquer número.
+
+`qr_contact_names` armazena nomes recebidos por eventos de contatos e metadados de histórico, com prioridade para o nome salvo na agenda. Esses eventos não criam conversas nem executam respostas a mensagens antigas. O próprio perfil da conta conectada pode identificar envios de teste ao próprio número. As conversas existentes e a verificação de números também exibem os nomes disponíveis.
+
+A revisão informa quantos destinatários têm nome e mostra a mensagem já personalizada. O navegador inclui os nomes resolvidos no rascunho confirmado; a fila e a duplicação preservam essa fotografia. Alterações posteriores na agenda não mudam a saudação já revisada. Não é necessário gerar novamente o texto com IA: a substituição acontece individualmente para cada destinatário. Na conferência local de 30/10/2026, os dois números usados anteriormente tiveram nomes disponíveis, sem reenviar mensagens.
 
 ## Criar mensagem com IA
 
