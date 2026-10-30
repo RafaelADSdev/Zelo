@@ -55,9 +55,9 @@ async function rawBody(req, limit) {
   for await (const chunk of req) { size += chunk.length; if (size > limit) throw fail("Conteúdo muito grande.", 413); parts.push(chunk); }
   return Buffer.concat(parts);
 }
-async function body(req) {
+async function body(req, limit = 64000) {
   if (!req.headers["content-type"]?.startsWith("application/json")) throw fail("Use application/json.", 415);
-  try { return JSON.parse((await rawBody(req, 64000)).toString("utf8")); }
+  try { return JSON.parse((await rawBody(req, limit)).toString("utf8")); }
   catch (error) { if (error.status) throw error; throw fail("JSON inválido."); }
 }
 const validText = (value, max, empty = false) => typeof value === "string" && value.length <= max && (empty || value.trim().length);
@@ -170,7 +170,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "GET" && url.pathname === "/api/broadcasts") return json(res, 200, { campaigns: await broadcasts.list() });
       if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
-        const input = await body(req);
+        const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview'].includes(url.pathname) ? 524288 : 64000);
         const actor = auth.session(req)?.userId || auth.session(req)?.username || 'operador';
         const aiScope = url.searchParams.get("scope") || "text";
         if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");
@@ -225,6 +225,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
           case "/api/whatsapp/verify": return json(res, 200, await whatsapp.verify());
           case "/api/whatsapp/subscribe": return json(res, 200, await whatsapp.subscribe());
           case "/api/whatsapp/send": return json(res, 200, await serial(() => transport().manual(input)));
+          case '/api/broadcasts/preview': return json(res, 200, await serial(() => broadcasts.preview(input)));
           case "/api/broadcasts": return json(res, 201, await serial(() => broadcasts.create(input, actor)));
           case '/api/optouts': return json(res, 200, await serial(async () => { if (input.action === 'configure') { await optouts.configure(account(), input.confirmation); return { ok: true }; } return optouts.set(account(), input.phones, input.remove === true, input.reason || 'Inclusão manual', actor); }));
           case "/api/broadcasts/cancel": return json(res, 200, await serial(() => broadcasts.cancel(input.id)));

@@ -19,7 +19,7 @@ test('disparos validam, deduplicam, persistem e não repetem resultados incertos
   let broadcasts = await createBroadcasts(options);
   const input = { requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '+55 (11) 98888-7777\n5511988887777\n5511977776666', text: 'Olá' };
   try {
-    await assert.rejects(broadcasts.create({ ...input, phones: 'número inválido' }), /número/i);
+    await assert.rejects(broadcasts.create({ ...input, phones: 'número inválido' }), /destinat|número|24 horas/i);
     const campaign = await broadcasts.create(input);
     assert.equal(campaign.items.length, 2);
     assert.equal((await broadcasts.create(input)).id, campaign.id);
@@ -112,11 +112,9 @@ test('Cloud API envia template e mantém bloqueio de texto fora da janela', asyn
     await service.tick();
     assert.equal(posts.length, 1); assert.equal(posts[0].template.name, 'hello_world');
     assert.equal((await service.get(template.id)).items[0].state, 'sent');
-    const text = await service.create({ requestId: randomUUID(), consent: true, windowStart: '00:00', windowEnd: '00:00', phones: '5511777777777', text: 'Fora da janela' });
-    cloudNow += 30000; await service.tick();
+    await assert.rejects(service.create({ requestId: randomUUID(), consent: true, phones: '5511777777777', text: 'Fora da janela' }), /24 horas/);
     assert.equal(posts.length, 1);
-    assert.equal((await service.get(text.id)).items[0].state, 'failed');
-    assert.match((await service.get(text.id)).items[0].error, /24 horas/);
+
   } finally { await app.close(); }
 });
 

@@ -5,7 +5,7 @@ import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
-let api, templates = [], draft, signature, requestId, contacts = [];
+let api, templates = [], draft, signature, requestId, contacts = [], review;
 
 export const refreshBroadcasts = refreshBroadcastHistory;
 async function run(button, action, status = 'broadcast-status') {
@@ -29,6 +29,16 @@ function cleanRecipients() {
 function updateMessage() {
   $('broadcast-text-count').textContent = `${$('broadcast-text').value.length.toLocaleString('pt-BR')} / 4.000 caracteres`;
   $('broadcast-live-message').textContent = $('broadcast-text').value || 'Sua mensagem aparecerá aqui.';
+}
+function renderReview() {
+  $('broadcast-confirm').disabled = !review.ready;
+  $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
+  $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
+  $('broadcast-review-phones').textContent = review.recipients.map(item => '+' + item.phone).join(' · ');
+  $('broadcast-review-exclusions').textContent = review.invalid.map(item => `Linha ${item.row}: ${item.reason}`).join(' ');
+  const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
+  $('broadcast-review-estimate').textContent = `Duração estimada pelo ritmo: ${Math.max(1, Math.ceil(minutes))} min, sem contar esperas de janela, limite diário ou conexão. ${draft.scheduledAt ? 'Agendado para ' + date(Date.parse(draft.scheduledAt)) : 'Envio após confirmação'}.`;
+  $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas.`;
 }
 export function initBroadcasts(options) {
   api = options.api; initSuppression({ api });
@@ -97,19 +107,24 @@ export function initBroadcasts(options) {
         if (!Number.isFinite(scheduled.getTime()) || scheduled.getTime() <= Date.now()) throw new Error('Escolha uma data e horário futuros.');
         draft.scheduledAt = scheduled.toISOString();
       }
+      review = await api('/api/broadcasts/preview', draft);
+      $('broadcast-window-only').checked = false;
+      renderReview();
       const nextSignature = JSON.stringify(draft);
       if (signature !== nextSignature) { signature = nextSignature; requestId = crypto.randomUUID(); }
       draft.requestId = requestId;
       $('broadcast-review-title').textContent = draft.name || 'Confira antes de enviar';
-      $('broadcast-review-phones').textContent = phones.map(phone => '+' + phone).join(' · ');
+
       $('broadcast-review-status').textContent = ''; $('broadcast-consent').checked = false;
-      $('broadcast-review-summary').textContent = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
+      $('broadcast-review-summary').dataset.legacy = `${phones.length} destinatário(s) único(s). ${lines.length - phones.length} duplicado(s) removido(s). ${draft.scheduledAt ? `Agendado para ${date(Date.parse(draft.scheduledAt))}.` : 'Envio imediato.'}`;
       $('broadcast-review-message').textContent = draft.template ? `Template: ${draft.template.name}\n${$('broadcast-template-preview').textContent}\n${$('broadcast-params').value}` : draft.text;
       $('broadcast-form').hidden = true; $('broadcast-review').hidden = false; $('broadcast-confirm').focus();
     });
   });
+  $('broadcast-window-only').addEventListener('change', async () => { try { draft.windowOnly = $('broadcast-window-only').checked; review = await api('/api/broadcasts/preview', draft); renderReview(); } catch (error) { $('broadcast-review-status').textContent = error.message; $('broadcast-confirm').disabled = true; } });
   $('broadcast-edit').addEventListener('click', () => { $('broadcast-form').hidden = false; $('broadcast-review').hidden = true; $('broadcast-phones').focus(); });
   $('broadcast-confirm').addEventListener('click', event => run(event.currentTarget, async () => {
+    if (!review?.ready) throw new Error('Use um template ou selecione apenas os contatos na janela de 24 horas.');
     if (!$('broadcast-consent').checked) throw new Error('Confirme o consentimento da lista antes de enviar.');
     draft.consent = true;
     $('broadcast-edit').disabled = true;
