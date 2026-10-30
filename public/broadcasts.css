@@ -82,6 +82,16 @@
 #view-broadcasts .broadcast-days{border:0;padding:0;margin:16px 0}#view-broadcasts .broadcast-days label{display:flex;align-items:center;gap:8px;margin:0;min-height:44px}#view-broadcasts .broadcast-days input{width:18px;height:18px}
 
 /* Guided composition keeps the list, editor and scheduling in a single task path. */
+.broadcast-product { margin:8px 0 24px; padding-bottom:20px; border-bottom:1px solid #e5e1ec; }
+.broadcast-product-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.shell #view-broadcasts .broadcast-product-heading label { margin:0; }
+.broadcast-product-heading label span { margin-left:6px; font-weight:400; color:#706879; font-size:12px; }
+.broadcast-product-heading button { flex:none; font-size:12px; }
+.broadcast-product-card { margin:12px 0; padding:16px; border:1px solid #e5e1ec; border-radius:8px; background:#faf9fc; overflow-wrap:anywhere; }
+.broadcast-product-card strong { display:block; font-size:14px; }
+.broadcast-product-card button { margin-top:4px; max-width:100%; white-space:normal; }
+.broadcast-product-review { font-size:13px; font-weight:600; line-height:1.6; color:#51475f; overflow-wrap:anywhere; }
+@media(max-width:580px) { .broadcast-product-heading { align-items:flex-start; flex-direction:column; gap:4px; } .broadcast-product-heading button { padding-left:0; } }
 .shell #view-broadcasts[data-layout=guided] { display:block; max-width:none; }
 .shell #view-broadcasts[data-layout=guided] [hidden] { display:none!important; }
 .shell #view-broadcasts[data-layout=guided] .broadcast-workspace-tabs { display:flex; gap:28px; border-bottom:1px solid var(--broadcast-line); margin-bottom:24px; overflow-x:auto; }

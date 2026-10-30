@@ -9,7 +9,7 @@ function render() {
   const container = $('broadcast-history');
   const open = new Set([...container.querySelectorAll('details[open]')].map(item => item.dataset.campaign));
   const search = $('broadcast-search').value.trim().toLocaleLowerCase('pt-BR'), filter = $('broadcast-filter').value;
-  const visible = campaigns.filter(item => (filter === 'all' || item.state === filter) && `${item.name || ''} ${item.text} ${item.template?.name || ''}`.toLocaleLowerCase('pt-BR').includes(search));
+  const visible = campaigns.filter(item => (filter === 'all' || item.state === filter) && `${item.name || ''} ${item.text} ${item.template?.name || ''} ${item.product?.name || ''}`.toLocaleLowerCase('pt-BR').includes(search));
   const visibleIds = new Set(visible.map(item => item.id));
   [...container.children].forEach(child => { if (!visibleIds.has(child.dataset.campaignId)) child.remove(); });
   for (const id of cards.keys()) if (!campaigns.some(item => item.id === id)) cards.delete(id);
@@ -29,6 +29,7 @@ function render() {
     const heading = el('div', '', 'broadcast-heading'), title = el('div', '');
     title.append(el('h3', campaign.name || (campaign.template ? `Template: ${campaign.template.name}` : 'Disparo de mensagem')), el('p', `${date(campaign.scheduled)} · ${campaign.total} destinatários`, 'hint'));
     const badge = el('span', labels[campaign.state], 'broadcast-badge'); badge.dataset.state = campaign.state; heading.append(title, badge); item.append(heading);
+    if (campaign.product) item.append(el('p', `Produto: ${campaign.product.name}`, 'broadcast-product-review'));
     const progress = document.createElement('progress'); progress.max = campaign.total; progress.value = processed;
     progress.setAttribute('aria-label', `${processed} de ${campaign.total} destinatários processados`);
     const metrics = el('div', '', 'broadcast-result-summary');

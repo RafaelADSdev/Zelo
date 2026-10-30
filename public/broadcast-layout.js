@@ -40,7 +40,7 @@ export function initBroadcastLayout({ refreshHistory }) {
   const toggle = node('summary', 'Resumo da campanha'); disclosure.append(toggle);
   const content = node('div', '', 'broadcast-summary-content'); const title = node('h3', 'Sem nome definido');
   const list = node('dl', ''), values = {};
-  for (const [key, label] of [['contacts','Destinatários'], ['format','Formato'], ['when','Envio'], ['window','Janela']]) { const row = node('div', ''); values[key] = node('dd', ''); row.append(node('dt', label), values[key]); list.append(row); }
+  for (const [key, label] of [['contacts','Destinatários'], ['product','Produto'], ['format','Formato'], ['when','Envio'], ['window','Janela']]) { const row = node('div', ''); values[key] = node('dd', ''); if (key === 'product') values[key].id = 'broadcast-summary-product'; row.append(node('dt', label), values[key]); list.append(row); }
   const previewTitle = node('h4', 'Prévia rápida'), preview = node('p', '', 'broadcast-summary-message');
   content.append(title, list, previewTitle, preview, node('p', 'A confirmação e o consentimento ficam na revisão final.', 'hint')); disclosure.append(content); summary.append(disclosure); compose.append(summary);
   const mobile = matchMedia('(max-width: 960px)'); const adapt = () => { disclosure.open = !mobile.matches; }; adapt(); mobile.addEventListener('change', adapt);
@@ -50,6 +50,7 @@ export function initBroadcastLayout({ refreshHistory }) {
     title.textContent = $('broadcast-name').value.trim() || 'Sem nome definido';
     values.contacts.textContent = count ? `${count} contato${count === 1 ? '' : 's'} na lista` : 'Nenhum contato adicionado';
     values.format.textContent = $('broadcast-kind').value === 'template' ? 'Template aprovado' : 'Mensagem de texto';
+    values.product.textContent = $('broadcast-product')?.value ? $('broadcast-product').selectedOptions[0]?.textContent : 'Sem produto vinculado';
     values.when.textContent = $('broadcast-when').value === 'later' ? ($('broadcast-schedule').value ? new Date($('broadcast-schedule').value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir') : 'Após confirmação';
     values.window.textContent = `${$('broadcast-start').value}–${$('broadcast-end').value} · ${$('broadcast-zone').value === 'America/Sao_Paulo' ? 'São Paulo' : $('broadcast-zone').value}`;
     preview.textContent = $('broadcast-kind').value === 'template' ? $('broadcast-template-preview').textContent || 'Selecione o template na etapa Mensagem.' : $('broadcast-text').value.trim().slice(0, 280) || 'Sua mensagem aparecerá aqui enquanto você escreve.';

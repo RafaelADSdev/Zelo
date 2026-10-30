@@ -8,6 +8,12 @@ As abas **Novo disparo**, **Histórico** e **Descadastros** separam a preparaç�
 
 No computador, um resumo lateral acompanha destinatários, formato, momento do envio e janela. No celular, o resumo fica recolhido abaixo do formulário. A navegação entre abas aceita setas, Home e End; a mudança de etapa mantém foco e contexto. Histórico, importação, personalização e ações de reenvio mantêm os mesmos contratos. Os 105 testes e o fluxo no navegador foram conferidos após a reorganização, incluindo larguras de 320, 768, 1024 e 1440 px.
 
+## Produto vinculado
+
+Na etapa **Mensagem**, o seletor opcional carrega produtos ativos do catálogo autenticado. **Atualizar catálogo** mantém a seleção e permite recuperar erros de carregamento. **Incluir dados na mensagem** acrescenta somente nome, preço e links públicos, mediante clique, respeitando 4.000 caracteres; não copia a descrição interna nem envia anexos. Templates mantêm seu conteúdo aprovado, com vínculo apenas na campanha.
+
+O servidor resolve `productId` no catálogo, rejeita produtos inexistentes ou arquivados e salva uma fotografia de ID, nome, preço e revisão no payload da campanha, incluindo-a na identidade idempotente. Resumo, revisão, histórico, busca e duplicação preservam o produto. A cópia exige nova validação e consentimento. Alterar ou arquivar o produto posteriormente não altera a campanha já confirmada nem a mensagem da fila. Não há migração de banco, e campanhas anteriores continuam válidas.
+
 ## Preparar e revisar
 
 Cole números ou importe CSV/XLSX de até 2 MB. Escolha aba, telefone, nome e até 32 colunas extras. Somente as colunas selecionadas são enviadas ao servidor; a planilha original permanece no navegador. Cada variável aceita até 1.000 caracteres e nomes de até 200 caracteres. A carga total da revisão/criação/teste está limitada a 512 KB; demais rotas mantêm 64 KB. O aumento pontual permite transportar metadados dos contatos sem ampliar a exposição dos outros endpoints.

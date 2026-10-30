@@ -33,6 +33,7 @@ assets.set("/broadcast-suppression.js", ["broadcast-suppression.js", "text/javas
 assets.set("/broadcast-template-map.js", ["broadcast-template-map.js", "text/javascript"]);
 assets.set("/broadcast-results.js", ["broadcast-results.js", "text/javascript"]);
 assets.set("/broadcast-layout.js", ["broadcast-layout.js", "text/javascript"]);
+assets.set("/broadcast-product.js", ["broadcast-product.js", "text/javascript"]);
 assets.set("/broadcasts.js", ["broadcasts.js", "text/javascript"]);
 assets.set("/broadcast-import.js", ["broadcast-import.js", "text/javascript"]);
 assets.set("/broadcast-import-ui.js", ["broadcast-import-ui.js", "text/javascript"]);
@@ -108,7 +109,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   const tunnel = createTunnel({ dataDir, port: webhook.address().port, settings });
   let adminQueue = Promise.resolve();
   const serial = fn => { const result = adminQueue.then(fn); adminQueue = result.catch(() => {}); return result; };
-  const broadcasts = await createBroadcasts({ db: runtime.client,
+  const broadcasts = await createBroadcasts({ db: runtime.client, catalog: runtime.catalog,
     connection: () => settings.get().whatsappMode === 'qr' ? (qr.state().status === 'connected' ? `qr:${qr.state().account}` : '') : `cloud:${settings.get().phoneNumberId || ''}`,
     send: input => transport().manual(input),
     selfPhone: () => settings.get().whatsappMode === 'qr' ? normalizeBroadcastPhone(qr.state().account.split('@')[0]) : settings.get().phone?.id === settings.get().phoneNumberId ? normalizeBroadcastPhone(settings.get().phone.number) : '',

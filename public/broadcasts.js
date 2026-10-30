@@ -1,4 +1,5 @@
 import { initBroadcastLayout } from '/broadcast-layout.js';
+import { initBroadcastProduct } from '/broadcast-product.js';
 import { initTemplateMap } from '/broadcast-template-map.js';
 import { initSuppression } from '/broadcast-suppression.js';
 import { initBroadcastImport } from '/broadcast-import-ui.js';
@@ -7,7 +8,7 @@ import { inspectNumbers, phoneNumber } from '/broadcast-import.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
 const date = value => new Date(Number(value)).toLocaleString('pt-BR');
-let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap, testId, composer;
+let api, templates = [], draft, signature, requestId, contacts = [], review, templateMap, testId, composer, product;
 const metadata = new Map();
 
 export const refreshBroadcasts = refreshBroadcastHistory;
@@ -46,6 +47,7 @@ function reviewMessage() {
   return `[Template: ${output.template.name}]\n${rendered || 'Parâmetros: ' + (output.template.components || []).flatMap(component => (component.parameters || []).map(item => item.text || item.type)).join(' · ')}`;
 }
 function renderReview() {
+  product.review(review.product);
   $('broadcast-confirm').disabled = !review.ready;
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
   $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
@@ -60,6 +62,7 @@ export function initBroadcasts(options) {
   templateMap = initTemplateMap({ variables: () => [...new Set([...metadata.values()].flatMap(item => Object.keys(item.vars || {})))] });
   api = options.api; initSuppression({ api });
   initBroadcastImport({ changed: updateRecipients }); initBroadcastHistory({ api });
+  product = initBroadcastProduct({ api });
   composer = initBroadcastLayout({ refreshHistory: refreshBroadcasts });
   $('broadcast-phones').addEventListener('input', updateRecipients);
   $('broadcast-clean').addEventListener('click', cleanRecipients);
@@ -109,6 +112,7 @@ export function initBroadcasts(options) {
       const phones = [...new Set(lines.map(line => phoneNumber(line) || line))];
       draft = { intervalMs: Number($('broadcast-interval').value) * 1000, jitterMs: Number($('broadcast-jitter').value) * 1000, perMinute: Number($('broadcast-minute').value), dailyCap: Number($('broadcast-daily').value), timezone: $('broadcast-zone').value, windowStart: $('broadcast-start').value, windowEnd: $('broadcast-end').value, days: [...$('broadcast-days').querySelectorAll('input:checked')].map(input => Number(input.value)), name: $('broadcast-name').value.trim(), phones: phones.join('\n'), text: $('broadcast-text').value.trim() };
       draft.recipients = phones.map(phone => metadata.get(phone) || { phone });
+      if (product.id()) draft.productId = product.id();
       if ($('broadcast-kind').value === 'template') {
         if ($('broadcast-template').value === '') throw new Error('Selecione um template aprovado.');
         const template = templates[Number($('broadcast-template').value)];
@@ -146,6 +150,7 @@ export function initBroadcasts(options) {
   $('broadcast-test').addEventListener('click', event => run(event.currentTarget, async () => { if (!confirm('Enviar somente um teste ao próprio número identificado na conexão? Ele entra na fila e respeita a janela e os limites.')) return; await api('/api/broadcasts/test', { ...draft, requestId: testId, confirmed: true }); $('broadcast-review-status').textContent = 'Teste criado na fila. Confira a mensagem no próprio WhatsApp antes de confirmar o disparo.'; await refreshBroadcasts(); }, 'broadcast-review-status'));
   document.addEventListener('broadcast-duplicate', event => {
     const copy = event.detail; metadata.clear(); copy.recipients.forEach(item => metadata.set(item.phone, item));
+    product.set(copy.product);
     $('broadcast-phones').value = copy.recipients.map(item => item.phone).join('\n'); $('broadcast-name').value = copy.name || ''; $('broadcast-text').value = copy.text || '';
     for (const [id, value] of Object.entries({ 'broadcast-interval': copy.intervalMs / 1000, 'broadcast-jitter': copy.jitterMs / 1000, 'broadcast-minute': copy.perMinute, 'broadcast-daily': copy.dailyCap, 'broadcast-zone': copy.timezone, 'broadcast-start': copy.windowStart, 'broadcast-end': copy.windowEnd })) $(id).value = value;
     $('broadcast-days').querySelectorAll('input').forEach(input => input.checked = copy.days.includes(Number(input.value)));
