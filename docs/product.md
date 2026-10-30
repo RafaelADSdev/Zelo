@@ -18,3 +18,14 @@ Nome Zelo. Interface em português. Usuário pediu explicitamente roxo, branco e
 
 ## Evidence on Hand
 Aplicação em http://127.0.0.1:4173/, catálogo e conversas reais. Não inventar métricas, produtos, depoimentos ou imagens de imóveis.
+
+
+## Disparos v2
+
+Campanhas de texto e templates aprovados, importação de telefone/nome/variáveis, revisão do servidor e confirmação de consentimento com operador e horário. Descadastro por palavras-chave, confirmação configurável e lista de supressão por ambiente/conexão. O QR registra envios na memória da conversa.
+
+Ritmo, jitter, limites por minuto/dia e janela com fuso são persistidos. Três falhas consecutivas, autenticação recusada ou limitação da Meta pausam a campanha. Mensagens incertas não são repetidas sem decisão explícita e auditada. A fila mantém a conexão original e não a substitui por outra conta.
+
+O histórico usa contadores agregados e destinatários paginados, com entrega/leitura quando confirmadas pelo transporte. Campanhas anteriores sem consentimento ficam pausadas. A ferramenta não garante ausência de bloqueio e não certifica adequação jurídica; a empresa deve conservar evidência da autorização e definir retenção e atendimento aos direitos dos titulares.
+
+P1 pendente: mídia em campanhas, verificação QR de existência no WhatsApp e filtros/listas/etiquetas avançados. P2 opcional permanece fora desta versão. Veja [Disparos v2](disparos.md) para operação, riscos conhecidos, motivos das pendências, resumo por arquivo e roteiro de teste com segundo número.

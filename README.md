@@ -69,19 +69,19 @@ Use essa sugestão apenas com dados fictícios: o endpoint gratuito do Nemotron 
 
 ## Disparos de mensagens
 
-Em **Disparos**, cole uma lista de números com DDI e DDD ou abra **Selecionar contatos das conversas**. Escreva uma mensagem e escolha **Agora** ou **Agendar data e horário**. O Zelo mostra a quantidade de destinatários únicos e o conteúdo para revisão antes de confirmar.
+Em **Disparos**, cole números, escolha contatos das conversas ou importe CSV/Excel `.xlsx` de até **2 MB**. Mapeie telefone, nome e até 32 colunas extras; use `{nome}`, `{cidade}` e alternativas como `{nome|cliente}`. A planilha fica no navegador; só os dados selecionados e confirmados são enviados ao servidor. O limite continua **500 contatos por campanha**.
 
-Use **Importar lista** para abrir CSV ou Excel **.xlsx** de até **2 MB**. O arquivo é lido no navegador, sem upload da planilha. Escolha a aba e a coluna dos telefones, indique se a primeira linha é um cabeçalho e confira a prévia. Para números brasileiros com DDD e sem DDI, selecione **Adicionar +55 (Brasil)**. Só os números válidos confirmados são adicionados; duplicados são removidos e linhas inválidas podem ser baixadas para correção. A importação aceita até 5.000 linhas e 60 colunas para análise, mantendo o limite de 500 destinatários por disparo, sem cortar listas maiores silenciosamente. Arquivos `.xls` antigos precisam ser salvos como `.xlsx` ou CSV. O botão **Baixar modelo CSV** fornece um exemplo de preenchimento.
+A revisão do servidor mostra duplicados, inválidos, suprimidos, duração estimada e classificação da janela de 24 horas. Variáveis ausentes sem alternativa bloqueiam a confirmação. Na Cloud API, escolha texto apenas para contatos na janela ou template aprovado para todos. O mapeador visual cobre as variáveis do corpo; componentes avançados continuam disponíveis em JSON.
 
-O formulário separa **Destinatários**, **Mensagem** e **Envio**, com nome opcional, contagem de contatos, organização da lista, contador de caracteres e prévia da mensagem. No histórico, busque por nome ou mensagem, filtre a situação, acompanhe o progresso e baixe os resultados em CSV. **Pausar disparo** preserva os pendentes e **Retomar disparo** continua a mesma fila; as ações não repetem mensagens já processadas. Disparos manuais funcionam com a IA desligada.
+**Confirmar e enviar** exige declarar que a lista contém pessoas que aceitaram suas mensagens. O horário e o operador ficam registrados. **SAIR**, **PARAR**, **CANCELAR**, **STOP** ou **NÃO QUERO RECEBER** registram descadastro nos dois transportes sem acionar a IA. A confirmação de saída é configurável. A lista de supressão permite inclusão, remoção, importação e exportação; é conferida também durante o envio.
 
-Até **500 números por disparo**, com remoção de duplicados dentro da lista. O envio acontece em sequência, pelo WhatsApp conectado, sem depender de IA. O histórico mostra os 30 disparos mais recentes e o resultado de cada destinatário; **Cancelar pendentes** interrompe somente mensagens que ainda não começaram a ser enviadas.
+O ritmo usa intervalo mais jitter, limite por minuto e teto diário persistente por conta. QR inicia no perfil conservador de **8–25 segundos**, **5/minuto** e **100 tentativas/dia**. Configure dias, janela e fuso; o padrão da janela é **08:00–20:00 em America/Sao_Paulo**. O consumo diário reinicia à meia-noite em São Paulo. Falhas consecutivas, autenticação recusada ou limite da Meta podem pausar a campanha. Ritmo não garante proteção contra bloqueio.
 
-No QR Code, use texto. Na Cloud API, texto livre continua exigindo uma mensagem recebida do contato nas últimas 24 horas; fora dessa janela, selecione um template aprovado. É possível carregar templates, preencher variáveis do corpo e fornecer componentes avançados em JSON. O aceite do envio não comprova entrega: acompanhe os status em **Conversas**.
+O histórico tem resumos, destinatários paginados, comprovantes de entrega/leitura quando disponíveis e CSV de resultados. Pause, retome, cancele pendentes, duplique para nova revisão ou envie um teste ao próprio número identificado na conexão. Incertos exigem conferência individual e decisão registrada; **Reenviar somente falhas** não inclui incertos. Não há reenvio automático em reinício. O QR agora registra mensagens do operador na memória da conversa.
 
-O agendamento usa o fuso indicado na tela, a partir do dispositivo. O servidor deve permanecer ativo e a conexão original do WhatsApp deve estar disponível. A fila aguarda a reconexão e retoma envios pendentes após reinício, inclusive os horários que passaram durante a interrupção. Envios interrompidos ou sem confirmação ficam visíveis para conferência e não são repetidos automaticamente. A fila fica no banco de cada ambiente e participa dos snapshots existentes; a recuperação em outro servidor tem os mesmos limites de periodicidade dos backups.
+O servidor e a conexão original precisam estar ativos. Os registros participam dos snapshots existentes. Campanhas antigas sem consentimento ficam pausadas e precisam ser duplicadas e revisadas. Mídia em campanhas, checagem `onWhatsApp` e filtros/listas/etiquetas avançados permanecem pendentes; os motivos e limites estão no guia.
 
-Use listas de pessoas que aceitaram receber suas mensagens e respeite pedidos para interromper o contato. Esta função não fornece garantia contra restrições do WhatsApp.
+[Operação, riscos, pendências e roteiro de teste →](docs/disparos.md)
 
 ## Controle por contato
 
@@ -159,7 +159,9 @@ Os testes cobrem autenticação, isolamento, convites, prioridade de IA, persist
 
 ## Limites que importam
 
-- O QR usa **Baileys**, integração não oficial com o WhatsApp Web, sujeita a mudanças e desconexões.
+- O QR usa **Baileys**, integração não oficial com o WhatsApp Web, sujeita a mudanças, desconexões e bloqueio. Ritmo e jitter não eliminam esse risco.
+- Disparos exigem declaração de consentimento e respeitam a supressão. Isso não comprova a origem da autorização nem substitui os procedimentos do responsável pelos dados. Uma mensagem já entregue ao transporte antes do descadastro não pode ser desfeita.
+- Reenviar um resultado incerto pode duplicar uma mensagem já recebida. A ação exige conferência explícita; o Zelo bloqueia o reenvio quando já dispõe de comprovante de entrega/leitura.
 - Imagens e PDFs são anexos disponíveis para envio; seu conteúdo não é extraído automaticamente para a base de conhecimento.
 - A troca de IA trata limites/créditos elegíveis. Chaves inválidas e modelos incorretos precisam ser corrigidos.
 - Memória, filas e credenciais QR têm snapshots periódicos. Uma queda abrupta pode perder alterações posteriores ao último backup; catálogo e materiais remotos são persistidos diretamente no Supabase.
@@ -181,6 +183,7 @@ Os dados locais continuam em `.wappy/`, e os materiais em `materiais/`; ambas as
 
 | Guia | Conteúdo |
 | --- | --- |
+| [Disparos v2](docs/disparos.md) | Consentimento, descadastro, ritmo, janelas, auditoria e pendências. |
 | [Produto](docs/product.md) | Público, propósito e restrições do produto. |
 | [Design geral](docs/design.md) | Registro visual geral do projeto. |
 | [PWA e mobile](docs/pwa.md) | Instalação, funcionamento offline, atualização e navegação móvel. |
