@@ -80,6 +80,9 @@ test('API autenticada cria, agenda, cancela e envia pelo transporte QR existente
       const source = await asset.text();
       for (const match of source.matchAll(/(?:from\s*|import\s*\(\s*)["'](\/[^"']+\.js)["']/g)) pending.push(match[1]);
     }
+    assert.ok(allowedPath('/broadcast-history-model.js'));
+    assert.ok(allowedPath('/broadcast-history.css'));
+    assert.equal((await authenticatedFetch(app.url + '/broadcast-history.css')).status, 200);
     assert.ok(allowedPath('/api/broadcasts')); assert.ok(allowedPath('/api/broadcasts/cancel')); assert.ok(allowedPath('/broadcasts.js'));
     await app.settings.update({ whatsappMode: 'qr' }); await app.qr.connect();
     sockets[0].ev.emit('connection.update', { connection: 'open' }); await app.qr.idle();

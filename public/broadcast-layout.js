@@ -4,7 +4,7 @@ const node = (tag, text, className = '') => { const item = document.createElemen
 
 export function initBroadcastLayout({ refreshHistory }) {
   const root = $('view-broadcasts'), compose = root.querySelector('.broadcast-compose');
-  const history = root.querySelector(':scope > section.settings-card:not(.broadcast-compose)'), suppression = root.querySelector(':scope > details.settings-card');
+  const history = root.querySelector(':scope > section.settings-card:not(.broadcast-compose):not(.broadcast-suppression)'), suppression = root.querySelector(':scope > .broadcast-suppression');
   const suppressionPanel = node('section', ''); suppression.before(suppressionPanel); suppressionPanel.append(suppression);
   const form = $('broadcast-form'), steps = [...form.querySelectorAll(':scope > .broadcast-step')], names = ['Contatos', 'Mensagem', 'Envio'];
   const description = ['Escolha os contatos que vão receber sua mensagem.', 'Prepare o conteúdo e confira como ele vai aparecer.', 'Defina quando enviar e revise antes de confirmar.'];
@@ -30,8 +30,13 @@ export function initBroadcastLayout({ refreshHistory }) {
     button.append(node('span', String(index + 1), 'broadcast-step-number'), node('span', names[index]));
     button.addEventListener('click', () => { if (index <= current || validUntil(index - 1)) go(index); }); li.append(button); stepList.append(li); return button;
   }); stepNav.append(stepList); form.before(stepNav);
-  // The optional campaign name belongs with the recipient list, not every step.
-  steps[0].append(form.querySelector('label[for="broadcast-name"]'), $('broadcast-name'));
+  // Keep the common path short; optional tools remain available in one place.
+  const options = node('details', '', 'broadcast-contact-options');
+  options.append(node('summary', 'Mais opções de contatos'));
+  const conversations = $('broadcast-contacts').closest('details');
+  options.append(form.querySelector('.broadcast-number-check'), conversations,
+    form.querySelector('label[for="broadcast-name"]'), $('broadcast-name'));
+  steps[0].append(options);
   $('broadcast-phones').rows = 3;
   const footer = form.querySelector('.dialog-footer'), back = node('button', 'Voltar', 'secondary-button'), next = node('button', 'Ir para mensagem', 'primary-button');
   back.type = next.type = 'button'; footer.classList.add('broadcast-compose-footer'); footer.prepend(back); footer.append(next);
@@ -43,7 +48,14 @@ export function initBroadcastLayout({ refreshHistory }) {
   for (const [key, label] of [['contacts','Destinatários'], ['product','Produto'], ['format','Formato'], ['when','Envio'], ['window','Janela']]) { const row = node('div', ''); values[key] = node('dd', ''); if (key === 'product') values[key].id = 'broadcast-summary-product'; row.append(node('dt', label), values[key]); list.append(row); }
   const previewTitle = node('h4', 'Prévia rápida'), preview = node('p', '', 'broadcast-summary-message');
   content.append(title, list, previewTitle, preview, node('p', 'A confirmação e o consentimento ficam na revisão final.', 'hint')); disclosure.append(content); summary.append(disclosure); compose.append(summary);
-  const mobile = matchMedia('(max-width: 960px)'); const adapt = () => { disclosure.open = !mobile.matches; }; adapt(); mobile.addEventListener('change', adapt);
+  // The summary is available on demand at every width, without a competing rail.
+  disclosure.open = false;
+  const policy = {};
+  for (const [key, label] of [['hours', 'Horários'], ['days', 'Dias da semana'], ['pace', 'Ritmo'], ['limit', 'Limite diário']]) {
+    const row = node('div', ''); policy[key] = node('dd', '');
+    row.append(node('dt', label), policy[key]); $('broadcast-policy-summary').append(row);
+  }
+  let deliveryMode;
   function update() {
     const lines = $('broadcast-phones').value.split(/[\n;,]+/).map(value => [value.trim()]).filter(row => row[0]);
     const count = inspectNumbers(lines).phones.length;
@@ -53,6 +65,16 @@ export function initBroadcastLayout({ refreshHistory }) {
     values.product.textContent = $('broadcast-product')?.value ? $('broadcast-product').selectedOptions[0]?.textContent : 'Sem produto vinculado';
     values.when.textContent = $('broadcast-when').value === 'later' ? ($('broadcast-schedule').value ? new Date($('broadcast-schedule').value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir') : 'Após confirmação';
     values.window.textContent = `${$('broadcast-start').value}–${$('broadcast-end').value} · ${$('broadcast-zone').value === 'America/Sao_Paulo' ? 'São Paulo' : $('broadcast-zone').value}`;
+    policy.hours.textContent = $('broadcast-start').value === $('broadcast-end').value ? `Dia inteiro · ${$('broadcast-zone').value}` : values.window.textContent;
+    const days = [...$('broadcast-days').querySelectorAll('input:checked')].map(input => Number(input.value));
+    policy.days.textContent = days.length === 7 ? 'Todos os dias' : days.length ? days.map(day => ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][day - 1]).join(', ') : 'Nenhum dia selecionado';
+    policy.pace.textContent = `Até ${$('broadcast-minute').value || '—'} por minuto · intervalo de ${$('broadcast-interval').value || '—'} a ${Number($('broadcast-interval').value) + Number($('broadcast-jitter').value)} s`;
+    policy.limit.textContent = `${$('broadcast-daily').value || '—'} tentativas por dia`;
+    if (deliveryMode !== $('broadcast-when').value) {
+      deliveryMode = $('broadcast-when').value;
+      form.querySelector('.broadcast-delivery-policy').open = deliveryMode === 'later';
+    }
+    $('broadcast-timing-note').textContent = $('broadcast-when').value === 'later' ? 'A campanha entra na fila na data escolhida e respeita os horários permitidos.' : 'A campanha entra na fila após sua confirmação, respeitando as condições de envio configuradas.';
     preview.textContent = $('broadcast-kind').value === 'template' ? $('broadcast-template-preview').textContent || 'Selecione o template na etapa Mensagem.' : $('broadcast-text').value.trim().slice(0, 280) || 'Sua mensagem aparecerá aqui enquanto você escreve.';
   }
   form.addEventListener('input', update); form.addEventListener('change', update);
@@ -81,9 +103,8 @@ export function initBroadcastLayout({ refreshHistory }) {
   function pane(key, focus = false) {
     for (const [name, panel] of Object.entries(panels)) { panel.hidden = name !== key; tabButtons.get(name).setAttribute('aria-selected', String(name === key)); tabButtons.get(name).tabIndex = name === key ? 0 : -1; }
     if (key === 'history') refreshHistory().catch(error => { $('broadcast-history-status').textContent = error.message; });
-    if (key === 'suppression') suppression.open = true;
     if (focus) { panels[key].tabIndex = -1; panels[key].focus(); }
   }
   root.dataset.layout = 'guided'; pane('compose'); go(0, false);
-  return { go, pane, review(active) { stepNav.hidden = active; update(); } };
+  return { go, pane, review(active) { stepNav.hidden = active; summary.hidden = active; update(); } };
 }

@@ -8,7 +8,7 @@ test('rotas v2 exigem login e limite maior de JSON fica restrito aos dados de re
   const post = (path, input) => authenticatedFetch(app.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
   try {
     await app.settings.update({ whatsappMode: 'cloud', phoneNumberId: '123456789' });
-    for (const suffix of ['preview','resolve','retry-failed','duplicate','test',randomUUID()]) {
+    for (const suffix of ['remove','preview','resolve','retry-failed','duplicate','test',randomUUID()]) {
       const path = '/api/broadcasts/' + suffix; assert.equal(allowedPath(path), true); assert.equal((await fetch(app.url + path)).status, 401);
     }
     assert.equal(allowedPath('/api/optouts'), true);
@@ -17,6 +17,11 @@ test('rotas v2 exigem login e limite maior de JSON fica restrito aos dados de re
     const created = await post('/api/broadcasts', input); assert.equal(created.status, 201);
     const campaign = await created.json(); assert.equal(campaign.consent_by, 'test-admin');
     const page = await (await authenticatedFetch(app.url + `/api/broadcasts/${campaign.id}?page=2&limit=50`)).json(); assert.equal(page.items.length, 10);
+    assert.equal((await post('/api/broadcasts/remove', {id:campaign.id})).status, 400);
+    assert.equal((await post('/api/broadcasts/remove', {id:campaign.id,confirmed:true})).status, 409);
+    assert.equal((await post('/api/broadcasts/cancel', {id:campaign.id})).status, 200);
+    assert.equal((await post('/api/broadcasts/remove', {id:campaign.id,confirmed:true})).status, 200);
+    assert.equal((await (await authenticatedFetch(app.url + '/api/broadcasts')).json()).campaigns.length, 0);
     assert.equal((await post('/api/chat', { text: 'x'.repeat(70000) })).status, 413);
     assert.equal((await authenticatedFetch(app.url + `/api/broadcasts/${campaign.id}?limit=101`)).status, 400);
   } finally { await app.close(); }

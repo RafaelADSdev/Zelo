@@ -6,7 +6,8 @@ export function initSuppression({ api }) {
   async function load() {
     const data = await api('/api/optouts'); items = data.items;
     $('broadcast-optout-confirmation').value = data.confirmation;
-    $('broadcast-optout-count').textContent = `${items.length} contatos suprimidos nesta conexão.`;
+    $('broadcast-optout-count').textContent = items.length ? `${items.length} contato${items.length === 1 ? '' : 's'} suprimido${items.length === 1 ? '' : 's'} nesta conexão.` : 'Nenhum contato suprimido nesta conexão.';
+    $('broadcast-optout-load').textContent = 'Atualizar lista';
     const container = $('broadcast-optout-list'); container.replaceChildren();
     for (const item of items.slice(0, 100)) {
       const row = document.createElement('div'); row.className = 'broadcast-result-row';
@@ -16,12 +17,15 @@ export function initSuppression({ api }) {
       row.append(text, remove); container.append(row);
     }
   }
-  async function action(fn) {
+  async function action(fn, success = 'Lista de supressão atualizada.') {
     if (busy) return; busy = true;
-    $('broadcast-optout-status').textContent = 'Processando…';
-    try { await fn(); $('broadcast-optout-status').textContent = 'Lista de supressão atualizada.'; }
-    catch (error) { $('broadcast-optout-status').textContent = error.message; }
-    finally { busy = false; }
+    const controls = [...document.querySelectorAll('.broadcast-suppression button, .broadcast-suppression input[type=file]')];
+    controls.forEach(control => { control.disabled = true; });
+    const status = $('broadcast-optout-status'); status.dataset.error = 'false';
+    status.textContent = 'Processando…';
+    try { await fn(); status.textContent = success; }
+    catch (error) { status.dataset.error = 'true'; status.textContent = error.message; }
+    finally { busy = false; controls.forEach(control => { control.disabled = false; }); }
   }
   const add = async phones => { for (let index = 0; index < phones.length; index += 500) await api('/api/optouts', { phones: phones.slice(index, index + 500) }); await load(); };
   $('broadcast-optout-load').addEventListener('click', () => action(load));
@@ -36,5 +40,5 @@ export function initSuppression({ api }) {
     await add(phones.map(value => phoneNumber(value))); event.target.value = '';
   }));
   $('broadcast-optout-export').addEventListener('click', () => action(async () => { await load(); downloadCsv('zelo-supressao.csv', [['Telefone', 'Motivo', 'Data'], ...items.map(item => [item.phone, item.reason, new Date(Number(item.created)).toISOString()])]); }));
-  $('broadcast-optout-save').addEventListener('click', () => action(async () => { await api('/api/optouts', { action: 'configure', confirmation: $('broadcast-optout-confirmation').value }); }));
+  $('broadcast-optout-save').addEventListener('click', () => action(async () => { await api('/api/optouts', { action: 'configure', confirmation: $('broadcast-optout-confirmation').value }); }, 'Confirmação de saída salva.'));
 }

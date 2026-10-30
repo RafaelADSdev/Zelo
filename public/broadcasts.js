@@ -52,7 +52,7 @@ function renderReview() {
   product.review(review.product);
   $('broadcast-confirm').disabled = !review.ready;
   $('broadcast-window-only-label').hidden = !review.outsideWindow || Boolean(draft.template);
-  $('broadcast-review-summary').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
+  $('broadcast-review-list-details').textContent = `${review.recipients.length} destinatário(s) disponíveis · ${review.duplicates} duplicados · ${review.invalid.length} inválidos · ${review.suppressed.length} suprimidos. ${review.canText} podem receber texto; ${review.outsideWindow} exigem template.`;
   ($('broadcast-review-list-details') || $('broadcast-review-summary')).textContent += ` ${review.named || 0} com nome disponível · ${review.withoutName || 0} sem nome. Contatos sem nome usam a alternativa indicada na mensagem.`;
   $('broadcast-review-phones').textContent = review.recipients.map(item => formatPhone(item.phone, '')).join(' · ');
   $('broadcast-review-message').textContent = reviewMessage();
@@ -60,6 +60,16 @@ function renderReview() {
   const minutes = Math.max(review.recipients.length * (draft.intervalMs + draft.jitterMs / 2) / 60000, review.recipients.length / draft.perMinute);
   $('broadcast-review-estimate').textContent = `Duração estimada pelo ritmo: ${Math.max(1, Math.ceil(minutes))} min, sem contar esperas de janela, limite diário ou conexão. ${draft.scheduledAt ? 'Agendado para ' + date(Date.parse(draft.scheduledAt)) : 'Envio após confirmação'}.`;
   $('broadcast-review-window').textContent = `Janela ${draft.windowStart}–${draft.windowEnd} · ${draft.timezone} · dias ${draft.days.join(', ')} · teto diário ${draft.dailyCap} tentativas. Intervalo ${draft.intervalMs / 1000}–${(draft.intervalMs + draft.jitterMs) / 1000} s, até ${draft.perMinute}/min.`;
+  const facts = $('broadcast-review-summary'); facts.replaceChildren();
+  for (const [label, value] of [
+    ['Destinatários', `${review.recipients.length} contato${review.recipients.length === 1 ? '' : 's'}`],
+    ['Início', draft.scheduledAt ? date(Date.parse(draft.scheduledAt)) : 'Após confirmação'],
+    ['Duração estimada', `${Math.max(1, Math.ceil(minutes))} min de envio`],
+  ]) {
+    const row = el('div', ''); row.append(el('dt', label), el('dd', value)); facts.append(row);
+  }
+  $('broadcast-review-exclusions').hidden = !$('broadcast-review-exclusions').textContent;
+
 }
 export function initBroadcasts(options) {
   templateMap = initTemplateMap({ variables: () => [...new Set([...metadata.values()].flatMap(item => Object.keys(item.vars || {})))] });

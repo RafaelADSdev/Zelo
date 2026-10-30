@@ -37,3 +37,36 @@ test('confirmação manual de entrega é auditada e não gera envio', async () =
     assert.equal((await db.execute('SELECT COUNT(*) n FROM wa_broadcast_audit')).rows[0].n, 1);
   } finally { db.close(); }
 });
+
+test('excluir do histórico exige confirmação, preserva envios e persiste sem reabrir a fila', async () => {
+  const db = createClient({url:':memory:'}); let sent=0;
+  const options={db,connection:()=> 'qr:a',send:async()=>{sent++;return {messageId:'kept'};},clock:()=>Date.parse('2026-10-30T15:00:00Z')};
+  try {
+    const service=await createBroadcasts(options);
+    const input={requestId:randomUUID(),consent:true,phones:'5511988887777',text:'Olá',windowStart:'00:00',windowEnd:'00:00'};
+    const campaign=await service.create(input);
+    await assert.rejects(service.remove({id:campaign.id}),/Confirme/);
+    await assert.rejects(service.remove({id:campaign.id,confirmed:true}),/concluídos ou cancelados/);
+    await service.pause(campaign.id);
+    await assert.rejects(service.remove({id:campaign.id,confirmed:true}),/concluídos ou cancelados/);
+    await service.resume(campaign.id); await service.tick();
+    assert.equal(sent,1);
+    await service.remove({id:campaign.id,confirmed:true},'auditor');
+    await service.remove({id:campaign.id,confirmed:true},'auditor');
+    assert.equal((await service.list()).length,0);
+    assert.equal((await service.get(campaign.id)).items[0].message_id,'kept');
+    assert.equal((await db.execute('SELECT COUNT(*) n FROM wa_broadcast_attempts')).rows[0].n,1);
+    assert.equal((await db.execute("SELECT COUNT(*) n FROM wa_broadcast_audit WHERE action='remove_history' AND actor='auditor'")).rows[0].n,1);
+    await service.create(input); await service.tick(); assert.equal(sent,1);
+    await assert.rejects(service.retryFailed({id:campaign.id,requestId:randomUUID()}),/excluído do histórico/);
+    const restored=await createBroadcasts(options); assert.equal((await restored.list()).length,0);
+    const other=await restored.create({...input,requestId:randomUUID()});
+    await db.execute({sql:"UPDATE wa_broadcast_items SET state='sending' WHERE campaign=?",args:[other.id]});
+    await restored.cancel(other.id);
+    await assert.rejects(restored.remove({id:other.id,confirmed:true}),/em andamento/);
+    assert.equal((await db.execute({sql:"SELECT COUNT(*) n FROM wa_broadcast_audit WHERE campaign=? AND action='remove_history'",args:[other.id]})).rows[0].n,0);
+    await db.execute({sql:"UPDATE wa_broadcast_items SET state='unknown' WHERE campaign=?",args:[other.id]});
+    await restored.remove({id:other.id,confirmed:true}); assert.equal((await restored.list()).length,0);
+    await assert.rejects(restored.remove({id:'invalid',confirmed:true}),/Identificador/);
+  } finally {db.close();}
+});
