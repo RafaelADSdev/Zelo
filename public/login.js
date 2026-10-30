@@ -9,17 +9,17 @@ try {
   const status = await response.json();
   if (status.authenticated) location.replace(destination);
   setup = !status.configured;
-  if (status.inviteOnly && !invitationToken) document.querySelector('#login-description').textContent = 'Entre no seu ambiente privado. Novas contas precisam de um convite do administrador.';
+  if (status.inviteOnly && !invitationToken) document.querySelector('#login-description').textContent = 'Acesse sua conta com o e-mail do convite. Para um novo acesso, fale com o administrador.';
   if (status.provider === "supabase") {
     document.querySelector('label[for="username"]').textContent = "E-mail";
     $("#username").type = "email"; $("#username").placeholder = "seu@email.com";
-    $("#login-description").textContent = setup ? "Crie sua conta de administrador no Supabase para proteger o Zelo." : status.inviteOnly ? "Entre no seu ambiente privado. Novas contas precisam de um convite do administrador." : "Entre com sua conta do Supabase para gerenciar o atendimento.";
+    $("#login-description").textContent = setup ? "Crie sua conta de administrador para começar a usar o Zelo." : status.inviteOnly ? "Acesse sua conta com o e-mail do convite. Para um novo acesso, fale com o administrador." : "Acesse sua conta e continue de onde parou.";
   }
   for (const id of ["setup-fields", "confirm-field"]) $("#" + id).hidden = !setup;
   $("#setup-token").required = $("#confirm-password").required = setup;
   if (setup) {
-    $("#login-title").textContent = "Seu espaço começa aqui.";
-    if (status.provider !== "supabase") $("#login-description").textContent = "Crie sua conta de administrador para proteger o Zelo.";
+    $("#login-title").textContent = "Vamos começar?";
+    if (status.provider !== "supabase") $("#login-description").textContent = "Crie sua conta de administrador para começar a usar o Zelo.";
     $("#password").minLength = 12; $("#password").autocomplete = "new-password";
     const token = new URLSearchParams(location.hash.slice(1)).get("setup");
     if (token && /^[a-f0-9]{64}$/.test(token)) $("#setup-token").value = token;
@@ -30,8 +30,8 @@ try {
     $('#username').value = invitation.email; $('#username').readOnly = true;
     $('#confirm-field').hidden = false; $('#confirm-password').required = true;
     $('#password').minLength = 12; $('#password').autocomplete = 'new-password';
-    $('#login-title').textContent = 'Seu próprio espaço.';
-    $('#login-description').textContent = 'Escolha uma senha para ativar seu ambiente. Se já tem conta no Supabase, use sua senha existente. Seu WhatsApp e suas APIs serão exclusivos deste login.';
+    $('#login-title').textContent = 'Seu Zelo está quase pronto.';
+    $('#login-description').textContent = 'Defina sua senha para aceitar o convite. Se já tem uma conta com este e-mail, use sua senha atual.';
   }
   if (location.hash) history.replaceState(null, "", "/login");
   $("#login-submit").textContent = invitationToken ? "Ativar meu ambiente" : setup ? "Criar conta e entrar" : "Entrar no Zelo";

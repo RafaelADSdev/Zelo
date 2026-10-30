@@ -10,7 +10,7 @@ function fixture(reduced = false) {
   const document = { body: {}, documentElement: { dataset: {} }, visibilityState: 'visible', hidden: false,
     addEventListener: (name, callback) => events.set(name, callback), querySelector: () => null, querySelectorAll: () => [] };
   const preference = { matches: reduced, addEventListener: (name, callback) => preferences.set(name, callback) };
-  function element() { return { hidden: false, matches: () => true, contains: () => false, getClientRects: () => [{}],
+  function element() { return { hidden: false, matches: selector => selector.startsWith('.view,'), contains: () => false, getClientRects: () => [{}],
     animate(frames, timing) { const animation = { frames, timing, cancelled: false, cancel() { this.cancelled = true; }, finished: new Promise(() => {}) }; animations.push(animation); return animation; } }; }
   runInNewContext(source, { document, matchMedia: () => preference, performance: { now: () => 100 }, HTMLDetailsElement: class {}, MutationObserver: class { constructor(callback) { observe = callback; } observe() {} } });
   return { document, preference, events, preferences, animations, element,
@@ -37,7 +37,7 @@ test('motion: reordering moves stable row identities once without replay on poll
   Object.assign(a, { dataset: { keyId: 'a' }, getBoundingClientRect: () => ({ top: 100 }) });
   Object.assign(b, { dataset: { keyId: 'b' }, getBoundingClientRect: () => ({ top: 200 }) });
   f.document.querySelectorAll = () => [a, b];
-  f.emit('pointerdown', { target: { closest: () => ({}) } });
+  f.emit('pointerdown', { target: { closest: selector => selector === '.ai-key-movers' ? {} : null } });
   a.getBoundingClientRect = () => ({ top: 200 }); b.getBoundingClientRect = () => ({ top: 100 });
   const list = { id: 'ai-key-list', children: [b, a] }; f.rowsChanged(list);
   assert.equal(f.animations.length, 2); assert.equal(f.animations[0].frames[0].transform, 'translateY(100px)');

@@ -37,7 +37,7 @@ function providerInfo() {
 export function renderAiKeys(settings) {
   rootSettings = settings;
   config = scope === "audio" ? { ...settings, aiKeys: settings.audioAiKeys, aiKeysRevision: settings.audioAiKeysRevision, aiRotationEnabled: settings.audioAiRotationEnabled, aiLastUsed: settings.audioAiLastUsed } : settings;
-  $("#provider-settings h2").textContent = scope === "audio" ? "IA para áudios" : "IA para textos";
+  $("#provider-settings h2").textContent = scope === "audio" ? "Transcrição de áudios" : "Modelos de resposta";
   $("#provider-settings .settings-section-heading p").textContent = scope === "audio" ? "Estas IAs transcrevem a voz. A resposta usa a lista de textos." : "Estas IAs elaboram as respostas, inclusive depois de um áudio ser transcrito.";
   purposeTabs.querySelectorAll("button").forEach(button => { const selected = button.dataset.scope === scope; button.setAttribute("aria-selected", String(selected)); button.tabIndex = selected ? 0 : -1; });
   $("#ai-purpose-content").setAttribute("aria-labelledby", "ai-purpose-" + scope);
@@ -101,10 +101,13 @@ export function renderAiKeys(settings) {
 export async function initAiKeys(options) {
   textProviders = options.providers; audioProviders = await options.api("/api/ai/providers?scope=audio"); providers = textProviders; changed = options.changed;
   api = (path, data) => options.api(path + (path.includes("?") ? "&" : "?") + "scope=" + scope, data);
-  const section = $("#provider-settings"), content = el("div"); content.id = "ai-purpose-content"; content.setAttribute("role", "tabpanel"); content.append(...section.childNodes);
+  const section = $("#provider-settings"), content = el("div");
+  section.querySelector('.settings-section-heading').after($('#ai-key-editor')); content.id = "ai-purpose-content"; content.setAttribute("role", "tabpanel"); content.append(...section.childNodes);
   purposeTabs = el("div", "ai-purpose-tabs"); purposeTabs.setAttribute("role", "tablist"); purposeTabs.setAttribute("aria-label", "Finalidade da IA");
   for (const [value, title] of [["text", "Textos"], ["audio", "Áudios"]]) {
-    const button = el("button", "", title); button.type = "button"; button.id = "ai-purpose-" + value; button.dataset.scope = value; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", content.id); button.setAttribute("aria-selected", String(value === scope)); button.tabIndex = value === scope ? 0 : -1;
+    const button = el("button", "");
+    button.append(el('strong', '', title === 'Textos' ? 'Respostas em texto' : 'Transcrição de áudios'), el('span', '', value === 'text' ? 'IA que conversa com seus clientes' : 'IA que transforma voz em texto'));
+    button.type = "button"; button.id = "ai-purpose-" + value; button.dataset.scope = value; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", content.id); button.setAttribute("aria-selected", String(value === scope)); button.tabIndex = value === scope ? 0 : -1;
     button.addEventListener("click", () => {
       if (busy || value === scope) return;
       if (!$("#ai-key-editor").hidden) { status("Salve ou cancele a edição antes de trocar de lista.", true); return; }

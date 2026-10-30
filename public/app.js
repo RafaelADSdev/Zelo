@@ -16,6 +16,12 @@ const aiName = () => providers[activeAi().provider]?.name || "Lista de IAs";
 const date = value => value ? new Date(Number(value)).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Ainda não";
 const labels = { pending: "Na fila", requested: "Na fila do operador", processing: "Processando", done: "Respondida", failed: "Falhou", manual: "Atendimento manual", blocked: "IA bloqueada", unknown: "Envio sem confirmação", sending: "Enviando", sent: "Envio aceito", delivered: "Entregue", read: "Lida" };
 function node(tag, className, text) { const item = document.createElement(tag); if (className) item.className = className; if (text !== undefined) item.textContent = text; return item; }
+function conversationIcon(paths, className = "icon") {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", className); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  for (const d of paths) { const path = document.createElementNS(svg.namespaceURI, "path"); path.setAttribute("d", d); svg.append(path); }
+  return svg;
+}
 const broadcastNav = node('button', 'nav-button');
 const broadcastIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 broadcastIcon.setAttribute('class', 'icon'); broadcastIcon.setAttribute('viewBox', '0 0 24 24'); broadcastIcon.setAttribute('aria-hidden', 'true');
@@ -27,11 +33,27 @@ document.querySelector('.nav-button[data-view="whatsapp"]').after(broadcastNav);
 const blockContactButton = node("button", "secondary-button contact-block-button", "Bloquear IA");
 blockContactButton.type = "button"; blockContactButton.hidden = true;
 $("#wa-window").closest("header").append(blockContactButton);
-const blockFilter = node("select", "contact-block-filter");
-blockFilter.setAttribute("aria-label", "Filtrar conversas por bloqueio da IA");
-for (const [value, text] of [["all", "Todas as conversas"], ["blocked", "Somente com IA bloqueada"]]) { const option = node("option", "", text); option.value = value; blockFilter.append(option); }
-$("#contact-search").after(blockFilter);
-blockFilter.addEventListener("change", filterContacts);
+let contactFilter = "all";
+const blockFilter = node("div", "contact-filters");
+blockFilter.setAttribute("role", "group"); blockFilter.setAttribute("aria-label", "Filtrar conversas");
+for (const [value, text] of [["all", "Todas"], ["blocked", "IA bloqueada"]]) {
+  const button = node("button", "contact-filter"); button.type = "button"; button.dataset.filter = value;
+  button.setAttribute("aria-pressed", String(value === contactFilter));
+  button.append(node("span", "", text), node("span", "contact-filter-count", "0"));
+  button.addEventListener("click", () => {
+    contactFilter = value;
+    blockFilter.querySelectorAll("button").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    filterContacts();
+  });
+  blockFilter.append(button);
+}
+$(".contact-search-wrap").after(blockFilter);
+$(".contacts-heading").insertBefore($("#refresh-inbox"), $("#new-wa-conversation"));
+$("#refresh-inbox").replaceChildren(conversationIcon(["M20 4v6h-6M4 20v-6h6", "M6.1 7a7 7 0 0 1 11.6-2L20 8M4 16l2.3 3A7 7 0 0 0 17.9 17"]), node("span", "refresh-label", "Atualizar"));
+$("#refresh-inbox").setAttribute("aria-label", "Atualizar conversas"); $("#refresh-inbox").title = "Atualizar conversas";
+$(".activity-panel").addEventListener("toggle", event => {
+  $(".activity-action-text").textContent = event.currentTarget.open ? "Ocultar" : "Ver atividade";
+});
 async function api(path, data) {
   const response = await fetch(path, { ...(data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }), signal: AbortSignal.timeout(path === "/api/tunnel/start" ? 190000 : 60000) });
   if (response.status === 401) { location.replace("/login"); throw new Error("Sua sessão terminou. Entre novamente."); }
@@ -40,8 +62,15 @@ async function api(path, data) {
 function error(message = "") { $("#global-error").textContent = message; $("#global-error").hidden = !message; }
 function messageBox(container, role, text, at, status) {
   const item = node("article", `message ${role === "user" ? "user" : "agent"}`);
-  item.append(node("div", "message-label", role === "user" ? (container.id === "wa-messages" ? "Contato" : "Você") : dashboard?.settings.assistantName || "Assistente"), node("div", "bubble", text || "[Mensagem sem texto]"));
-  if (at || status) item.append(node("div", "message-time", [date(at), labels[status] || status].filter(Boolean).join(" · ")));
+  const whatsapp = container.id === "wa-messages";
+  const bubble = node("div", "bubble");
+  item.append(node("div", "message-label", role === "user" ? (whatsapp ? "Contato" : "Você") : dashboard?.settings.assistantName || "Assistente"), bubble);
+  bubble.append(node("div", "message-body", text || "[Mensagem sem texto]"));
+  if (at || status) {
+    const timestamp = at ? new Date(Number(at)).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+    const time = node("div", "message-time", [whatsapp ? timestamp : date(at), labels[status] || status].filter(Boolean).join(" · "));
+    time.title = date(at); (whatsapp ? bubble : item).append(time);
+  }
   container.append(item);
 }
 function fillSettings(scope) {
@@ -98,22 +127,57 @@ function renderDashboard() {
   const signature = JSON.stringify([dashboard.conversations, dashboard.jobs]);
   if (signature !== lastContacts) {
     lastContacts = signature; const contacts = $("#contacts"); contacts.replaceChildren();
+    blockFilter.querySelector('[data-filter="all"] .contact-filter-count').textContent = dashboard.conversations.length;
+    blockFilter.querySelector('[data-filter="blocked"] .contact-filter-count').textContent = dashboard.conversations.filter(contact => contact.blocked).length;
     if (!dashboard.conversations.length) contacts.append(node("p", "hint", "Nenhum contato recebido ou envio realizado. Conecte o WhatsApp e envie uma mensagem para ele usando outro celular."));
     dashboard.conversations.forEach(contact => {
-      const button = node("button", "contact-button", ""); button.type = "button"; button.dataset.initial = contact.name.trim().slice(0, 1).toLocaleUpperCase("pt-BR"); button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
+      const button = node("button", "contact-button"); button.type = "button"; button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
       button.dataset.blocked = String(Boolean(contact.blocked));
-      button.append(node("strong", "", contact.name), node("small", "", contact.phone), node("p", "", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto"));
-      if (contact.blocked) button.querySelector("strong").after(node("span", "contact-block-badge", "IA bloqueada"));
+      button.title = `${contact.name} · ${contact.phone}`;
+      button.dataset.search = `${contact.name} ${contact.phone}`;
+      const nameParts = contact.name.trim().split(/\s+/).filter(part => /\p{L}/u.test(part));
+      const initials = nameParts.length ? [nameParts[0][0], nameParts.length > 1 ? nameParts.at(-1)[0] : ""].join("").toLocaleUpperCase("pt-BR") : "";
+      const avatar = node("span", "contact-avatar", initials); avatar.setAttribute("aria-hidden", "true");
+      avatar.dataset.color = String([...contact.phone].reduce((sum, character) => sum + character.charCodeAt(0), 0) % 3);
+      if (!initials) avatar.append(conversationIcon(["M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M5 21v-2a7 7 0 0 1 14 0v2"]));
+      const content = node("span", "contact-content"), headline = node("span", "contact-headline");
+      headline.append(node("strong", "", contact.name));
+      if (contact.blocked) {
+        const badge = node("span", "contact-block-badge"); badge.title = "IA bloqueada · atendimento manual disponível";
+        badge.append(conversationIcon(["M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3"]), node("span", "sr-only", "IA bloqueada")); headline.append(badge);
+      }
+      if (contact.last_inbound) {
+        const at = new Date(Number(contact.last_inbound));
+        const time = node("time", "contact-time", at.toDateString() === new Date().toDateString() ? at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : at.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }));
+        time.dateTime = at.toISOString(); time.title = `Última mensagem recebida: ${date(contact.last_inbound)}`; headline.append(time);
+      }
+      const preview = node("p", "contact-preview", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto");
+      content.append(headline, preview); button.append(avatar, content);
       button.addEventListener("click", async () => { currentPhone = contact.phone; $(".message-options").open = false; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus({ preventScroll: true }); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
   filterContacts();
   const jobs = $("#jobs"); jobs.replaceChildren();
   const attention = dashboard.jobs.filter(job => !["done", "blocked"].includes(job.state));
-  $("#activity-count").textContent = attention.length ? attention.length + " para revisar" : "Tudo em dia";
+  $("#activity-count").textContent = attention.length || "Em dia";
+  $(".activity-panel").dataset.attention = String(Boolean(attention.length));
+  const failed = attention.filter(job => job.state === "failed").length;
+  const manual = attention.filter(job => job.state === "manual").length;
+  const processing = attention.filter(job => job.state === "processing").length;
+  const other = attention.length - failed - manual - processing;
+  $("#activity-description").textContent = attention.length ? [failed && `${failed} ${failed === 1 ? "falha para revisar" : "falhas para revisar"}`, manual && `${manual} em atendimento manual`, processing && `${processing} em processamento`, other && `${other} para acompanhar`].filter(Boolean).join(" · ") : "Nenhuma mensagem pendente. Tudo em dia.";
+  $("#activity-mobile-description").textContent = attention.length ? `${attention.length} ${attention.length === 1 ? "mensagem para acompanhar" : "mensagens para acompanhar"}` : "Nenhuma mensagem pendente.";
+  $("#activity-count").setAttribute("aria-label", attention.length ? `${attention.length} ${attention.length === 1 ? "mensagem para acompanhar" : "mensagens para acompanhar"}` : "Atendimento em dia");
   if (!attention.length) jobs.append(node("p", "hint", "Nenhuma mensagem pendente ou com falha."));
   attention.forEach(job => {
-    const row = node("div", "job-row"); row.append(node("div", "", `${job.phone} · ${labels[job.state] || job.state}${job.error ? " · " + job.error : ""}`));
+    const row = node("div", "job-row"), content = node("div", "activity-job-content");
+    const contact = dashboard.conversations.find(item => item.phone === job.phone);
+    const heading = node("div", "activity-job-heading");
+    heading.append(node("strong", "", contact?.name || job.phone), node("span", `activity-job-state ${job.state === "failed" ? "is-failed" : ""}`, labels[job.state] || job.state));
+    content.append(heading);
+    if (job.error) content.append(node("p", "activity-job-error", job.error));
+    if (job.created) content.append(node("small", "", date(job.created)));
+    row.append(content);
     if (canRetryJob(job)) {
       const retry = node("button", "secondary-button", "Tentar responder"); retry.type = "button";
       retry.addEventListener("click", () => action(retry, "#wa-send-status", async () => { await api("/api/whatsapp/retry", { id: job.id }); await loadDashboard(); return "Mensagem recolocada na fila."; })); row.append(retry);
@@ -130,19 +194,31 @@ async function loadConversation() {
   const result = await api("/api/conversation?phone=" + encodeURIComponent(phone));
   if (phone !== currentPhone) return;
   const audioJobs = dashboard.jobs.filter(job => job.phone === currentPhone && job.audio && !["done", "blocked"].includes(job.state)).slice(0, 5);
-  const signature = JSON.stringify([result, audioJobs]); if (signature === lastWaHistory) return; lastWaHistory = signature;
+  const signature = JSON.stringify([result, audioJobs, dashboard.replyStatus.active, dashboard.settings.whatsappMode]); if (signature === lastWaHistory) return;
+  const container = $("#wa-messages");
+  const followLatest = !lastWaHistory || container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+  const previousScroll = container.scrollTop; lastWaHistory = signature;
   const contact = dashboard.conversations.find(item => item.phone === currentPhone);
   $("#wa-contact").textContent = contact?.name || currentPhone;
+  $("#wa-avatar").textContent = (contact?.name || currentPhone).trim().slice(0, 1).toLocaleUpperCase("pt-BR");
   blockContactButton.hidden = false; blockContactButton.dataset.blocked = String(Boolean(result.blocked));
   blockContactButton.textContent = result.blocked ? "Desbloquear IA" : "Bloquear IA";
   blockContactButton.setAttribute("aria-label", `${result.blocked ? "Desbloquear" : "Bloquear"} IA para ${contact?.name || currentPhone}`);
-  $("#wa-window").textContent = dashboard.settings.whatsappMode === "qr" ? "Conversa pelo WhatsApp vinculado por QR Code." : contact?.last_inbound && Date.now() - Number(contact.last_inbound) < 86400000 ? "Janela de 24 horas aberta para texto livre." : "Envie um template aprovado ou aguarde uma mensagem do contato.";
-  const container = $("#wa-messages"); container.replaceChildren();
+  $("#wa-window").textContent = dashboard.settings.whatsappMode === "qr" ? "WhatsApp · " + (result.blocked || !dashboard.replyStatus.active ? "Atendimento manual" : "Atendimento com IA") : contact?.last_inbound && Date.now() - Number(contact.last_inbound) < 86400000 ? "Janela de 24 horas aberta para texto livre." : "Envie um template aprovado ou aguarde uma mensagem do contato.";
+  container.replaceChildren();
+  let previousDay = "";
+  const appendMessage = (role, text, at, status) => {
+    if (at) {
+      const day = new Date(Number(at)).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+      if (day !== previousDay) { container.append(node("div", "chat-date", day)); previousDay = day; }
+    }
+    messageBox(container, role, text, at, status);
+  };
   result.history.forEach(turn => {
     const outgoing = result.outbound.find(item => item.id === turn.id || item.id === "auto:" + turn.id.replace(/:reply$/, ""));
-    messageBox(container, turn.role, turn.text, turn.timestamp, outgoing?.deliveryStatus || outgoing?.state);
+    appendMessage(turn.role, turn.text, turn.timestamp, outgoing?.deliveryStatus || outgoing?.state);
   });
-  result.outbound.filter(item => !result.history.some(turn => turn.id === item.id || item.id === "auto:" + turn.id.replace(/:reply$/, ""))).forEach(item => messageBox(container, "agent", item.text, item.created, item.deliveryStatus || item.state));
+  result.outbound.filter(item => !result.history.some(turn => turn.id === item.id || item.id === "auto:" + turn.id.replace(/:reply$/, ""))).forEach(item => appendMessage("agent", item.text, item.created, item.deliveryStatus || item.state));
   if (result.blocked) {
     const notice = node("section", "audio-job-status contact-block-notice"); notice.setAttribute("role", "status");
     notice.append(node("strong", "", "IA bloqueada para este contato"), node("p", "", "Este contato não recebe respostas da IA nem tem áudios transcritos. Você pode continuar o atendimento manualmente. Ao desbloquear, somente novas mensagens voltam ao atendimento automático.")); container.append(notice);
@@ -150,14 +226,17 @@ async function loadConversation() {
   audioJobs.slice().reverse().forEach(job => {
     const status = audioStatus(job), card = node("section", `audio-job-status audio-job-${status.tone}`);
     card.setAttribute("role", "status");
-    card.append(node("strong", "", status.title), node("p", "", status.detail), node("small", "", `Áudio recebido em ${date(job.created)}`));
+    const details = node("details", "audio-job-details"), summary = node("summary", "", "Ver detalhes");
+    details.append(summary, node("p", "", status.detail));
+    card.append(node("strong", "", status.title), node("small", "", `Áudio recebido em ${date(job.created)}`), details);
     if (status.retry && !result.blocked) {
       const retry = node("button", "secondary-button", "Tentar atender este áudio"); retry.type = "button";
       retry.addEventListener("click", () => action(retry, "#wa-send-status", async () => { await api("/api/whatsapp/retry", { id: job.id }); await loadDashboard(); lastWaHistory = ""; await loadConversation(); return "Áudio recolocado na fila."; })); card.append(retry);
     }
     container.append(card);
   });
-  if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa.")); container.scrollTop = container.scrollHeight;
+  if (!container.children.length) container.append(node("p", "hint", "Ainda não há mensagens nesta conversa."));
+  container.scrollTop = followLatest ? container.scrollHeight : previousScroll;
 }
 function updatePage(next) {
   const pages = { knowledge: ["Produtos e materiais", "Organize os produtos e arquivos que a IA usa no atendimento.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
@@ -169,7 +248,9 @@ function updatePage(next) {
 }
 function filterContacts() {
   const query = $("#contact-search").value.toLocaleLowerCase("pt-BR");
-  document.querySelectorAll("#contacts .contact-button").forEach(button => button.hidden = !button.textContent.toLocaleLowerCase("pt-BR").includes(query) || blockFilter.value === "blocked" && button.dataset.blocked !== "true");
+  const buttons = $$("#contacts .contact-button");
+  buttons.forEach(button => button.hidden = !`${button.dataset.search} ${button.textContent}`.toLocaleLowerCase("pt-BR").includes(query) || contactFilter === "blocked" && button.dataset.blocked !== "true");
+  $("#contact-search-empty").hidden = !buttons.length || buttons.some(button => !button.hidden);
 }
 $("#contact-search").addEventListener("input", filterContacts);
 $('#wa-contact').tabIndex = -1;
@@ -180,6 +261,7 @@ $('#new-wa-conversation').onclick = () => {
   currentPhone = ''; lastWaHistory = ''; $('.inbox-layout').dataset.contactSelected = 'true';
   $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
   $('#wa-contact').textContent = 'Nova mensagem'; $('#wa-window').textContent = 'Informe o destinatário e escreva sua mensagem.';
+  $('#wa-avatar').textContent = '+';
   $('#wa-to').value = ''; $('#wa-messages').replaceChildren(node('p','hint','Sua nova conversa aparecerá aqui após o envio.')); $('#wa-to').focus();
 };
 
@@ -246,8 +328,22 @@ $('#knowledge-form').addEventListener('submit', event => { event.preventDefault(
   $('#edit-business').hidden = false; $('#save-business').hidden = true;
   return 'Informações salvas. As próximas respostas consultarão esta base.';
 }); });
-$("#refresh-inbox").addEventListener("click", async () => { try { await loadDashboard(); await loadConversation(); } catch (failure) { error(failure.message); } });
+$("#refresh-inbox").addEventListener("click", async event => {
+  const button = event.currentTarget; button.disabled = true; button.setAttribute("aria-busy", "true");
+  try { await loadDashboard(); await loadConversation(); } catch (failure) { error(failure.message); }
+  finally { button.disabled = false; button.removeAttribute("aria-busy"); }
+});
 $("#wa-kind").addEventListener("change", () => { $("#text-fields").hidden = $("#wa-kind").value !== "text"; $("#template-fields").hidden = $("#wa-kind").value !== "template"; });
+function resizeComposer() {
+  const field = $("#wa-text"); field.style.height = "auto";
+  field.style.height = Math.min(field.scrollHeight, 144) + "px";
+}
+$("#wa-text").addEventListener("input", resizeComposer);
+$("#wa-text").addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !waBusy && $("#wa-text").value.trim()) {
+    event.preventDefault(); $("#wa-send-form").requestSubmit($("#wa-send"));
+  }
+});
 $("#load-templates").addEventListener("click", event => action(event.currentTarget, "#wa-send-status", async () => {
   templates = (await api("/api/templates")).templates; const select = $("#approved-template"); select.replaceChildren(new Option("Selecione um template", ""));
   templates.forEach((template, index) => select.append(new Option(`${template.name} · ${template.language}`, String(index)))); return `${templates.length} template(s) aprovado(s) encontrado(s).`;
@@ -273,9 +369,11 @@ $("#wa-send-form").addEventListener("submit", async event => {
   const intent = JSON.stringify(input); if (!sendIntent || sendIntent.intent !== intent) sendIntent = { intent, requestId: crypto.randomUUID() };
   input.requestId = sendIntent.requestId; waBusy = true;
   await action($("#wa-send"), "#wa-send-status", async () => {
-    const result = await api("/api/whatsapp/send", input); sendIntent = null; currentPhone = input.phone;
+    await api("/api/whatsapp/send", input); sendIntent = null; currentPhone = input.phone;
     await loadDashboard(); lastWaHistory = ""; await loadConversation(); $("#wa-text").value = "";
-    return `Enviada ao WhatsApp. ID: ${result.messageId}. Aguarde o status de entrega.`;
+    resizeComposer(); $(".message-options").open = false;
+    if (view === "whatsapp") $("#wa-text").focus();
+    return "Enviada ao WhatsApp. Aguarde a confirmação de entrega.";
   }); waBusy = false;
 });
 try {

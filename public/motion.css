@@ -16,3 +16,23 @@
 }
 html[data-motion-input=keyboard] *,html[data-motion-input=keyboard] *::before,html[data-motion-input=keyboard] *::after{transition:none!important}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Disparos: navigation communicates selection; disclosures preserve context. */
+@media(prefers-reduced-motion:no-preference) {
+  #view-broadcasts .broadcast-workspace-tabs button,
+  #view-broadcasts .broadcast-step-nav button { position:relative; border-bottom-color:transparent; }
+  #view-broadcasts .broadcast-workspace-tabs button::after,
+  #view-broadcasts .broadcast-step-nav button::after { content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px; background:#7041db; transform:scaleX(0); transform-origin:left; transition:transform 220ms var(--motion-ease); }
+  #view-broadcasts .broadcast-workspace-tabs button[aria-selected=true]::after,
+  #view-broadcasts .broadcast-step-nav button[data-state=current]::after { transform:scaleX(1); }
+  #view-broadcasts .broadcast-step-number { transition:background-color 180ms var(--motion-ease),color 180ms var(--motion-ease),border-color 180ms var(--motion-ease); }
+  #view-broadcasts .broadcast-history-group-heading { transition:background-color 150ms var(--motion-ease),color 150ms var(--motion-ease); }
+  #view-broadcasts .broadcast-history-group-heading::before,
+  #view-broadcasts .broadcast-history-content > summary::before { transition:transform 180ms var(--motion-ease); }
+  #view-broadcasts .broadcast-history-group[open] > summary { background:#efe8fa; }
+  #view-broadcasts #broadcast-refresh[data-motion-busy]::before { content:""; display:inline-block; width:12px; height:12px; margin-right:8px; border:1.5px solid #d7c7ef; border-top-color:#7041db; border-radius:50%; vertical-align:-2px; animation:broadcast-refresh-spin 700ms linear infinite; }
+  @media(hover:hover) and (pointer:fine) {
+    #view-broadcasts .broadcast-history-group-heading:hover { background:#ebe2f8; }
+  }
+}
+@keyframes broadcast-refresh-spin { to { transform:rotate(360deg); } }
