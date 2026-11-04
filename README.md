@@ -31,7 +31,7 @@ O Zelo reúne o que o assistente precisa saber e o que você precisa acompanhar.
 | **Produtos e materiais** | Cadastre descrições, preços, imagens, PDFs e links. Mantenha as informações gerais do negócio em um só lugar. |
 | **Conversas** | Busque contatos, acompanhe mensagens e áudios, responda manualmente e bloqueie a IA por pessoa. |
 | **Conexões e IA** | Configure provedores, prioridades e listas independentes para respostas em texto e transcrição de áudios. |
-| **Seu assistente** | Defina nome, tom de voz e instruções globais que acompanham os modelos. |
+| **Seu assistente** | Defina nome, tom de voz, regras e estrutura das respostas para todos os modelos. |
 | **Disparos** | Importe contatos, personalize mensagens, vincule um produto e revise a campanha antes de confirmar. |
 | **Histórico** | Acompanhe campanhas por empreendimento, filtre resultados e consulte entregas, leituras e falhas disponíveis. |
 | **Atendimento automático** | Ligue, pause e programe horários, dias e períodos de funcionamento. |
@@ -39,7 +39,11 @@ O Zelo reúne o que o assistente precisa saber e o que você precisa acompanhar.
 
 ## O que mudou por aqui
 
-A revisão de **30 de outubro de 2026** reúne melhorias na operação e na experiência em telas menores:
+A revisão de **4 de novembro de 2026** reúne melhorias nas IAs, na operação e na experiência em telas menores:
+
+- **IAs locais:** conexão com llama.cpp e Ollama, com modelos cadastrados e validados pelo painel.
+- **Prioridade por arraste:** alças de seis pontos nas listas de texto e áudio, com salvamento automático e alternativa pelo teclado.
+- **Estrutura das respostas:** orientações próprias para objetividade, parágrafos curtos e espaçamento, compartilhadas por todas as IAs de resposta.
 
 - **PWA atualizado:** aviso de nova versão com **Atualizar Zelo**, recarga após escolha do usuário e recuperação quando a conexão falha.
 - **Conexões no celular:** abas compactas, formulários com ações em largura total, controles de toque ampliados e QR Code com estado inicial mais enxuto.
@@ -103,16 +107,57 @@ A validação de chaves, a transcrição e a geração de texto fazem chamadas r
 
 ## Uma IA para responder. Outra, se você quiser, para ouvir.
 
-**Respostas em texto:** Gemini, OpenAI, Anthropic, xAI, Groq, DeepSeek e OpenRouter, conforme os modelos configurados.
+**Respostas em texto:** Gemini, OpenAI, Anthropic, xAI, Groq, DeepSeek e OpenRouter, além de modelos locais pelo **llama.cpp** e **Ollama**.
 
 **Transcrição de áudios:** lista própria com Gemini, Groq e OpenAI. O áudio recebido vira texto identificado no histórico; a IA da lista de textos prepara a resposta.
 
-- Ordene as chaves e ative a troca automática quando quiser usar as reservas elegíveis.
+- **Organize a prioridade:** segure a alça de seis pontos e arraste o modelo. A ordem é salva ao soltar.
+- Ative a troca automática quando quiser usar as reservas elegíveis.
 - Edite, pause, valide ou remova cada cadastro pelo painel.
 - Use **Observação** para registrar a finalidade de cada modelo.
 - Mantenha instruções globais para dar continuidade ao atendimento mesmo quando o modelo mudar.
 
 As listas de texto e áudio são independentes. A troca depende do tipo de falha e do provedor; erros de autenticação e configuração exigem correção. Chaves do mesmo projeto podem compartilhar a mesma cota.
+
+<details>
+<summary><strong>Conectar modelos locais com llama.cpp ou Ollama</strong></summary>
+
+Mantenha o programa de IA aberto no mesmo computador do servidor Zelo. Não é necessária chave de API.
+
+1. Abra **Conexões e IA → Inteligência artificial → Respostas em texto**.
+2. Adicione um cadastro e selecione o programa que executa seu modelo.
+3. Informe o nome exato do modelo, salve e use **Validar** no menu do cadastro.
+4. Arraste a alça para posicioná-lo na prioridade desejada.
+
+| Programa | Nome do modelo no cadastro |
+| --- | --- |
+| **llama.cpp** | Use o nome listado pelo aplicativo, por exemplo `Spark-X2.5-4B`. |
+| **Ollama** | Use o nome exibido por `ollama list`, por exemplo `gemma4:e4b`. |
+
+**Conexões locais usadas pelo Zelo:**
+
+- llama.cpp: `http://127.0.0.1:9931/v1/chat/completions`.
+- Ollama: `http://127.0.0.1:11434/api/chat`.
+
+O primeiro carregamento pode demorar, e modelos maiores exigem mais memória. Esta integração local gera respostas em texto; a transcrição continua na lista de áudios.
+
+> Em uma instalação hospedada, o endereço local aponta para o servidor da hospedagem. Para usar a IA do seu computador, execute o servidor Zelo nele.
+
+</details>
+
+<details>
+<summary><strong>Organizar a prioridade pelo teclado</strong></summary>
+
+Selecione a alça do modelo com **Tab** e use:
+
+| Tecla | Ação |
+| --- | --- |
+| **Espaço** ou **Enter** | Iniciar a movimentação; pressionar novamente confirma e salva. |
+| **↑** e **↓** | Mover o modelo na lista. |
+| **Home** e **End** | Mover para o início ou fim da lista. |
+| **Esc** | Cancelar e manter a prioridade anterior. |
+
+</details>
 
 <details>
 <summary><strong>Usar modelos do OpenRouter</strong></summary>
@@ -128,6 +173,19 @@ O endpoint gratuito do Nemotron sugerido pelo projeto deve ser usado somente com
 Áudios de até **10 MB** são processados em memória, sem salvar o arquivo binário no catálogo. Falhas, pausas e transcrições ficam identificadas; o operador pode revisar e retomar o atendimento. Transcrições permanecem no histórico conforme a política de guarda do ambiente.
 
 [Guia de áudio →](docs/audio.md) · [Bloqueio de IA por contato →](docs/bloqueio-de-contatos.md)
+
+### A voz e a estrutura das respostas
+
+Em **Conexões e IA → Seu assistente**, configure duas partes complementares:
+
+| Área | O que definir |
+| --- | --- |
+| **Instruções globais** | Nome, tom de voz, regras do atendimento e informações que precisam de confirmação. |
+| **Estrutura das respostas** | Objetividade, tamanho dos parágrafos, quebras de linha e espaçamento. |
+
+As orientações de escrita já sugerem responder direto ao ponto, usar uma ou duas frases por parágrafo e separar os blocos com uma linha em branco. Edite como preferir e clique em **Salvar instruções do assistente**.
+
+Essas orientações são salvas separadamente das instruções globais e acompanham todos os modelos de resposta, inclusive após uma troca automática.
 
 ## Disparos, da lista ao resultado
 
@@ -213,7 +271,7 @@ Chaves secretas ficam no servidor. Mantenha `.env`, `.wappy`, materiais e backup
 npm test
 ```
 
-Na verificação local de **30/10/2026**, **132 testes passaram**. A suíte cobre autenticação, isolamento, convites, chaves e prioridades de IA, áudio, persistência, filas, WhatsApp, uploads, programação, campanhas, histórico e política de cache do PWA. Os envios e chamadas de IA usam transportes controlados.
+Na verificação local de **04/11/2026**, **146 testes passaram**. A suíte cobre autenticação, isolamento, convites, chaves e prioridades de IA, áudio, persistência, filas, WhatsApp, uploads, programação, campanhas, histórico e política de cache do PWA. Os envios e chamadas de IA usam transportes controlados.
 
 Conexões foi conferida no navegador em **320, 390, 768 e 1440 px**, incluindo formulários, rascunhos entre abas, menus, Cloud API e estados do QR Code. O PWA também teve a atualização por clique e a recuperação offline verificadas em tela de celular emulada. Isso não equivale a teste de instalação em aparelho físico.
 
@@ -278,16 +336,3 @@ Sua base. Sua voz. Seu atendimento.
 [Voltar ao início ↑](#zelo)
 
 </div>
-
-### Modelos locais com llama.cpp e Ollama
-
-Na instalação local, mantenha o programa de IA aberto no mesmo computador do servidor Zelo. Em **Conexões e IA → Inteligência artificial → Respostas em texto**, adicione um cadastro e escolha o provedor correspondente:
-
-- **llama.cpp · IA local:** usa a API em `http://127.0.0.1:9931/v1/chat/completions`. Informe o nome exato listado pelo aplicativo, por exemplo `Spark-X2.5-4B`.
-- **Ollama · IA local:** usa `http://127.0.0.1:11434/api/chat`. Informe o nome exato exibido por `ollama list`.
-
-Não é necessária chave de API. Segure a alça de seis pontos e arraste para definir a prioridade; a ordem é salva ao soltar. Pelo teclado, use Espaço ou Enter para iniciar, as setas para mover, Espaço ou Enter para confirmar e Escape para cancelar. As listas de texto e transcrição de áudios mantêm ordens independentes; esta integração local gera respostas em texto.
-
-Em **Seu assistente → Estrutura das respostas**, edite as orientações de objetividade, parágrafos e espaçamento. Elas acompanham todos os modelos de resposta e são salvas separadamente das instruções globais.
-
-O carregamento e a resposta podem demorar; modelos maiores exigem mais memória. Em uma instalação hospedada, o endereço local se refere ao servidor hospedado, não ao computador que abre o painel.
