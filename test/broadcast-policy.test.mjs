@@ -4,6 +4,33 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@libsql/client';
 import { createBroadcasts } from '../lib/whatsapp/broadcasts.mjs';
 import { insideWindow, broadcastPolicy } from '../lib/whatsapp/broadcast-policy.mjs';
+
+test('fila explica espera fora do horário e retoma na próxima janela sem antecipar envios', async () => {
+  const db = createClient({ url: ':memory:' });
+  let now = Date.parse('2026-11-04T00:39:00Z'), sent = 0;
+  try {
+    const service = await createBroadcasts({ db, connection: () => 'qr:a', clock: () => now, send: async () => { sent++; return { messageId: 'ok' }; } });
+    const campaign = await service.create({ requestId: randomUUID(), consent: true, phones: '5511988887777\n5511977776666', text: 'Olá', windowStart: '08:00', windowEnd: '20:00' });
+    await service.tick();
+    const waiting = await service.get(campaign.id);
+    assert.equal(sent, 0);
+    assert.equal(waiting.state, 'queued');
+    assert.equal(waiting.items.filter(item => item.state === 'pending').length, 2);
+    assert.match(waiting.paused_reason || '', /Aguardando o horário permitido.*08:00.*20:00.*America\/Sao_Paulo/);
+    assert.equal((await service.list())[0].paused_reason, waiting.paused_reason);
+    now = Date.parse('2026-11-04T11:00:00Z');
+    await service.tick();
+    assert.equal(sent, 1);
+    assert.equal((await service.get(campaign.id)).paused_reason, null);
+  } finally { db.close(); }
+});
+
+test('novos disparos permitem envio o dia inteiro por padrão', () => {
+  const policy = broadcastPolicy({}, 'qr:a');
+  for (const time of ['2026-11-04T00:39:00Z', '2026-11-04T03:00:00Z', '2026-11-04T10:59:00Z', '2026-11-04T23:00:00Z']) {
+    assert.equal(insideWindow(policy, Date.parse(time)), true);
+  }
+});
 test('jitter, minuto e teto diário persistem por conta entre campanhas e reinícios', async () => {
   const db = createClient({ url: ':memory:' }); let now = Date.parse('2026-10-30T15:00:00Z'), sent = 0;
   const options = { db, connection: () => 'qr:a', clock: () => now, random: () => .5, send: async () => { sent++; return { messageId: 'sent' }; } };
