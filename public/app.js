@@ -55,7 +55,7 @@ $(".activity-panel").addEventListener("toggle", event => {
   $(".activity-action-text").textContent = event.currentTarget.open ? "Ocultar" : "Ver atividade";
 });
 async function api(path, data) {
-  const response = await fetch(path, { ...(data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }), signal: AbortSignal.timeout(path === "/api/tunnel/start" ? 190000 : 60000) });
+  const response = await fetch(path, { ...(data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }), signal: AbortSignal.timeout((path === "/api/tunnel/start" || /^\/api\/ai\/keys\/[^/]+\/verify(?:\?|$)/.test(path)) ? 190000 : 60000) });
   if (response.status === 401) { location.replace("/login"); throw new Error("Sua sessão terminou. Entre novamente."); }
   const result = await response.json(); if (!response.ok) throw new Error(result.error || "Não foi possível concluir."); return result;
 }
@@ -305,7 +305,7 @@ $("#whatsappMode").addEventListener("change", () => { connectionFields(); render
 $("#qr-connect").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/qr/connect", {}); await loadDashboard(); return "Aguarde o QR e escaneie pelo celular. O código é atualizado automaticamente."; }));
 $("#qr-disconnect").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await api("/api/qr/disconnect", {}); await loadDashboard(); return "Conexão pausada. A sessão foi mantida para reconectar."; }));
 $("#qr-logout").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await api("/api/qr/logout", {}); await loadDashboard(); return "Sessão local apagada. Se ainda aparecer no celular, remova-a em Aparelhos conectados."; }));
-$("#save-global-instructions").addEventListener("click", event => action(event.currentTarget, "#global-instructions-status", async () => { await saveSettings("assistant"); return "Nome e instruções globais salvos para todas as IAs."; }));
+$("#save-global-instructions").addEventListener("click", event => action(event.currentTarget, "#global-instructions-status", async () => { await saveSettings("assistant"); return "Identidade, instruções e orientações de escrita salvas para todas as IAs."; }));
 $("#verify-whatsapp").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/whatsapp/verify", {}); await loadDashboard(); return "Número e credenciais validados na Meta."; }));
 $("#subscribe-whatsapp").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => { await saveSettings(); await api("/api/whatsapp/subscribe", {}); await loadDashboard(); return "Aplicativo inscrito na conta WhatsApp Business. Assine também o campo messages no painel Meta."; }));
 $("#start-tunnel").addEventListener("click", event => action(event.currentTarget, "#settings-status", async () => {

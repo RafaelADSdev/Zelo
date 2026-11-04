@@ -278,3 +278,16 @@ Sua base. Sua voz. Seu atendimento.
 [Voltar ao início ↑](#zelo)
 
 </div>
+
+### Modelos locais com llama.cpp e Ollama
+
+Na instalação local, mantenha o programa de IA aberto no mesmo computador do servidor Zelo. Em **Conexões e IA → Inteligência artificial → Respostas em texto**, adicione um cadastro e escolha o provedor correspondente:
+
+- **llama.cpp · IA local:** usa a API em `http://127.0.0.1:9931/v1/chat/completions`. Informe o nome exato listado pelo aplicativo, por exemplo `Spark-X2.5-4B`.
+- **Ollama · IA local:** usa `http://127.0.0.1:11434/api/chat`. Informe o nome exato exibido por `ollama list`.
+
+Não é necessária chave de API. Segure a alça de seis pontos e arraste para definir a prioridade; a ordem é salva ao soltar. Pelo teclado, use Espaço ou Enter para iniciar, as setas para mover, Espaço ou Enter para confirmar e Escape para cancelar. As listas de texto e transcrição de áudios mantêm ordens independentes; esta integração local gera respostas em texto.
+
+Em **Seu assistente → Estrutura das respostas**, edite as orientações de objetividade, parágrafos e espaçamento. Elas acompanham todos os modelos de resposta e são salvas separadamente das instruções globais.
+
+O carregamento e a resposta podem demorar; modelos maiores exigem mais memória. Em uma instalação hospedada, o endereço local se refere ao servidor hospedado, não ao computador que abre o painel.

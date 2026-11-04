@@ -1,9 +1,95 @@
 const $ = selector => document.querySelector(selector);
 const el = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
 const icon = path => { const span = el("span", "ai-button-icon"); span.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`; return span; };
-let config, providers, api, changed, busy = false, editing, revision, signature = "", editorOpener;
+let config, providers, api, changed, busy = false, editing, revision, signature = "", editorOpener, sorting = false;
 let rootSettings, textProviders, audioProviders, purposeTabs, scope = "text";
 const when = time => new Date(time).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+export function installAiKeyReorder(list, { canStart, start, finish, announce }) {
+  let drag, frame;
+  const rows = () => [...list.querySelectorAll('.ai-key-row')];
+  const positions = () => rows().forEach((row, index) => { row.querySelector('.ai-key-position').textContent = String(index + 1); });
+  const begin = (handle, pointer) => {
+    if (drag || !canStart()) return false;
+    const row = handle.closest('.ai-key-row');
+    drag = { row, handle, original: rows(), pointer, bounds: row.getBoundingClientRect() };
+    handle.setAttribute('aria-pressed', 'true'); row.classList.add('ai-key-reordering'); start();
+    return true;
+  };
+  const announcePosition = () => announce(`Posição ${rows().indexOf(drag.row) + 1} de ${rows().length}. Solte para salvar ou pressione Escape para cancelar.`);
+  const end = (cancel, refocus = true) => {
+    if (!drag) return;
+    const current = drag; drag = null;
+    cancelAnimationFrame(frame);
+    current.ghost?.remove(); current.row.classList.remove('ai-key-drag-placeholder', 'ai-key-reordering');
+    current.handle.setAttribute('aria-pressed', 'false');
+    if (current.pointer !== undefined && list.hasPointerCapture(current.pointer)) list.releasePointerCapture(current.pointer);
+    if (cancel) list.append(...current.original);
+    positions();
+    const order = rows().map(row => row.dataset.keyId);
+    const moved = !cancel && order.some((id, index) => id !== current.original[index].dataset.keyId);
+    if (cancel) announce('Reordenação cancelada. A prioridade anterior foi mantida.');
+    finish(moved ? order : null, current.row.dataset.keyId, refocus);
+  };
+  const placeAtPointer = () => {
+    const center = drag.y - drag.offset + drag.bounds.height / 2;
+    const others = rows().filter(row => row !== drag.row);
+    const target = others.find(row => { const bounds = row.getBoundingClientRect(); return center < bounds.top + bounds.height / 2; });
+    const before = rows().indexOf(drag.row);
+    list.insertBefore(drag.row, target || null);
+    positions();
+    if (before !== rows().indexOf(drag.row)) announcePosition();
+    drag.ghost.style.transform = `translateY(${drag.y - drag.startY}px)`;
+  };
+  const scroll = () => {
+    if (!drag?.ghost) return;
+    const speed = drag.y < 150 ? -Math.min(18, (150 - drag.y) / 5) : drag.y > window.innerHeight - 80 ? Math.min(18, (drag.y - window.innerHeight + 80) / 5) : 0;
+    if (speed) { window.scrollBy(0, speed); placeAtPointer(); }
+    frame = requestAnimationFrame(scroll);
+  };
+  list.addEventListener('pointerdown', event => {
+    const handle = event.target.closest('.ai-key-drag');
+    if (!handle || event.button !== 0 || event.isPrimary === false || !begin(handle, event.pointerId)) return;
+    event.preventDefault(); handle.focus({ preventScroll: true });
+    drag.startY = drag.y = event.clientY; drag.offset = event.clientY - drag.bounds.top;
+    list.setPointerCapture(event.pointerId);
+  });
+  list.addEventListener('pointermove', event => {
+    if (!drag || drag.pointer !== event.pointerId) return;
+    drag.y = event.clientY;
+    if (!drag.ghost) {
+      if (Math.abs(drag.y - drag.startY) < 6) return;
+      const ghost = drag.row.cloneNode(true);
+      ghost.classList.add('ai-key-drag-ghost'); ghost.setAttribute('aria-hidden', 'true'); ghost.inert = true;
+      Object.assign(ghost.style, { position: 'fixed', left: `${drag.bounds.left}px`, top: `${drag.bounds.top}px`, width: `${drag.bounds.width}px`, height: `${drag.bounds.height}px` });
+      document.body.append(ghost); drag.ghost = ghost; drag.row.classList.add('ai-key-drag-placeholder');
+      frame = requestAnimationFrame(scroll);
+    }
+    event.preventDefault(); placeAtPointer();
+  });
+  list.addEventListener('pointerup', event => { if (drag?.pointer === event.pointerId) end(false); });
+  list.addEventListener('pointercancel', event => { if (drag?.pointer === event.pointerId) end(true); });
+  list.addEventListener('lostpointercapture', event => { if (drag?.pointer === event.pointerId) end(true); });
+  list.addEventListener('keydown', event => {
+    const handle = event.target.closest('.ai-key-drag');
+    if (!handle) return;
+    if (event.key === 'Escape' && drag) { event.preventDefault(); end(true); return; }
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      if (drag) end(false); else if (begin(handle)) announcePosition();
+      return;
+    }
+    if (!drag || drag.pointer !== undefined || !['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const all = rows(), from = all.indexOf(drag.row);
+    const to = event.key === 'Home' ? 0 : event.key === 'End' ? all.length - 1 : Math.max(0, Math.min(all.length - 1, from + (event.key === 'ArrowUp' ? -1 : 1)));
+    all.splice(from, 1); all.splice(to, 0, drag.row); drag.moving = true; list.append(...all);
+    positions(); handle.focus({ preventScroll: true }); drag.moving = false; drag.row.scrollIntoView({ block: 'nearest' }); announcePosition();
+  });
+  list.addEventListener('focusout', event => { if (drag && !drag.moving && drag.pointer === undefined && event.relatedTarget !== drag.handle) end(true, false); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && drag) { event.preventDefault(); end(true); } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) end(true); });
+  window.addEventListener('blur', () => end(true));
+}
 function status(text, failure = false) { $("#ai-keys-status").textContent = text; $("#ai-keys-status").classList.toggle("catalog-error", failure); }
 async function run(task) {
   if (busy) return; busy = true; $("#ai-key-list").inert = true; $("#add-ai-key").disabled = true; $("#ai-rotation-enabled").disabled = true; purposeTabs.querySelectorAll("button").forEach(button => button.disabled = true); status("Salvando…");
@@ -24,18 +110,22 @@ function edit(key = null) {
   $("#ai-key-secret").required = !key; providerInfo(); $("#ai-key-label").focus();
 }
 function providerInfo() {
-  const id = $("#ai-key-provider").value, info = providers[id];
+  const id = $("#ai-key-provider").value, info = providers[id], local = ['ollama', 'llamacpp'].includes(id);
   $('#gemini-privacy-warning').hidden = id !== 'gemini';
-  $("#ai-key-model").placeholder = info.example; $("#ai-key-console").href = info.console;
+  $("#ai-key-model").placeholder = info.example; $("#ai-key-console").hidden = local; if (info.console) $("#ai-key-console").href = info.console;
+  $("#ai-key-secret").hidden = local; document.querySelector('label[for="ai-key-secret"]').hidden = local; $("#ai-key-secret").nextElementSibling.hidden = local;
   $('#ai-key-model-help').textContent = id === 'gemini' ? `Use o ID completo, por exemplo ${info.example}. “Gemini” sozinho é o nome do provedor. A disponibilidade depende da sua conta Google.` : `Informe o ID exato do modelo disponível na sua conta. ${info.defaultModel ? 'Sugestão: ' + info.defaultModel + '.' : info.example + '.'}`;
+  if (id === 'ollama') $('#ai-key-model-help').textContent = 'Informe o nome exato do modelo instalado no Ollama. O Ollama precisa estar aberto neste computador; não é necessária chave de API.';
+  if (id === 'llamacpp') $('#ai-key-model-help').textContent = 'Informe o nome exato do modelo no aplicativo llama.cpp. Mantenha o aplicativo aberto neste computador, com a API local na porta 9931. Não é necessária chave de API.';
   if (id === 'openrouter') $('#ai-key-model-help').textContent = 'Um modelo por cadastro. A ordem desta lista define quem responde e quem assume quando necessário. Modelos com a mesma chave compartilham a cota do OpenRouter.';
   $('#openrouter-privacy-warning').hidden = id !== 'openrouter';
   $('#ai-key-model').setCustomValidity(''); $('#ai-key-model').removeAttribute('aria-invalid');
   if (scope === "audio") $("#ai-key-model-help").textContent = "Modelo de transcrição de áudio. Sugestão: " + info.defaultModel + ". Essa lista é independente da IA que responde aos clientes.";
-  $("#ai-key-secret").required = !editing || editing.provider !== id;
+  $("#ai-key-secret").required = !local && (!editing || editing.provider !== id);
 }
 export function renderAiKeys(settings) {
   rootSettings = settings;
+  if (sorting) return;
   config = scope === "audio" ? { ...settings, aiKeys: settings.audioAiKeys, aiKeysRevision: settings.audioAiKeysRevision, aiRotationEnabled: settings.audioAiRotationEnabled, aiLastUsed: settings.audioAiLastUsed } : settings;
   $("#provider-settings h2").textContent = scope === "audio" ? "Transcrição de áudios" : "Modelos de resposta";
   $("#provider-settings .settings-section-heading p").textContent = scope === "audio" ? "Estas IAs transcrevem a voz. A resposta usa a lista de textos." : "Estas IAs elaboram as respostas, inclusive depois de um áudio ser transcrito.";
@@ -57,7 +147,7 @@ export function renderAiKeys(settings) {
     row.dataset.enabled = String(key.enabled); row.dataset.keyId = key.id;
     row.classList.toggle('ai-key-next', index === ready);
     const identity = el('div','ai-key-identity'), provider = el('span','ai-provider-avatar'), title = el('div','ai-key-title');
-    const logo = el('img'); logo.src = `/brand/providers/${key.provider}.svg`; logo.alt = ''; logo.width = 26; logo.height = 26; provider.append(logo);
+    const logo = el('img'); const modelIcon = ['ollama', 'llamacpp'].includes(key.provider) ? (/^(?:hf\.co\/[^/]+\/)?qwen/i.test(key.model) ? "qwen" : /^gemma/i.test(key.model) ? "gemma" : "ollama") : key.provider; logo.src = `/brand/providers/${modelIcon}.svg`; logo.alt = ''; logo.width = 26; logo.height = 26; provider.append(logo);
     title.append(el('strong','',key.label),el('span','ai-key-provider-name',providers[key.provider].name.split(' · ')[0])); identity.append(provider,title);
     content.append(identity,el('code','ai-model-name',key.model));
     if (key.notes) content.append(el('p', 'hint ai-key-notes', key.notes));
@@ -70,13 +160,11 @@ export function renderAiKeys(settings) {
     const actions = el("div", "ai-key-actions"), menu=el('details','ai-key-menu'), summary=el('summary',''); summary.setAttribute('aria-label',`Mais ações para ${key.label}`); summary.title='Mais ações'; summary.append(icon('M5 12h.01M12 12h.01M19 12h.01')); menu.append(summary);
     const menuItems=el('div','ai-action-menu');menu.append(menuItems);
     const button = (label, task, disabled = false, destination = menuItems, glyph) => { const btn = el("button", destination === menuItems ? "ai-menu-action" : "secondary-button", glyph ? undefined : label); btn.type = "button"; btn.disabled = disabled; btn.setAttribute('aria-label',`${label} · ${key.label}`); btn.title=label; if(glyph)btn.append(icon(glyph));btn.addEventListener("click", () => { if(busy)return; menu.open=false;task(); }); destination.append(btn); return btn; };
-    const move = direction => run(async () => {
-      const order = config.aiKeys.map(item => item.id), target = index + direction;
-      [order[index], order[target]] = [order[target], order[index]];
-      await api("/api/ai/rotation", { enabled: config.aiRotationEnabled, order, revision: config.aiKeysRevision }); return "Ordem de prioridade salva.";
-    });
-    const movers=el("div","ai-key-movers");
-    button("Subir prioridade", () => move(-1), index === 0, movers, "m6 15 6-6 6 6"); button("Descer prioridade", () => move(1), index === config.aiKeys.length - 1, movers, "m6 9 6 6 6-6");
+    const handle = el('button', 'ai-key-drag'); handle.type = 'button';
+    handle.setAttribute('aria-label', `Mover prioridade de ${key.label}`); handle.setAttribute('aria-describedby', 'ai-reorder-help'); handle.setAttribute('aria-pressed', 'false');
+    handle.title = 'Segure e arraste para mudar a prioridade';
+    handle.append(icon('M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01'));
+    handle.disabled = config.aiKeys.length < 2;
     button("Editar", () => edit(key), false, actions);
     button(key.enabled ? "Pausar" : "Ativar", () => run(async () => { await api(`/api/ai/keys/${key.id}`, { label: key.label, provider: key.provider, model: key.model, enabled: !key.enabled, revision: config.aiKeysRevision }); return key.enabled ? "Chave pausada." : "Chave ativada."; }));
     button("Validar", () => run(async () => { status("Validando a chave com uma solicitação real…"); await api(`/api/ai/keys/${key.id}/verify`, {}); return "Chave e modelo validados."; }));
@@ -94,7 +182,7 @@ export function renderAiKeys(settings) {
     menuItems.lastElementChild.classList.add("ai-key-delete");
     if (waiting) button("Liberar nova tentativa", () => run(async () => { await api(`/api/ai/keys/${key.id}/reset`, {}); return "Chave liberada para uma nova tentativa. A cota depende do provedor."; }));
     actions.append(menu);
-    const priority=el("div","ai-key-priority");priority.append(order,movers);
+    const priority=el("div","ai-key-priority");priority.append(order,handle);
     row.append(priority, content, statusArea, actions); list.append(row);
   });
 }
@@ -109,7 +197,7 @@ export async function initAiKeys(options) {
     button.append(el('strong', '', title === 'Textos' ? 'Respostas em texto' : 'Transcrição de áudios'), el('span', '', value === 'text' ? 'IA que conversa com seus clientes' : 'IA que transforma voz em texto'));
     button.type = "button"; button.id = "ai-purpose-" + value; button.dataset.scope = value; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", content.id); button.setAttribute("aria-selected", String(value === scope)); button.tabIndex = value === scope ? 0 : -1;
     button.addEventListener("click", () => {
-      if (busy || value === scope) return;
+      if (busy || sorting || value === scope) return;
       if (!$("#ai-key-editor").hidden) { status("Salve ou cancele a edição antes de trocar de lista.", true); return; }
       scope = value; providers = scope === "audio" ? audioProviders : textProviders; signature = "";
       $("#ai-key-provider").replaceChildren(...Object.entries(providers).map(([id, info]) => new Option(info.name, id)));
@@ -119,6 +207,20 @@ export async function initAiKeys(options) {
     purposeTabs.append(button);
   }
   section.append(purposeTabs, content);
+  installAiKeyReorder($('#ai-key-list'), {
+    canStart: () => !busy && $('#ai-key-editor').hidden,
+    start: () => { sorting = true; },
+    announce: message => status(message),
+    async finish(order, id, refocus) {
+      sorting = false; signature = '';
+      if (order) await run(async () => {
+        await api('/api/ai/rotation', { enabled: config.aiRotationEnabled, order, revision: config.aiKeysRevision });
+        return 'Ordem de prioridade salva.';
+      });
+      else renderAiKeys(rootSettings);
+      if (refocus) [...$('#ai-key-list').querySelectorAll('.ai-key-row')].find(row => row.dataset.keyId === id)?.querySelector('.ai-key-drag').focus({ preventScroll: true });
+    },
+  });
   document.addEventListener('click', event => { document.querySelectorAll('.ai-key-menu[open]').forEach(menu => { if(!menu.contains(event.target))menu.open=false; }); });
   document.addEventListener('keydown', event => { if(event.key==='Escape')document.querySelectorAll('.ai-key-menu[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();}); });
   const modelHelp = el('p', 'hint'); modelHelp.id = 'ai-key-model-help'; $('#ai-key-model').after(modelHelp); $('#ai-key-model').setAttribute('aria-describedby', modelHelp.id);
@@ -156,7 +258,7 @@ export async function initAiKeys(options) {
     }
     run(async () => {
       await api(editing ? `/api/ai/keys/${editing.id}` : "/api/ai/keys", { label: $("#ai-key-label").value, notes: $("#ai-key-notes").value, provider: $("#ai-key-provider").value, model: $("#ai-key-model").value, apiKey: $("#ai-key-secret").value, enabled: $("#ai-key-enabled").checked, revision });
-      $("#ai-key-secret").value = ""; $("#ai-key-editor").hidden = true; return "Chave salva na lista. Use Subir e Descer para definir a prioridade.";
+      $("#ai-key-secret").value = ""; $("#ai-key-editor").hidden = true; return "Chave salva na lista. Segure e arraste a alça para definir a prioridade.";
     });
   });
 }

@@ -16,6 +16,8 @@ LOGOS DOS PROVEDORES
 public/brand/providers/anthropic.svg
 public/brand/providers/deepseek.svg
 public/brand/providers/gemini.svg
+public/brand/providers/gemma.svg
+public/brand/providers/qwen.svg
 public/brand/providers/groq.svg
 public/brand/providers/openai.svg
 public/brand/providers/openrouter.svg
