@@ -22,6 +22,10 @@ test("Supabase usa segredo só no servidor e oculta erros externos; autenticaç�
   const failed = createSupabase({ url: "https://project.supabase.co", secretKey: "private-server-key", fetchImpl: async () => Response.json({ message: "private-server-key" }, { status: 403 }) });
   await assert.rejects(failed.request("/rest/v1/zelo_products"), error => error.status === 502 && !error.message.includes("private-server-key"));
   assert.throws(() => createSupabase({url:"http://internal",secretKey:"secret"}));
+  const local = createSupabase({ url: "http://127.0.0.1:8000/", secretKey: "private-server-key", fetchImpl: async (url, options) => { calls.push({url,options}); return Response.json({}); } });
+  await local.request("/rest/v1/zelo_products");
+  assert.equal(calls.at(-1).url, "http://127.0.0.1:8000/rest/v1/zelo_products");
+  assert.throws(() => createSupabase({ url: "http://127.0.0.1:8000@other.example", secretKey: "secret" }));
 });
 test("catálogo remoto rejeita arquivo disfarçado e revisão antiga antes de enviar mutações", async () => {
   let writes = 0;
