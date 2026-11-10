@@ -31,8 +31,6 @@ input[readonly] { background: #f5f0fd; }
 .submit:active:not(:disabled) { background: #4d23a9; }
 input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 #login-error { margin: 20px 0 0; padding: 13px 15px; border: 1px solid #efcbd3; border-radius: 8px; background: #fff1f3; color: #a12c40; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
-.field-help { font-size: 12px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; margin: 9px 0 0; }
-.field-help strong { font-weight: 600; color: #60467d; }
 .login-card > .pwa-tools { margin-top: 24px; }
 .identity { display: flex; flex-direction: column; justify-content: space-between; min-height: 620px; padding: 56px 48px 32px; background: #e8ddf8; color: #332047; }
 .identity h1 { font-size: 52px; line-height: 1.08; letter-spacing: -.04em; font-weight: 650; margin: 0 0 22px; }

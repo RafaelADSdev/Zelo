@@ -10,7 +10,7 @@ Identidade visual em `public/brand/`; cópia dos materiais do Sopro em `materiai
 
 ### Instalação conectada ao Supabase
 
-O projeto configurado usa Supabase Auth para o administrador e Postgres/Storage como fonte dos produtos, links e anexos. O primeiro administrador informa um e-mail e senha na tela, usando o código local de primeiro acesso. A senha é enviada ao Supabase Auth pelo servidor; nesta modalidade, nenhum hash ou senha é salvo em auth.json, apenas o vínculo do administrador. A sessão do painel continua protegida pelo cookie HttpOnly. Outras contas do projeto Supabase não ganham acesso ao Zelo automaticamente.
+O projeto configurado usa Supabase Auth para o administrador e Postgres/Storage como fonte dos produtos, links e anexos. O primeiro administrador informa um e-mail e uma senha pelo comando `node criar-admin.mjs`. A senha é enviada ao Supabase Auth pelo servidor; nesta modalidade, nenhum hash ou senha é salvo em auth.json, apenas o vínculo do administrador. A sessão do painel continua protegida pelo cookie HttpOnly. Outras contas do projeto Supabase não ganham acesso ao Zelo automaticamente.
 
 As tabelas zelo_products, zelo_product_files e zelo_runtime_snapshots têm RLS e nenhum acesso para anon/authenticated. Somente o servidor usa a chave secreta. O bucket zelo-materials é privado; imagens e PDFs são entregues pelo endpoint do Zelo, que exige login. Os arquivos locais anteriores foram mantidos como cópia; depois da ativação, alterações no catálogo são feitas diretamente na nuvem e não têm fallback silencioso para SQLite.
 
@@ -18,7 +18,7 @@ O worker do WhatsApp continua usando SQLite no servidor para filas, memória e s
 
 A migração idempotente está em supabase/migrate.mjs; execute com o servidor parado. Ela preserva IDs, verifica SHA-256 de cada arquivo após ler do Storage, não sobrescreve produtos divergentes e registra o resultado em .wappy/supabase-migration.json. O SQL versionado fica em supabase/migrations/001-zelo.sql. As credenciais ficam no .env ignorado pelo Git. Não publique .env ou .wappy.
 
-O painel exige login, inclusive nas APIs, anexos, conversas e controles de IA/WhatsApp. No primeiro acesso a `/login`, crie o administrador usando o código em `.wappy/primeiro-acesso.txt`, gerado pelo servidor. Não há cadastro público depois da criação. A senha precisa de pelo menos 12 caracteres. No modo local, somente o hash scrypt com salt aleatório é persistido em `.wappy/auth.json`; na instalação com Supabase, a senha é gerenciada pelo Supabase Auth. Esse arquivo nunca contém a senha original.
+O painel exige login, inclusive nas APIs, anexos, conversas e controles de IA/WhatsApp. Com o Zelo em execução, rode `node criar-admin.mjs` em outro terminal na pasta do projeto. O comando lê o código de uso único de `.wappy/primeiro-acesso.txt` e pede uma senha de pelo menos 12 caracteres. Depois, entre em `/login`. No modo local, somente o hash scrypt com salt aleatório é persistido em `.wappy/auth.json`; na instalação com Supabase, a senha é gerenciada pelo Supabase Auth. Esse arquivo nunca contém a senha original.
 
 A sessão usa cookie HttpOnly, SameSite=Strict e validade absoluta de 12 horas. Sair revoga a sessão. Reiniciar o servidor exige novo login. Após cinco tentativas inválidas, o login fica bloqueado por cinco minutos. Os dados existentes e a sessão do WhatsApp continuam preservados; sair do painel não desconecta o WhatsApp.
 

@@ -3,9 +3,8 @@ ZELO — ATENDIMENTO COM IA
 Pasta principal: C:\Users\Usuario\Documents\Zelo
 
 1. Abra INICIAR.cmd.
-2. Acesse http://127.0.0.1:4173 no navegador.
-   No primeiro acesso, crie o administrador com o código em .wappy/primeiro-acesso.txt.
-   Escolha seu usuário e uma senha exclusiva de pelo menos 12 caracteres.
+2. Se ainda não houver administrador, abra outro terminal na pasta do Zelo e execute node criar-admin.mjs.
+   Depois, entre com sua conta em http://127.0.0.1:4173.
 3. Para encerrar, abra PARAR.cmd.
 
 public/brand — logos vetoriais em roxo, branco e preto.

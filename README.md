@@ -241,7 +241,7 @@ npm ci --ignore-scripts
 npm start
 ```
 
-Abra **[127.0.0.1:4173](http://127.0.0.1:4173)**. No primeiro acesso, crie o administrador com o código gerado em `.wappy/primeiro-acesso.txt` e configure as integrações pelo painel.
+Com o Zelo em execução, use `node criar-admin.mjs` em outro terminal na pasta do projeto se ainda não houver administrador. Entre em **[127.0.0.1:4173](http://127.0.0.1:4173)** e configure as integrações pelo painel.
 
 No Windows, use também **`INICIAR.cmd`** e **`PARAR.cmd`**. O modo local inicia um ambiente único e não exige Supabase para começar. Não reutilize nele a sessão de WhatsApp de uma produção ativa.
 

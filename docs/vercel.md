@@ -22,7 +22,7 @@ O `cloudflared` usa a versão fixa `2026.10.3`, com digests SHA256 oficiais regi
 
 ## Verificação
 
-Executar `npm test` e `npm audit --omit=dev`. Confirmar no painel da Vercel a conclusão do deploy e o daemon ativo. `/` deve redirecionar para `/login`; `/api/auth/status` deve retornar JSON; catálogo, anexos e configurações sem sessão devem retornar 401. Arquivos `.env` e rotas de encerramento não são publicados. No primeiro acesso, o proprietário escolhe seu e-mail e senha com o código de bootstrap. Não criar conta de demonstração em produção.
+Executar `npm test` e `npm audit --omit=dev`. Confirmar no painel da Vercel a conclusão do deploy e o daemon ativo. `/` deve redirecionar para `/login`; `/api/auth/status` deve retornar JSON; catálogo, anexos e configurações sem sessão devem retornar 401. Arquivos `.env` e rotas de encerramento não são publicados. Para inicializar um ambiente legado, execute `node criar-admin.mjs` com o servidor local em execução antes de migrar o ambiente. Não criar conta de demonstração em produção.
 
 Daemons são beta. No Hobby, a cota é de 10 horas de CPU ativa por mês; esperar trabalho não consome CPU ativa. Ao atingir a cota, a Vercel para os daemons até o próximo mês. O túnel gratuito também não possui garantia de disponibilidade. Uma operação com SLA deve substituir esse gateway por infraestrutura permanente com endpoint estável e persistência transacional do atendimento.
 
