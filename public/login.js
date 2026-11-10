@@ -13,10 +13,6 @@ try {
     $("#username").type = "email"; $("#username").placeholder = "seu@email.com";
   }
   if (status.inviteOnly) $("#login-description").textContent = "Acesse sua conta com o e-mail do convite. Para um novo acesso, fale com o administrador.";
-  if (!status.configured && !invitationToken) {
-    $("#login-description").textContent = "Para criar o primeiro administrador, execute node criar-admin.mjs no terminal, na pasta do Zelo. Depois, atualize esta página para entrar.";
-    $("#login-form").hidden = true;
-  }
   if (invitationToken) {
     const response = await fetch('/api/auth/invitation', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:invitationToken})});
     const invitation = await response.json(); if (!response.ok) throw new Error(invitation.error);
@@ -28,7 +24,7 @@ try {
   }
   if (location.hash) history.replaceState(null, "", "/login");
   $("#login-submit").textContent = submitLabel;
-  $("#login-submit").disabled = !status.configured && !invitationToken;
+  $("#login-submit").disabled = false;
 } catch (failure) { error(failure.message); }
 $("#show-password").onclick = () => { const show = $("#password").type === "password"; $("#password").type = show ? "text" : "password"; $("#show-password").textContent = show ? "Ocultar" : "Mostrar"; $("#show-password").setAttribute("aria-label", show ? "Ocultar senha" : "Mostrar senha"); $("#show-password").setAttribute("aria-pressed", String(show)); };
 $("#login-form").onsubmit = async event => {
