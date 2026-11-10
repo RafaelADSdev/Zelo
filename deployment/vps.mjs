@@ -18,6 +18,9 @@ export async function startVpsServer({ directory, cloudConfig, key, origin, port
   const access = createWorkspaceAccess(cloud, createSupabaseAuth(cloud));
   const owner = await access.member(original.userId);
   if (owner?.role !== 'owner' || owner.email !== original.username) throw new Error('Vínculo do administrador da VPS inválido.');
+  const identity = await cloud.request('/auth/v1/admin/users/' + original.userId);
+  if (identity?.id !== original.userId || identity.email?.toLowerCase() !== original.username) throw new Error('Identidade do administrador da VPS inválida.');
+  await cloud.request('/rest/v1/rpc/zelo_claim_legacy', { method: 'POST', body: { target_owner: original.userId, target_email: original.username } });
   const manager = createWorkspaceManager({
     directory: join(directory, 'workspaces'), originalDirectory: directory, persistent: true,
     cloud, cloudConfig, key, original, origin,

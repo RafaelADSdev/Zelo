@@ -35,7 +35,10 @@ export function fixture() {
     }
     if (path.startsWith('/rest/v1/rpc/')) {
       const products=tables.get('zelo_products'), files=tables.get('zelo_product_files');
-      if (path.endsWith('workspace_save_product')) {
+      if (path.endsWith('zelo_claim_legacy')) {
+        for (const product of products) if (!product.owner_id) product.owner_id = data.target_owner;
+        for (const file of files) if (!file.owner_id) file.owner_id = products.find(product => product.id === file.product_id)?.owner_id;
+      } else if (path.endsWith('workspace_save_product')) {
         const previous=products.find(row=>row.id===data.target_id);
         if (previous) { assert.equal(previous.owner_id,data.target_owner); Object.assign(previous,data.payload,{revision:previous.revision+1}); }
         else products.push({...data.payload,id:data.target_id,owner_id:data.target_owner,revision:1});
@@ -78,6 +81,7 @@ test('VPS preserva a conta original, isola o novo login e reabre os dados persis
   f.cloudConfig.url = f.cloud.origin;
   const originalFetch = f.cloudConfig.fetchImpl;
   f.cloudConfig.fetchImpl = async (url, options) => {
+    if (url.endsWith('/auth/v1/admin/users/' + ownerId)) return Response.json({ id: ownerId, email: 'owner@test.example' });
     if (url.includes('/auth/v1/token?')) {
       const input = JSON.parse(options.body);
       try { return Response.json({ user: { id: await f.provider.login({ username: input.email, password: input.password }) } }); }
@@ -94,6 +98,8 @@ test('VPS preserva a conta original, isola o novo login e reabre os dados persis
     await seed.runtime.memory.append({ id: 'owner-turn', contactId: 'contact', role: 'user', text: 'Original memory', timestamp: 1 });
     const product = await seed.runtime.catalog.save({ name: 'Original product' });
     file = await seed.runtime.catalog.upload(product.id, Buffer.from('%PDF-1.7\noriginal'), 'original.pdf', 'application/pdf');
+    f.tables.get('zelo_products').find(row => row.id === product.id).owner_id = null;
+    f.tables.get('zelo_product_files').find(row => row.id === file.id).owner_id = null;
   } finally { await seed.close(); }
   const options = { directory, cloudConfig: f.cloudConfig, key, origin: 'https://zelo.test', port: 0, webhookPort: 0 };
   let app = await startVpsServer(options);
