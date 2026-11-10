@@ -23,11 +23,16 @@ export function initReplySchedule(options) {
   const controls = document.createElement('details');
   controls.className = 'reply-actions-disclosure';
   const controlsSummary = document.createElement('summary');
-  controlsSummary.textContent = 'Controles';
+  controlsSummary.textContent = 'Ajustar';
+  controlsSummary.setAttribute('aria-label', 'Ajustar atendimento automático');
   controls.append(controlsSummary, card.querySelector('.reply-actions'));
   card.querySelector('.reply-control-head').append(controls);
-  const compact = matchMedia('(max-width:580px)');
-  const adaptControls = () => { controls.open = !compact.matches; };
+  const compact = matchMedia('(max-width:800px)');
+  const adaptControls = () => {
+    controls.open = !compact.matches;
+    if (compact.matches) controlsSummary.after($('#reply-description'));
+    else card.querySelector('.reply-status-copy').append($('#reply-description'));
+  };
   adaptControls();
   compact.addEventListener('change', adaptControls);
   card.querySelectorAll('button').forEach(button => button.disabled = true);

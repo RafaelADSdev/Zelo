@@ -48,3 +48,257 @@
 }
 @media(max-width:640px){.login-shell .identity{padding-top:max(22px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}.login-shell .access{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right));padding-bottom:max(38px,env(safe-area-inset-bottom))}}
 @media(min-width:641px) and (max-width:900px){.login-shell .identity{padding-top:max(38px,env(safe-area-inset-top));padding-bottom:max(38px,env(safe-area-inset-bottom));padding-left:max(32px,env(safe-area-inset-left));padding-right:max(32px,env(safe-area-inset-right))}.login-shell .access{padding-top:max(48px,env(safe-area-inset-top));padding-bottom:max(48px,env(safe-area-inset-bottom));padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right))}}
+
+/* Mobile workspace: content first, four destinations always within reach.
+   Loaded after the desktop surfaces so a closed disclosure stays closed. */
+.nav-mobile-label, .page-title-mobile { display:none; }
+@media(max-width:800px) {
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; scroll-padding-top:80px; }
+  .shell {
+    --mobile-header-height:calc(64px + env(safe-area-inset-top));
+    --mobile-nav-height:calc(72px + env(safe-area-inset-bottom));
+    --mobile-viewport-height:100dvh;
+    --pwa-tools-height:0px;
+    padding-bottom:var(--mobile-nav-height);
+    min-width:0;
+  }
+  .shell main, .shell .main-content, .shell .view { min-width:0; }
+  .shell .app-header {
+    display:flex; height:var(--mobile-header-height); min-height:0;
+    padding:env(safe-area-inset-top) max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left));
+    gap:16px; background:var(--surface); border-bottom:1px solid var(--border);
+  }
+  .shell .app-header .brand { display:flex; align-items:center; min-height:44px; }
+  .shell .app-header .brand img { width:94px; }
+  .shell .account-menu { margin-left:auto; }
+  .shell .account-menu > summary { gap:7px; min-height:44px; padding:8px 0 8px 10px; font-size:13px; }
+  .shell .account-menu > summary > span { display:block; }
+  .shell .account-menu > summary > .icon:first-child { width:20px; height:20px; }
+  .shell .account-popover { top:calc(100% + 12px); right:0; max-height:calc(100dvh - 160px); overflow-y:auto; }
+  .shell .app-header > nav {
+    position:fixed; inset:auto 0 0; z-index:60;
+    display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr);
+    align-items:stretch; gap:0; width:100%; height:var(--mobile-nav-height);
+    padding:6px max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+    margin:0; border-top:1px solid var(--border); background:var(--surface); overflow:visible;
+  }
+  .shell .app-header .nav-button {
+    position:relative; flex-direction:column; justify-content:center; align-items:center; gap:4px;
+    width:100%; min-width:0; min-height:56px; margin:0; padding:6px 2px;
+    border:0; border-radius:10px; color:#6c6577; background:transparent;
+    font-size:11px; line-height:1.3; font-weight:500; letter-spacing:0;
+  }
+  .shell .app-header .nav-button > .icon { display:block; width:22px; height:22px; flex:none; stroke-width:1.7; }
+  .shell .app-header .nav-button > .nav-arrow, .shell .app-header .nav-desktop-label { display:none; }
+  .shell .app-header .nav-mobile-label { display:block; }
+  .shell .app-header .nav-button.active { color:#6030bc; background:#f2edfc; font-weight:650; }
+  .shell .app-header .nav-button:hover { background:#f7f4fc; }
+  .shell .app-header .nav-button.active:hover { background:#eee6fa; }
+  .shell .app-header .nav-button:active { background:#e8ddf8; }
+  .shell .app-header .nav-button:focus-visible { outline:2px solid var(--accent); outline-offset:-3px; }
+  .shell .main-content { padding:24px 20px 28px; }
+  .shell .page-heading, .shell[data-view=knowledge] .page-heading { align-items:center; flex-wrap:nowrap; gap:12px; margin:0 0 20px; }
+  .shell .page-heading > div { min-width:0; flex:1; }
+  .shell .page-heading h1, .shell[data-view=knowledge] .page-heading h1 { font-size:28px; line-height:1.2; letter-spacing:-.8px; text-wrap:initial; }
+  .shell .page-heading p { display:none; }
+  .shell .page-title-full { display:none; }
+  .shell .page-title-mobile { display:inline; }
+  .shell[data-view=knowledge] .page-heading #new-product { width:auto; min-height:44px; gap:6px; padding:10px 12px; font-size:13px; }
+  .shell #new-product .icon { width:17px; height:17px; }
+  .shell input:not([type=checkbox]):not([type=radio]), .shell textarea, .shell select { font-size:16px; }
+  .shell :is(button,summary,a) { touch-action:manipulation; }
+  .shell :is(input,textarea) { caret-color:var(--accent); }
+  .shell ::selection { color:#30175f; background:#e4d7fa; }
+  .shell :is(button,summary,input,textarea,select,a):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .shell .view, .shell .reply-control { scroll-margin-top:84px; }
+  .shell .page-footer { margin-top:28px; padding-bottom:12px; }
+  .shell .main-topbar:has(.pwa-tools:not([hidden])) { min-height:0; padding:8px 20px; }
+  .shell .pwa-tools { width:100%; margin:0; justify-content:space-between; }
+  .shell .pwa-update { width:100%; max-width:none; justify-content:space-between; }
+
+  /* Keep the summary and adjustment trigger on the same row at every width. */
+  .shell .reply-control, .shell[data-view=knowledge] .reply-control, .shell[data-view=whatsapp] .reply-control {
+    position:relative; flex:none; padding:12px 14px; margin:0 0 20px; border-radius:12px;
+  }
+  .shell .reply-control-head { display:block; }
+  .shell .reply-control .reply-overview { min-height:44px; gap:10px; padding-right:82px; align-items:center; }
+  .shell .reply-control .reply-state-icon { width:32px; height:32px; }
+  .shell .reply-control .reply-state-icon svg { width:19px; height:19px; }
+  .shell .reply-control .reply-status-copy { display:block; }
+  .shell .reply-control h2 { font-size:12px; font-weight:500; line-height:1.45; }
+  .shell .reply-control #reply-live { margin-top:2px; font-size:12px; line-height:1.5; }
+  .shell .reply-control #reply-description { display:none; }
+  .shell .reply-control .reply-actions-disclosure[open] #reply-description { display:block; margin:12px 0 0; font-size:12px; line-height:1.6; color:#655577; }
+  .shell .reply-actions-disclosure { display:block; width:100%; }
+  .shell .reply-actions-disclosure > summary, .shell .reply-actions-disclosure[open] > summary {
+    position:absolute; right:12px; top:12px; display:flex; align-items:center; justify-content:center; gap:8px;
+    width:76px; min-height:44px; margin:0; padding:8px; list-style:none;
+    border:1px solid #e3d9ef; border-radius:8px; color:#6030bc; font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .shell .reply-actions-disclosure > summary::-webkit-details-marker { display:none; }
+  .shell .reply-actions-disclosure > summary::after { content:''; width:6px; height:6px; border-right:1.5px solid; border-bottom:1.5px solid; transform:rotate(45deg) translateY(-2px); }
+  .shell .reply-actions-disclosure[open] > summary::after { transform:rotate(225deg) translate(-1px,-1px); }
+  .shell .reply-actions-disclosure:not([open]) > .reply-actions { display:none; }
+  .shell .reply-control .reply-actions-disclosure[open] > .reply-actions {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; width:100%; margin:12px 0 0; padding:12px 0 0; border-top:1px solid #e7ddf4;
+  }
+  .shell .reply-control .reply-actions #reply-program { min-height:44px; font-size:12px; padding:10px 12px; }
+  .shell .reply-power-controls { min-width:0; }
+  .shell .reply-power-controls button { min-height:44px; padding:10px 12px; font-size:12px; }
+  .shell .reply-control #reply-feedback:empty { display:none; }
+  .shell .reply-control #reply-feedback, .shell .reply-control #reply-schedule-summary { font-size:12px; line-height:1.6; margin:12px 0 0; padding-top:10px; overflow-wrap:anywhere; }
+  .shell .reply-control .reply-days { display:flex; flex-wrap:wrap; gap:6px; }
+  .shell .reply-control .reply-days label { min-width:44px; min-height:44px; }
+  .shell .reply-control .reply-fields { display:flex; flex-wrap:wrap; gap:12px; }
+  .shell .reply-control .reply-fields > label { flex:1 1 110px; min-width:0; }
+  .shell .reply-control form > .primary-button { width:100%; }
+
+  /* Settings use two compact levels of navigation, without clipped tabs. */
+  .shell #view-settings { gap:16px; }
+  .shell #view-settings .settings-tabs { gap:4px; padding:4px; border:1px solid var(--border); border-radius:10px; background:#f0edf4; }
+  #view-settings .settings-tabs button { min-height:48px; padding:8px 4px; border:0; border-radius:7px; }
+  #view-settings .settings-tabs button[aria-selected=true] { background:#fff; color:#6030bc; box-shadow:0 1px 3px #2515370a; }
+  #view-settings .settings-tabs strong { font-size:12px; line-height:1.4; }
+  #view-settings .settings-card { padding:20px 16px; border-radius:12px; }
+  #view-settings .settings-section-heading { gap:12px; margin-bottom:20px; }
+  #view-settings .settings-section-heading h2 { font-size:21px; line-height:1.3; }
+  #view-settings .settings-section-heading p { font-size:13px; line-height:1.6; }
+  #view-settings .ai-purpose-tabs { margin:0 0 22px; }
+  #view-settings .ai-purpose-tabs button { justify-content:center; min-height:48px; padding:10px 6px 14px; }
+  #view-settings .ai-purpose-tabs strong { font-size:12px; line-height:1.4; }
+  #view-settings .ai-purpose-tabs span { display:none; }
+  #view-settings .ai-list-heading { flex-wrap:wrap; }
+  .shell #view-broadcasts > .settings-card { padding:20px 16px; border-radius:12px; }
+  .shell #view-broadcasts { gap:20px; }
+  .shell[data-view=whatsapp] .main-content { height:calc(100dvh - var(--mobile-header-height) - var(--mobile-nav-height) - var(--pwa-tools-height)); }
+  .shell[data-keyboard-open=true] { --mobile-nav-height:0px; }
+  .shell[data-keyboard-open=true] .app-header > nav { display:none; }
+}
+
+@media(max-width:580px) {
+  /* A semantic table becomes a readable list; all four columns remain available. */
+  .shell #view-knowledge .catalog-library { min-height:0; padding:20px 16px 16px; border-radius:12px; }
+  .shell #view-knowledge .catalog-toolbar { margin-bottom:16px; }
+  .shell #view-knowledge .catalog-toolbar h2 { font-size:20px; letter-spacing:-.4px; }
+  .shell #view-knowledge .catalog-tools { margin-bottom:8px; }
+  .shell #view-knowledge .catalog-search { min-height:46px; padding:11px 12px 11px 38px; background:#faf9fc; font-size:16px; }
+  .shell .catalog-table-scroll { overflow:visible; }
+  .shell .product-table { display:block; min-width:0; width:100%; }
+  .shell .product-table thead { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
+  .shell #view-knowledge .product-grid { display:block; width:100%; }
+  .shell .product-table .product-row { display:grid; grid-template-columns:minmax(0,1fr) auto 44px; gap:5px 8px; padding:16px 0; border-bottom:1px solid var(--border); }
+  .shell .product-table .product-row > :is(th,td) { border:0; padding:0; min-width:0; }
+  .shell .product-table .product-row > th { grid-column:1 / 3; grid-row:1; }
+  .shell .product-name-button { gap:10px; min-height:44px; font-size:14px; line-height:1.5; font-weight:600; }
+  .shell .product-file-symbol { width:34px; height:36px; border-radius:7px; background:var(--soft); }
+  .shell .product-file-symbol .icon { width:21px; height:21px; }
+  .shell .product-table .product-row > td:nth-child(2) { grid-column:1; grid-row:2; padding-left:44px; }
+  .shell .product-state { padding:3px 8px; font-size:11px; line-height:1.5; }
+  .shell .product-table .product-row > .product-table-materials { grid-column:2; grid-row:2; align-self:center; font-size:11px; color:#6c6577; }
+  .shell .product-table .product-row > td:last-child { grid-column:3; grid-row:1 / 3; align-self:center; }
+  .shell .product-row-action { width:44px; min-height:44px; }
+  .shell .product-empty-row, .shell .product-empty-row > td { display:block; width:100%; }
+  .shell .product-empty-row .catalog-empty { padding:32px 6px; }
+  .shell #view-knowledge .catalog-summary { margin:14px 0 0; font-size:12px; color:#6c6577; }
+  .shell #view-knowledge .general-knowledge { padding:20px 16px; border-radius:12px; }
+  .shell .business-heading { gap:12px; }
+  .shell .business-symbol { width:42px; height:42px; }
+  .shell .business-symbol .icon { width:24px; height:24px; }
+  .shell .business-heading h2 { font-size:18px; }
+  .shell #view-knowledge #product-editor { scroll-margin-top:80px; border-radius:12px; }
+  .shell .product-link-row { grid-template-columns:minmax(0,1fr); }
+  .shell .product-file { flex-wrap:wrap; }
+  .shell .product-file a { overflow-wrap:anywhere; }
+
+  /* The inbox fills the remaining viewport; only the contact list scrolls. */
+  .shell[data-view=whatsapp] .main-content {
+    height:calc(100dvh - var(--mobile-header-height) - var(--mobile-nav-height) - var(--pwa-tools-height));
+    min-height:0; padding:20px 0 0;
+  }
+  .shell[data-view=whatsapp] .page-heading { padding:0 20px; margin:0 0 16px; }
+  .shell[data-view=whatsapp] .page-heading h1 { font-size:28px; }
+  .shell[data-view=whatsapp] .reply-control { margin:0 16px 12px; }
+  .shell[data-view=whatsapp] .connection-notice { margin:0 20px 8px; font-size:12px; }
+  .shell[data-view=whatsapp] .connection-notice > summary { min-height:32px; display:flex; align-items:center; padding:4px 0; }
+  .shell[data-view=whatsapp] #global-error { margin:0 16px 8px; }
+  .shell #view-whatsapp .inbox-layout { flex:1; min-height:0; }
+  .shell #view-whatsapp .contacts-panel { height:100%; padding:0; }
+  .shell #view-whatsapp .contacts-heading { height:48px; padding:0 16px 4px 20px; }
+  .shell #view-whatsapp .contacts-heading h3 { font-size:15px; letter-spacing:-.2px; }
+  .shell #view-whatsapp .inbox-refresh { min-height:44px; padding:8px 10px; background:transparent; border-color:transparent; font-size:12px; }
+  .shell #view-whatsapp .new-conversation { width:44px; height:44px; color:var(--accent); background:var(--soft); border-radius:10px; margin-left:4px; }
+  .shell #view-whatsapp .contact-search-wrap { margin:8px 20px 10px; }
+  .shell #view-whatsapp .contact-search { min-height:46px; font-size:16px; border:1px solid var(--border); background:#faf9fc; }
+  .shell #view-whatsapp .contact-search-wrap > .icon { top:14px; }
+  .shell #view-whatsapp .contact-filters { gap:8px; padding:0 20px 10px; }
+  .shell #view-whatsapp .contact-filter { min-height:44px; padding:8px 12px; font-size:12px; }
+  .shell #view-whatsapp .contact-button { min-height:80px!important; padding:14px 20px; }
+  .shell #view-whatsapp .contact-button strong { font-size:15px; }
+  .shell #view-whatsapp .contact-button p { font-size:13px; }
+  .shell #view-whatsapp .contact-time { font-size:11px; }
+  .shell #view-whatsapp .activity-panel { margin:0; border:0; border-top:1px solid var(--border); border-radius:0; }
+  .shell #view-whatsapp .activity-panel > summary { min-height:56px; padding:8px 20px; }
+  .shell #view-whatsapp .activity-icon { width:28px; height:28px; }
+  .shell #view-whatsapp .activity-panel .activity-heading > strong { font-size:12px; }
+  .shell #view-whatsapp .activity-panel .activity-heading > span { font-size:11px; }
+  .shell #view-whatsapp .activity-body { max-height:30dvh; }
+  .shell[data-view=whatsapp]:has(.inbox-layout:not([data-contact-selected=true])):has(#reply-program-form:not([hidden])) .main-content { height:auto; }
+  .shell[data-view=whatsapp]:has(.inbox-layout:not([data-contact-selected=true])):has(#reply-program-form:not([hidden])) #view-whatsapp { min-height:440px; }
+
+  /* Opening a thread gives it a full screen, with its own back and contact header. */
+  .shell[data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) { --mobile-header-height:0px; }
+  .shell[data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .app-header { height:0; min-height:0; padding:0; border:0; }
+  .shell[data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .app-header > .brand,
+  .shell[data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .account-menu { display:none; }
+  .shell[data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .main-content { padding:0; }
+  .shell #view-whatsapp .chat-header { min-height:calc(68px + env(safe-area-inset-top)); padding:calc(10px + env(safe-area-inset-top)) 12px 10px 4px; background:#fff; gap:8px; }
+  .shell #view-whatsapp .mobile-chat-back { width:44px; min-height:44px; color:var(--accent); }
+  .shell #view-whatsapp .chat-header h2 { font-size:14px; }
+  .shell #view-whatsapp .chat-identity { flex:1; }
+  .shell #view-whatsapp .contact-block-button { max-width:90px; min-height:44px; font-size:11px; }
+  .shell #view-whatsapp #wa-messages { min-height:0; padding:16px; }
+  .shell #view-whatsapp .bubble { font-size:15px; line-height:1.55; }
+  .shell #view-whatsapp .panel-form { grid-template-columns:36px minmax(0,1fr) 46px; gap:6px; padding:10px 10px 12px; background:#fff; }
+  .shell #view-whatsapp .message-options:not([open]) { grid-column:1; grid-row:1; align-self:end; }
+  .shell #view-whatsapp .message-options:not([open]) > summary { display:grid; place-items:center; min-height:46px; padding:8px 4px; list-style:none; color:#6c6577; border-radius:7px; }
+  .shell #view-whatsapp .message-options:not([open]) > summary::-webkit-details-marker { display:none; }
+  .shell #view-whatsapp .message-options:not([open]) > summary .icon { display:block; width:22px; height:22px; }
+  .shell #view-whatsapp .message-options:not([open]) > summary span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .shell #view-whatsapp :is(#text-fields,#template-fields) { grid-column:2; grid-row:1; }
+  .shell #view-whatsapp #wa-send { grid-column:3; grid-row:1; }
+  .shell #view-whatsapp .message-options[open] { grid-column:1 / -1; grid-row:1; }
+  .shell #view-whatsapp .panel-form:has(.message-options[open]) :is(#text-fields,#template-fields,#wa-send) { grid-row:2; }
+  .shell #view-whatsapp #wa-text { font-size:16px; }
+  .shell[data-keyboard-open=true][data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) main {
+    position:fixed; left:0; right:0; top:var(--mobile-viewport-offset,0px); height:var(--mobile-viewport-height);
+  }
+  .shell[data-keyboard-open=true][data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .main-topbar { display:none; }
+  .shell[data-keyboard-open=true][data-view=whatsapp]:has(.inbox-layout[data-contact-selected=true]) .main-content { height:100%; }
+  #view-settings .ai-list-heading { gap:8px; }
+  #view-settings .settings-section-heading > .primary-button { width:100%; }
+  #view-settings .settings-save-bar { padding-bottom:12px; }
+}
+@media(max-width:359px) {
+  .shell .app-header { padding-left:16px; padding-right:16px; }
+  .shell .main-content { padding-left:16px; padding-right:16px; }
+  .shell .page-heading h1, .shell[data-view=knowledge] .page-heading h1 { font-size:25px; }
+  .shell .reply-control h2 { font-size:11px; }
+  .shell .reply-control .reply-overview { gap:8px; }
+  .shell .reply-control .reply-state-icon { width:28px; height:28px; }
+  .shell .product-table .product-row { grid-template-columns:minmax(0,1fr) auto 44px; gap:5px; }
+  .shell .product-table .product-row > .product-table-materials { font-size:10px; }
+}
+@media(max-width:580px) and (max-height:700px) {
+  .shell[data-view=whatsapp] .main-content { padding-top:12px; }
+  .shell[data-view=whatsapp] .page-heading { display:none; }
+  .shell[data-view=whatsapp] .reply-control { padding:8px 12px; margin-bottom:8px; }
+  .shell[data-view=whatsapp] .reply-control .reply-overview { min-height:36px; }
+  .shell[data-view=whatsapp] .reply-actions-disclosure > summary { top:4px; }
+  .shell[data-view=whatsapp] .connection-notice { margin-bottom:4px; }
+  .shell[data-view=whatsapp] .connection-notice > summary { min-height:28px; }
+  .shell #view-whatsapp .contacts-heading h3 { font-size:22px; }
+  .shell #view-whatsapp .contact-search-wrap { margin-top:4px; margin-bottom:8px; }
+  .shell #view-whatsapp .contact-filter { min-height:44px; padding-top:6px; padding-bottom:6px; }
+  .shell #view-whatsapp .activity-panel > summary { min-height:44px; padding-top:6px; padding-bottom:6px; }
+  .shell #view-whatsapp .activity-heading > strong { display:none; }
+}

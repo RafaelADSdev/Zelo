@@ -51,7 +51,7 @@ function render() {
   $("#catalog-count").textContent = `${products.filter(product => product.active).length} ativo(s) · ${products.length} cadastrado(s)`;
   $("#catalog-summary").textContent = query ? `${selected.length} ${selected.length === 1 ? "produto encontrado" : "produtos encontrados"}` : `${products.length} ${products.length === 1 ? "produto" : "produtos"} · ${products.filter(product => product.active).length} ${products.filter(product => product.active).length === 1 ? "ativo" : "ativos"}`;
   if (!selected.length) {
-    const row = el('tr'); const cell = el('td'); cell.colSpan = 4;
+    const row = el('tr', 'product-empty-row'); const cell = el('td'); cell.colSpan = 4;
     const empty = el("div", "catalog-empty"); empty.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7l-4-4ZM14 3v5h4"/></svg>';
     empty.append(el("h3", "", products.length ? "Nenhum resultado por aqui" : "Seu catálogo começa aqui"), el("p", "hint", products.length ? "Tente buscar por outro nome ou descrição." : "Adicione um produto com suas informações e materiais para a IA consultar.")); cell.append(empty); row.append(cell); list.append(row);
   }

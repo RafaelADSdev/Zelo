@@ -30,6 +30,31 @@ broadcastPath.setAttribute('d', 'm3 11 18-8-8 18-2-8-8-2Zm8 2L21 3'); broadcastI
 broadcastNav.append(broadcastIcon, node('span', '', 'Disparos'));
 broadcastNav.type = 'button'; broadcastNav.dataset.view = 'broadcasts';
 document.querySelector('.nav-button[data-view="whatsapp"]').after(broadcastNav);
+// One navigation for both layouts; mobile labels stay short without losing their accessible names.
+for (const [name, label] of Object.entries({ knowledge: 'Produtos', whatsapp: 'Conversas', broadcasts: 'Disparos', settings: 'Conexões', access: 'Acessos' })) {
+  const button = $(`.nav-button[data-view="${name}"]`);
+  button.setAttribute('aria-label', button.textContent.trim());
+  button.querySelector('span').classList.add('nav-desktop-label');
+  button.append(node('span', 'nav-mobile-label', label));
+  button.lastChild.setAttribute('aria-hidden', 'true');
+}
+const mobileViewport = window.visualViewport;
+function syncMobileViewport() {
+  if (mobileViewport && mobileViewport.scale !== 1) return; // Preserve pinch zoom.
+  const editing = document.activeElement?.matches('input:not([type=checkbox]):not([type=radio]), textarea, select');
+  const keyboardOpen = matchMedia('(max-width:800px)').matches && editing && mobileViewport && window.innerHeight - mobileViewport.height > 120;
+  $('.shell').dataset.keyboardOpen = String(Boolean(keyboardOpen));
+  if (keyboardOpen) {
+    $('.shell').style.setProperty('--mobile-viewport-height', `${mobileViewport.height}px`);
+    $('.shell').style.setProperty('--mobile-viewport-offset', `${mobileViewport.offsetTop}px`);
+  }
+}
+mobileViewport?.addEventListener('resize', syncMobileViewport);
+mobileViewport?.addEventListener('scroll', syncMobileViewport);
+document.addEventListener('focusin', syncMobileViewport);
+document.addEventListener('focusout', () => requestAnimationFrame(syncMobileViewport));
+window.addEventListener('resize', syncMobileViewport);
+new ResizeObserver(([entry]) => $('.shell').style.setProperty('--pwa-tools-height', `${entry.target.offsetHeight}px`)).observe($('.main-topbar'));
 const blockContactButton = node("button", "secondary-button contact-block-button", "Bloquear IA");
 blockContactButton.type = "button"; blockContactButton.hidden = true;
 $("#wa-window").closest("header").append(blockContactButton);
@@ -153,7 +178,7 @@ function renderDashboard() {
       }
       const preview = node("p", "contact-preview", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto");
       content.append(headline, preview); button.append(avatar, content);
-      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".message-options").open = false; $(".inbox-layout").dataset.contactSelected = "true"; $("#wa-contact").focus({ preventScroll: true }); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
+      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".message-options").open = false; openChat(); $("#wa-contact").focus({ preventScroll: true }); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
     });
   }
   filterContacts();
@@ -242,7 +267,7 @@ function updatePage(next) {
   const pages = { knowledge: ["Produtos e materiais", "Organize os produtos e arquivos que a IA usa no atendimento.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
   pages.broadcasts = ['Disparos', 'Prepare sua mensagem, escolha os contatos e envie no momento certo.', 'Mensagens em lote'];
   const [title, description, badge] = pages[next];
-  $("#page-title").textContent = title; $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
+  $("#page-title").replaceChildren(node('span', 'page-title-full', title), node('span', 'page-title-mobile', next === 'knowledge' ? 'Produtos' : title)); $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
   $(".mode-badge").textContent = badge;
   document.querySelectorAll(".nav-button[data-view]").forEach(button => { button.classList.toggle("active", button.dataset.view === next); if (button.dataset.view === next) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
 }
@@ -254,30 +279,51 @@ function filterContacts() {
 }
 $("#contact-search").addEventListener("input", filterContacts);
 $('#wa-contact').tabIndex = -1;
-$('#mobile-chat-back').onclick = () => { $('.inbox-layout').dataset.contactSelected = 'false'; $('#contact-search').focus(); };
+$('.contacts-heading h3').tabIndex = -1;
+function openChat() {
+  $('.inbox-layout').dataset.contactSelected = 'true';
+  if (matchMedia('(max-width:580px)').matches && !history.state?.chat) history.pushState({ zelo: true, view: 'whatsapp', chat: true }, '', '/#conversas');
+}
+function closeChat({ focus = true } = {}) {
+  $('.inbox-layout').dataset.contactSelected = 'false';
+  if (focus) ($('#contacts .contact-button[aria-pressed="true"]') || $('.contacts-heading h3')).focus({ preventScroll: true });
+}
+$('#mobile-chat-back').onclick = () => { if (history.state?.chat) history.back(); else closeChat(); };
 $('#new-wa-conversation').onclick = () => {
   $('.message-options').open = true;
   blockContactButton.hidden = true;
-  currentPhone = ''; lastWaHistory = ''; $('.inbox-layout').dataset.contactSelected = 'true';
+  currentPhone = ''; lastWaHistory = ''; openChat();
   $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
   $('#wa-contact').textContent = 'Nova mensagem'; $('#wa-window').textContent = 'Informe o destinatário e escreva sua mensagem.';
   $('#wa-avatar').textContent = '+';
   $('#wa-to').value = ''; $('#wa-messages').replaceChildren(node('p','hint','Sua nova conversa aparecerá aqui após o envio.')); $('#wa-to').focus();
 };
 
-async function showView(next) {
+const viewHashes = { knowledge: '', whatsapp: '#conversas', broadcasts: '#disparos', settings: '#conexoes', access: '' };
+async function showView(next, { record = true } = {}) {
   $('.account-menu').open = false;
   if (next === "access" && !workspace?.isMaster) return;
+  if (next !== view && !$('#reply-feedback').classList.contains('reply-feedback-error')) $('#reply-feedback').textContent = '';
   updatePage(next); window.scrollTo(0, 0);
   view = next; document.querySelector(".shell").dataset.view = next; $$(".view").forEach(item => { item.hidden = item.id !== "view-" + next; });
-  if (next === 'broadcasts') { try { await refreshBroadcasts(); } catch (failure) { error(failure.message); } }
   document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
-  history.replaceState(null, "", next === "access" ? "/admin/access" : "/");
+  if (record && (history.state?.view !== next || history.state?.chat)) {
+    history.pushState({ zelo: true, view: next, chat: false }, '', next === 'access' ? '/admin/access' : '/' + viewHashes[next]);
+    if (next === 'whatsapp' && matchMedia('(max-width:580px)').matches) closeChat({ focus: false });
+  }
   $(".reply-control").hidden = next === "access";
   $(".connection-notice").hidden = ["access", "settings"].includes(next);
-  try { if (next === "settings") await loadDashboard(true); if (next === "knowledge") await refreshCatalog(); if (next === "whatsapp") { await loadDashboard(); await loadConversation(); } } catch (failure) { error(failure.message); }
+  try { if (next === 'broadcasts') await refreshBroadcasts(); if (next === "settings") await loadDashboard(true); if (next === "knowledge") await refreshCatalog(); if (next === "whatsapp") { await loadDashboard(); await loadConversation(); } } catch (failure) { error(failure.message); }
 }
 $$('[data-view]').forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
+window.addEventListener('popstate', event => {
+  if (!event.state?.zelo || !Object.hasOwn(viewHashes, event.state.view)) return;
+  if (event.state.view === 'whatsapp') {
+    $('.inbox-layout').dataset.contactSelected = String(Boolean(event.state.chat));
+    if (!event.state.chat) closeChat();
+  }
+  showView(event.state.view, { record: false });
+});
 async function action(button, statusSelector, task) {
   button.disabled = true; error(); $(statusSelector).textContent = "Aguarde…";
   try { $(statusSelector).textContent = await task() || "Concluído."; } catch (failure) { $(statusSelector).textContent = failure.message; error(failure.message); } finally { button.disabled = false; }
@@ -391,8 +437,9 @@ try {
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge; $("#knowledge-business-name").value = dashboard.settings.businessName || "";
   await initCatalog();
   workspace = await initWorkspace({ api });
-  if (location.pathname === "/admin/access") await showView("access");
-  await showView(view);
+  const initialView = location.pathname === '/admin/access' && workspace?.isMaster ? 'access' : Object.keys(viewHashes).find(name => viewHashes[name] && viewHashes[name] === location.hash) || 'knowledge';
+  history.replaceState({ zelo: true, view: initialView, chat: false }, '', initialView === 'access' ? '/admin/access' : '/' + viewHashes[initialView]);
+  await showView(initialView, { record: false });
 } catch (failure) { error("Não foi possível carregar o painel. " + failure.message); }
 setInterval(async () => {
   if (pollBusy || document.hidden) return; pollBusy = true;

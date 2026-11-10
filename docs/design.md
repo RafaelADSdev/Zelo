@@ -67,11 +67,11 @@ Em Conversas, nomes de contatos usam 14 px e peso 600, mensagens usam 14 px com 
 
 ## Layout
 
-Cabeçalho superior de 78 px no computador. Até 800 px, marca e conta ocupam a primeira linha e as abas ficam em uma faixa horizontal rolável; o cabeçalho passa a 118 px.
+Cabeçalho superior de 78 px no computador. Até 800 px, marca e conta ocupam um cabeçalho de 64 px, acrescido da área segura. A navegação principal ocupa uma faixa fixa inferior de 72 px, acrescida da área segura inferior, com ícones e rótulos curtos. Nenhuma área principal exige rolar o menu para ser encontrada.
 
-Produtos organiza catálogo e informações gerais em duas colunas na proporção 2:1; até 800 px, essas áreas se empilham. A tabela mantém sua própria rolagem no celular, sem ampliar a página. Novo produto fica junto ao título da página.
+Produtos organiza catálogo e informações gerais em duas colunas na proporção 2:1; até 800 px, essas áreas se empilham. Até 580 px, a tabela apresenta linhas adaptadas com nome, status, materiais e edição, sem rolagem horizontal. Novo produto fica junto ao título da página, que se abrevia para Produtos no celular.
 
-Conversas usa lista de contatos com avatares, busca e filtro de bloqueio da IA ao lado do histórico/compositor. A coluna de contatos mede 340 px, passa a 290 px até 1100 px e a 260 px entre 581 e 800 px. A conversa selecionada ocupa um painel limitado pela altura disponível, com rolagem interna independente da lista. Até 580 px, lista e conversa são telas alternadas; o contato, Voltar e a área de envio permanecem no painel da conversa, e voltar à lista restaura o contexto geral e o foco na busca.
+Conversas usa lista de contatos com avatares, busca e filtro de bloqueio da IA ao lado do histórico/compositor. A coluna de contatos mede 340 px, passa a 290 px até 1100 px e a 260 px entre 581 e 800 px. A conversa selecionada ocupa um painel limitado pela altura disponível, com rolagem interna independente da lista. Até 580 px, lista e conversa são telas alternadas; a conversa substitui o cabeçalho global por contato e Voltar, preservando a navegação inferior. O compositor permanece acima dela e se ajusta à VisualViewport quando o teclado é detectado. Voltar restaura a lista e o foco no contato, sem abrir o teclado. Em telas de até 700 px de altura, o título duplicado é recolhido e os controles se condensam para preservar área útil da lista.
 
 Em computadores com largura acima de 800 px e altura até 800 px, Conversas recolhe o título da página, condensa os controles globais e mostra as opções fechadas do compositor como ícone de ajustes. Essa redução preserva área útil para o histórico; as opções continuam expansíveis.
 
@@ -91,8 +91,8 @@ Controles e superfícies têm cantos discretamente arredondados. Ícones SVG seg
 
 ## Components
 
-- Navegação: item ativo com texto roxo e sublinhado; conta e integrações acessíveis no canto direito.
-- Automação: estado textual e ação disponível diferenciados. Quando desligada, Ligar é a ação roxa; o comando redundante de desligar fica recolhido.
+- Navegação: no computador, item ativo com texto roxo e sublinhado; até 800 px, ícone e rótulo roxos sobre lavanda na faixa inferior. Conta e integrações continuam acessíveis no cabeçalho. Áreas participam do histórico e têm links diretos por fragmentos em português.
+- Automação: estado textual e ação disponível diferenciados. Quando desligada, Ligar é a ação roxa; o comando redundante de desligar fica recolhido. Até 800 px, Ajustar expande as ações e a explicação, mantendo estado e comando de expansão na mesma linha. A mensagem de sucesso é limpa ao trocar de área; erros permanecem visíveis.
 - Catálogo: tabela semântica com Produto, Status, Materiais e ações acessíveis por nome. A ficha conserva descrições, preços, links e anexos.
 - Negócio: nome e descrição são inicialmente somente leitura; Editar informações habilita os campos e Salvar confirma. O nome é persistido nas configurações; a descrição usa a base existente.
 - Formulários: rótulos explícitos, foco visível e controles principais com altura mínima de 44 px. Metadados do destinatário ficam acessíveis por expansão ao responder uma conversa.
