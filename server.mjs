@@ -51,7 +51,7 @@ assets.set("/workspace.js", ["workspace.js", "text/javascript"]);
 assets.set("/catalog.js", ["catalog.js", "text/javascript"]);
 assets.set("/catalog.css", ["catalog.css", "text/css"]);
 assets.set("/ai-keys.js", ["ai-keys.js", "text/javascript"]);
-for (const provider of [...Object.keys(AI_PROVIDERS), "qwen", "gemma"]) assets.set(`/brand/providers/${provider}.svg`, [`brand/providers/${provider}.svg`, "image/svg+xml"]);
+for (const provider of [...Object.keys(AI_PROVIDERS), "qwen", "gemma"]) assets.set(`/brand/providers/${provider}.svg`, [`brand/providers/${AI_PROVIDERS[provider]?.icon || provider}.svg`, "image/svg+xml"]);
 for (const file of ["logo.svg", "logo-light.svg", "icon.svg"]) assets.set("/brand/" + file, ["brand/" + file, "image/svg+xml"]);
 assets.set("/login", ["login.html", "text/html"]);
 assets.set("/login.js", ["login.js", "text/javascript"]);

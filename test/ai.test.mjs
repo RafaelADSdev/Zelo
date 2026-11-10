@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { startTestServer as startServer, authenticatedFetch as fetch } from "./helpers.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
-for (const provider of ["openai", "anthropic", "xai", "openrouter", "deepseek", "groq"]) test(`IA ${provider}: rota real, segredo isolado e resposta no Wappy`, async () => {
+for (const provider of ["openai", "anthropic", "experiential", "xai", "openrouter", "deepseek", "groq"]) test(`IA ${provider}: rota real, segredo isolado e resposta no Wappy`, async () => {
   const dataDir = await testDirectory(); const key = `test-private-${provider}`; let calls = 0;
   const app = await startServer({ port: 0, dataDir, aiFetch: async (url, options) => {
     calls++; const body = JSON.parse(options.body);
@@ -11,11 +11,22 @@ for (const provider of ["openai", "anthropic", "xai", "openrouter", "deepseek", 
     const answer = { formatRationale: "Resposta", message: { text: `Olá via ${provider}.` }, materialIds: [], sessionFacts: {} };
     if (provider === "openai") { assert.equal(url, "https://api.openai.com/v1/responses"); assert.equal(options.headers.Authorization, `Bearer ${key}`); return Response.json({ output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(answer) }] }] }); }
     if (provider === "anthropic") { assert.equal(url, "https://api.anthropic.com/v1/messages"); assert.equal(options.headers["x-api-key"], key); if (!body.tools) return Response.json({ content: [{ type: "text", text: "OK" }] }); assert.equal(body.tool_choice.name, "responder"); return Response.json({ content: [{ type: "tool_use", name: "responder", input: answer }] }); }
+    if (provider === "experiential") {
+      assert.equal(url, "https://api.experientiallabs.ai/v1/chat/completions");
+      assert.equal(options.headers.Authorization, `Bearer ${key}`);
+      assert.equal(body.model, "claude-fable-5.2:free");
+      assert.equal(body.reasoning_effort, "low");
+      if (body.response_format) {
+        assert.equal(body.response_format.type, "json_schema");
+        assert.equal(body.response_format.json_schema.strict, true);
+      }
+      return Response.json({ choices: [{ message: { content: JSON.stringify(answer) } }] });
+    }
     const hosts = { xai: "https://api.x.ai/v1/chat/completions", openrouter: "https://openrouter.ai/api/v1/chat/completions", deepseek: "https://api.deepseek.com/chat/completions", groq: "https://api.groq.com/openai/v1/chat/completions" };
     assert.equal(url, hosts[provider]); assert.equal(options.headers.Authorization, `Bearer ${key}`); if (body.response_format) assert.equal(body.response_format.type, "json_object"); return Response.json({ choices: [{ message: { content: JSON.stringify(answer) } }] });
   } });
   try {
-    await app.settings.update({ aiProvider: provider, apiKey: key, model: "test-model" });
+    await app.settings.update({ aiProvider: provider, apiKey: key, model: provider === "experiential" ? "claude-fable-5.2:free" : "test-model" });
     const response = await fetch(app.url + "/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "Oi" }) });
     const data = await response.json(); assert.equal(response.status, 200); assert.equal(data.reply.text, `Olá via ${provider}.`); assert.equal(calls, 1);
     const state = app.settings.public(); assert.ok(!JSON.stringify(state).includes(key)); assert.equal(state.aiProvider, provider);
