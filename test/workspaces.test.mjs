@@ -13,6 +13,7 @@ import { decodeSnapshot } from '../deployment/restore.mjs';
 import { startServer } from '../server.mjs';
 import { createQrAuth } from '../lib/whatsapp/qr-auth.mjs';
 import { testDirectory } from './helpers.mjs';
+import { startVpsServer } from '../deployment/vps.mjs';
 
 export function fixture() {
   const tables = new Map(['zelo_workspaces','zelo_products','zelo_product_files','zelo_runtime_snapshots'].map(name=>[name,[]])), objects = new Map(), calls = [];
@@ -64,6 +65,73 @@ export function fixture() {
   return {cloud,cloudConfig,tables,calls,objects,provider,passwords,ids};
 }
 const password='test-only-workspace-password-2026';
+
+test('VPS preserva a conta original, isola o novo login e reabre os dados persistentes', async () => {
+  const f = fixture(), directory = await testDirectory(), key = 'd'.repeat(64);
+  const ownerId = await f.provider.create({ username: 'owner@test.example', password });
+  const memberId = await f.provider.create({ username: 'member@test.example', password: 'test-only-member' });
+  f.tables.get('zelo_workspaces').push(
+    { email: 'owner@test.example', user_id: ownerId, role: 'owner', enabled: true, created: 1 },
+    { email: 'member@test.example', user_id: memberId, role: 'member', enabled: true, created: 2 },
+  );
+  f.cloud.origin = 'http://127.0.0.1:8000';
+  f.cloudConfig.url = f.cloud.origin;
+  const originalFetch = f.cloudConfig.fetchImpl;
+  f.cloudConfig.fetchImpl = async (url, options) => {
+    if (url.includes('/auth/v1/token?')) {
+      const input = JSON.parse(options.body);
+      try { return Response.json({ user: { id: await f.provider.login({ username: input.email, password: input.password }) } }); }
+      catch { return Response.json({}, { status: 401 }); }
+    }
+    return originalFetch(url, options);
+  };
+  await writeFile(join(directory, 'auth.json'), JSON.stringify({ provider: 'supabase', username: 'owner@test.example', userId: ownerId }));
+  const seed = await startServer({ dataDir: directory, port: 0, webhookPort: 0, cloudConfig: f.cloudConfig, ownerId, backupKey: key });
+  let file;
+  try {
+    await seed.settings.update({ autoReply: false, whatsappMode: 'qr', assistantName: 'Original' });
+    await seed.settings.saveAiKey({ provider: 'gemini', model: 'gemini-2.5-flash', apiKey: 'owner-private-key' });
+    await seed.runtime.memory.append({ id: 'owner-turn', contactId: 'contact', role: 'user', text: 'Original memory', timestamp: 1 });
+    const product = await seed.runtime.catalog.save({ name: 'Original product' });
+    file = await seed.runtime.catalog.upload(product.id, Buffer.from('%PDF-1.7\noriginal'), 'original.pdf', 'application/pdf');
+  } finally { await seed.close(); }
+  const options = { directory, cloudConfig: f.cloudConfig, key, origin: 'https://zelo.test', port: 0, webhookPort: 0 };
+  let app = await startVpsServer(options);
+  const send = (path, body, cookie = '') => fetch(app.url + path, {
+    ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+    headers: { 'content-type': 'application/json', cookie }, redirect: 'manual',
+  });
+  const login = async (username, secret) => {
+    const response = await send('/api/auth/login', { username, password: secret });
+    assert.equal(response.status, 200);
+    return response.headers.get('set-cookie').split(';')[0];
+  };
+  try {
+    const ownerCookie = await login('owner@test.example', password);
+    const memberCookie = await login('member@test.example', 'test-only-member');
+    const ownerDashboard = await (await send('/api/dashboard', undefined, ownerCookie)).json();
+    assert.equal(ownerDashboard.settings.assistantName, 'Original');
+    assert.equal(ownerDashboard.settings.aiKeys.length, 1);
+    assert.equal((await (await send('/api/products', undefined, ownerCookie)).json()).length, 1);
+    const attachment = await send('/api/files/' + file.id, undefined, ownerCookie);
+    assert.equal(attachment.status, 200);
+    assert.equal(await attachment.text(), '%PDF-1.7\noriginal');
+    assert.deepEqual(await (await send('/api/products', undefined, memberCookie)).json(), []);
+    assert.equal((await send('/api/files/' + file.id, undefined, memberCookie)).status, 404);
+    assert.equal((await send('/api/workspace/accounts', undefined, memberCookie)).status, 403);
+    await send('/api/settings', { assistantName: 'Member' }, memberCookie);
+    await app.close();
+    f.tables.set('zelo_runtime_snapshots', []);
+    app = await startVpsServer(options);
+    const again = await login('member@test.example', 'test-only-member');
+    const memberDashboard = await (await send('/api/dashboard', undefined, again)).json();
+    assert.equal(memberDashboard.settings.assistantName, 'Member');
+    assert.deepEqual(memberDashboard.settings.aiKeys, []);
+    const ownerAgain = await login('owner@test.example', password);
+    assert.equal((await (await send('/api/dashboard', undefined, ownerAgain)).json()).settings.assistantName, 'Original');
+    assert.equal(JSON.parse(await readFile(join(directory, 'auth.json'), 'utf8')).userId, ownerId);
+  } finally { await app.close(); }
+});
 
 test('migração confere identidade original pela Auth Admin API antes de atribuir os dados',async()=>{
   const f=fixture(), directory=await testDirectory(), key='c'.repeat(64), userId=randomUUID();
