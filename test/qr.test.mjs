@@ -8,10 +8,11 @@ import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("QR: credenciais persistidas, novas mensagens, dedupe, isolamento e envio incerto", async () => {
   const dataDir = await testDirectory();
-  const sockets = [], sent = []; let modelCalls = 0, uncertain = false;
+  const sockets = [], sent = []; let modelCalls = 0, mappingCalls = 0, uncertain = false;
   const socketFactory = options => {
     const socket = {
       ev: new EventEmitter(), user: { id: "5511999999999:1@s.whatsapp.net" }, options,
+      signalRepository: { lidMapping: { async getLIDForPN() { mappingCalls++; return null; } } },
       end() {}, async logout() {},
       async onWhatsApp(...jids) { return jids.map(jid => ({jid,exists:true})); }, async sendMessage(jid, content) {
         sent.push({ jid, content });
@@ -69,6 +70,12 @@ test("QR: credenciais persistidas, novas mensagens, dedupe, isolamento e envio i
     await app.qr.disconnect();
     socket.ev.emit("connection.update", { qr: "stale" }); await app.qr.idle(); assert.equal(app.qr.state().qr, "");
     await app.qr.connect(); const second = sockets.at(-1); assert.equal(second.options.auth.creds.registered, true);
+    second.ev.emit("connection.update", { qr: "test-new-qr" }); await app.qr.idle();
+    const mappingsBeforePairing = mappingCalls;
+    const pairing = await (await fetch(app.url + "/api/dashboard")).json();
+    assert.equal(pairing.qr.status, "qr");
+    assert.equal(pairing.conversations.length, 1);
+    assert.equal(mappingCalls, mappingsBeforePairing);
     second.user.id = "5511777777777:1@s.whatsapp.net";
     second.ev.emit("connection.update", { connection: "open" }); await app.qr.idle();
     assert.equal((await app.qr.conversations()).length, 0);
