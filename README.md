@@ -200,7 +200,7 @@ O Git ignora `.wappy/` e `.env`, onde ficam dados locais, sessões e credenciais
 | Publicar a Function e o Daemon | [Implantação na Vercel](docs/vercel.md) |
 | Consultar a identidade visual e os componentes | [Design do Zelo](docs/design.md) · [Conexões e IA](docs/settings/DESIGN.md) |
 
--
+
 
 <div align="center">
 
