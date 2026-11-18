@@ -24,7 +24,9 @@ export async function initWorkspace({ api }) {
     const query = document.querySelector('#access-search').value.trim().toLowerCase(), filter = document.querySelector('#access-filter').value;
     const visible = accounts.filter(account=>account.email.toLowerCase().includes(query) && (filter==='all' || state(account)===filter));
     document.querySelector('#access-result-count').textContent = `${visible.length} de ${accounts.length} conta${accounts.length===1?'':'s'}`;
-    if(!visible.length) list.append(node('p','access-empty','Nenhuma conta encontrada para esta busca.'));
+    if (!visible.length) list.append(node('p', 'access-empty', accounts.length
+      ? 'Nenhuma conta encontrada. Tente outro e-mail ou filtro.'
+      : 'Nenhuma conta na lista. Use Gerar convite para convidar uma pessoa.'));
     for(const account of visible) {
       const master = account.userId === current.userId, situation = state(account);
       const row=node('div','workspace-account-row'), identity=node('div','access-account-identity'), avatar=node('span','access-avatar',account.email.slice(0,1).toUpperCase()), details=node('div','');
@@ -81,6 +83,9 @@ export async function initWorkspace({ api }) {
     try { await navigator.clipboard.writeText(document.querySelector('#workspace-invite-link').value); status.textContent = 'Link copiado.'; }
     catch { status.textContent = 'Selecione e copie o link acima.'; }
   };
-  await load();
+  try { await load(); }
+  catch {
+    document.querySelector('#access-result-count').textContent = 'Não foi possível carregar as contas. Use Atualizar lista para tentar novamente.';
+  }
   return current;
 }

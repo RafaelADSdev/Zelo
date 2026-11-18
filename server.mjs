@@ -75,23 +75,25 @@ function sameToken(a, b) { const x = Buffer.from(a || ""); const y = Buffer.from
 async function listen(server, port) { await new Promise((resolve, reject) => { server.once("error", reject); server.listen(port, "127.0.0.1", resolve); }); }
 async function closeServer(server) { await new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); }); }
 
-export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, qrAudioDownload, onShutdown, cloudConfig, authDelegate, ownerId, snapshotId, backupKey } = {}) {
+export async function startServer({ port = 4173, webhookPort = port ? port + 1 : 0, dataDir = join(root, ".wappy"), ai = {}, metaFetch, geminiFetch, aiFetch, qrSocketFactory, qrAudioDownload, onShutdown, cloudConfig, authDelegate, ownerId, snapshotId, backupKey, assertActive = () => {}, publishSnapshot } = {}) {
+  assertActive();
   const instanceId = randomUUID();
   const settings = await createSettings(dataDir, ai);
   const config = cloudConfig || (process.env.SUPABASE_URL ? { url: process.env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : null);
   const cloud = config ? createSupabase(config) : null;
   const auth = authDelegate || await createAuth(dataDir, { provider: cloud ? createSupabaseAuth(cloud) : undefined, bootstrapToken: process.env.ZELO_SETUP_TOKEN });
-  const runtime = await createRuntime(dataDir, settings, { fetchImpl: aiFetch || geminiFetch || ai.fetchImpl, cloud, backupKey: backupKey || process.env.SUPABASE_BACKUP_KEY, ownerId, snapshotId });
+  const runtime = await createRuntime(dataDir, settings, { fetchImpl: aiFetch || geminiFetch || ai.fetchImpl, cloud, backupKey: backupKey || process.env.SUPABASE_BACKUP_KEY, ownerId, snapshotId, assertActive, publishSnapshot });
   const uploads = createUploads(runtime.catalog);
   await runtime.memory.load("system:init");
-  const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch });
-  const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory, audioDownload: qrAudioDownload });
+  const whatsapp = await createWhatsApp({ runtime, settings, fetchImpl: metaFetch, assertActive });
+  const qr = await createWhatsAppQr({ runtime, settings, socketFactory: qrSocketFactory, audioDownload: qrAudioDownload, assertActive });
   const transport = () => settings.get().whatsappMode === "qr" ? qr : whatsapp;
   const account = () => settings.get().whatsappMode === 'qr' ? `qr:${qr.state().account}` : `cloud:${settings.get().phoneNumberId || ''}`;
   const optouts = await createOptouts(runtime.client);
   const webhook = createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     try {
+      assertActive();
       const url = new URL(req.url, "http://localhost");
       if (url.pathname !== "/webhook") return json(res, 404, { error: "Não encontrado." });
       if (req.method === "GET") {
@@ -103,7 +105,9 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === "POST") {
         const signature = req.headers["x-hub-signature-256"];
         if (typeof signature !== "string") return json(res, 403, { error: "Assinatura obrigatória." });
-        await whatsapp.accept(await rawBody(req, 1000000), signature);
+        const bytes = await rawBody(req, 1000000);
+        assertActive();
+        await whatsapp.accept(bytes, signature);
         return json(res, 200, { received: true });
       }
       json(res, 405, { error: "Método não permitido." });
@@ -113,8 +117,8 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
   try { await listen(webhook, webhookPort); } catch (error) { await qr.close(); await whatsapp.close(); await runtime.close(); throw error; }
   const tunnel = createTunnel({ dataDir, port: webhook.address().port, settings });
   let adminQueue = Promise.resolve();
-  const serial = fn => { const result = adminQueue.then(fn); adminQueue = result.catch(() => {}); return result; };
-  const broadcasts = await createBroadcasts({ db: runtime.client, catalog: runtime.catalog,
+  const serial = fn => { const result = adminQueue.then(() => { assertActive(); return fn(); }); adminQueue = result.catch(() => {}); return result; };
+  const broadcasts = await createBroadcasts({ db: runtime.client, catalog: runtime.catalog, assertActive,
     resolveNames: (phones, account) => qr.contactNames(phones, account.slice(3)),
     connection: () => settings.get().whatsappMode === 'qr' ? (qr.state().status === 'connected' ? `qr:${qr.state().account}` : '') : `cloud:${settings.get().phoneNumberId || ''}`,
     send: input => transport().manual(input),
@@ -135,6 +139,7 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
     const allowed = [`127.0.0.1:${server.address().port}`, `localhost:${server.address().port}`];
     if (!allowed.includes(req.headers.host) || Object.keys(req.headers).some(key => ["forwarded", "x-forwarded-for", "x-forwarded-host", "cf-connecting-ip"].includes(key)) || (req.headers.origin && !allowed.map(host => `http://${host}`).includes(req.headers.origin))) return json(res, 403, { error: "Painel disponível somente neste computador." });
     try {
+      assertActive();
       const url = new URL(req.url, "http://localhost");
       if (req.method === "GET" && url.pathname === "/api/health") return json(res, 200, { app: "wappy", instanceId });
       if (req.method === "GET" && url.pathname === "/api/auth/status") return json(res, 200, { configured: auth.configured(), authenticated: Boolean(auth.session(req)), provider: auth.provider() });
@@ -168,7 +173,11 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
         res.writeHead(200, { "Content-Type": file.mime, "Content-Length": file.size, "Content-Disposition": `${file.mime === "application/pdf" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(file.name)}` }); return res.end(file.bytes);
       }
       const uploadPart = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})$/);
-      if (req.method === 'POST' && uploadPart) return json(res, 200, uploads.append(uploadPart[1], auth.session(req).key, Number(req.headers['x-upload-offset']), await rawBody(req, 2 * 1024 * 1024)));
+      if (req.method === 'POST' && uploadPart) {
+        const bytes = await rawBody(req, 2 * 1024 * 1024);
+        assertActive();
+        return json(res, 200, uploads.append(uploadPart[1], auth.session(req).key, Number(req.headers['x-upload-offset']), bytes));
+      }
       const uploadMatch = url.pathname.match(/^\/api\/products\/([a-f0-9-]{36})\/files$/);
       if (req.method === "POST" && uploadMatch) {
         if (!["image/png", "image/jpeg", "image/webp", "application/pdf"].includes(req.headers["content-type"])) throw fail("Envie JPG, PNG, WebP ou PDF.", 415);
@@ -186,11 +195,17 @@ export async function startServer({ port = 4173, webhookPort = port ? port + 1 :
       if (req.method === 'GET' && url.pathname === '/api/optouts') return json(res, 200, { items: await optouts.list(account()), confirmation: await optouts.confirmation(account()) });
       if (req.method === "POST") {
         const input = await body(req, ['/api/broadcasts','/api/broadcasts/preview','/api/broadcasts/test'].includes(url.pathname) ? 524288 : 64000);
+        assertActive();
         if ((url.pathname.startsWith('/api/broadcasts') || url.pathname === '/api/optouts') && (!input || typeof input !== 'object' || Array.isArray(input))) throw fail('Informe os dados da operação em um objeto JSON.');
         const actor = auth.session(req)?.userId || auth.session(req)?.username || 'operador';
         const aiScope = url.searchParams.get("scope") || "text";
         if (url.pathname.startsWith("/api/ai/") && !["text", "audio"].includes(aiScope)) throw fail("Lista de IA inválida.");
         if (url.pathname === '/api/uploads') return json(res, 201, uploads.start(input, auth.session(req).key));
+        const cancelUpload = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})\/cancel$/);
+        if (cancelUpload) {
+          uploads.cancel(cancelUpload[1], auth.session(req).key);
+          return json(res, 200, { cancelled: true });
+        }
         const finishUpload = url.pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})\/finish$/);
         if (finishUpload) return json(res, 201, await serial(() => uploads.finish(finishUpload[1], auth.session(req).key)));
         if (url.pathname === "/api/ai/keys") return json(res, 201, await settings.saveAiKey(input, undefined, aiScope));

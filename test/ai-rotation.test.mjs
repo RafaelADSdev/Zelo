@@ -7,6 +7,36 @@ import { createRotatingAi } from "../lib/ai/ai-rotation.mjs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+test("resposta já em andamento não limpa a pausa registrada por outra conversa", async () => {
+  const settings = await createSettings(await testDirectory());
+  const primary = await settings.saveAiKey({ label: "Principal", provider: "openai", apiKey: "synthetic-primary", model: "test-model" });
+  const reserve = await settings.saveAiKey({ label: "Reserva", provider: "openai", apiKey: "synthetic-reserve", model: "test-model" });
+  await settings.configureAiRotation({ enabled: true, order: [primary.id, reserve.id] });
+  const now = 100000;
+  const answer = () => Response.json({ output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ formatRationale: "Resposta", message: { text: "OK" } }) }] }] });
+  const { promise: started, resolve: start } = Promise.withResolvers();
+  const { promise: olderResponse, resolve: complete } = Promise.withResolvers();
+  let primaryCalls = 0;
+  const fetchImpl = async (_url, options) => {
+    if (options.headers.Authorization === "Bearer synthetic-reserve") return answer();
+    primaryCalls++;
+    if (primaryCalls === 1) { start(); return olderResponse; }
+    return Response.json({}, { status: 429, headers: { "Retry-After": "120" } });
+  };
+  const generate = () => createRotatingAi(settings, { clock: () => now, fetchImpl }).generate({ prompt: "Olá", responseSchema: { properties: { message: {} } } });
+  const older = generate();
+  await started;
+  await generate();
+  complete(answer());
+  await older;
+  const key = settings.get().aiKeys.find(item => item.id === primary.id);
+  assert.equal(key.cooldownUntil, now + 120000);
+  assert.match(key.lastError, /limite/i);
+  assert.equal(key.lastUsedAt, now);
+  await generate();
+  assert.equal(primaryCalls, 2);
+});
+
 test("ordem de chaves: limite pula para próxima, persiste pausa, oculta segredos e respeita desativação", async () => {
   const dataDir = await testDirectory(); const calls = [];
   const app = await startServer({ port: 0, dataDir, aiFetch: async (_url, options) => {

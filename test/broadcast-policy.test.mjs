@@ -25,6 +25,30 @@ test('fila explica espera fora do horário e retoma na próxima janela sem antec
   } finally { db.close(); }
 });
 
+test('campanhas aguardando horário ou teto não represam outra campanha elegível na mesma conta', async () => {
+  const db = createClient({ url: ':memory:' });
+  let now = Date.parse('2026-11-04T18:00:00Z');
+  const sent = [];
+  try {
+    const service = await createBroadcasts({ db, connection: () => 'qr:a', clock: () => now, send: async input => { sent.push(input.text); return {}; } });
+    const add = input => service.create({ requestId: randomUUID(), consent: true, phones: '5511988887777\n5511977776666', ...input });
+    const closed = await add({ text: 'Janela fechada', windowStart: '07:00', windowEnd: '08:00' });
+    const limited = await add({ text: 'Teto baixo', dailyCap: 1 });
+    const open = await add({ text: 'Elegível', dailyCap: 2 });
+    await service.tick();
+    assert.deepEqual(sent, ['Teto baixo']);
+    assert.match((await service.get(closed.id)).paused_reason, /Aguardando o horário permitido/);
+    now += 70000;
+    await service.tick();
+    assert.deepEqual(sent, ['Teto baixo', 'Elegível']);
+    assert.match((await service.get(limited.id)).paused_reason, /Teto diário/);
+    assert.equal((await service.get(open.id)).items[0].state, 'sent');
+    now += 70000;
+    await service.tick();
+    assert.deepEqual(sent, ['Teto baixo', 'Elegível']);
+  } finally { db.close(); }
+});
+
 test('novos disparos permitem envio o dia inteiro por padrão', () => {
   const policy = broadcastPolicy({}, 'qr:a');
   for (const time of ['2026-11-04T00:39:00Z', '2026-11-04T03:00:00Z', '2026-11-04T10:59:00Z', '2026-11-04T23:00:00Z']) {

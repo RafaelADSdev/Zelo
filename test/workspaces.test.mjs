@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rmdir, access as fileAccess } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createWorkspaceAccess } from '../lib/workspaces/workspace-access.mjs';
 import { createWorkspaceManager, workspaceKey, originalAccount } from '../lib/workspaces/workspace-manager.mjs';
@@ -103,18 +103,20 @@ test('VPS preserva a conta original, isola o novo login e reabre os dados persis
   } finally { await seed.close(); }
   const options = { directory, cloudConfig: f.cloudConfig, key, origin: 'https://zelo.test', port: 0, webhookPort: 0 };
   let app = await startVpsServer(options);
-  const send = (path, body, cookie = '') => fetch(app.url + path, {
+  const send = (path, body, cookie = '', headers = {}) => fetch(app.url + path, {
     ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
-    headers: { 'content-type': 'application/json', cookie }, redirect: 'manual',
+    headers: { 'content-type': 'application/json', cookie, ...headers }, redirect: 'manual',
   });
   const login = async (username, secret) => {
-    const response = await send('/api/auth/login', { username, password: secret });
+    const response = await send('/api/auth/login', { username, password: secret }, '', { origin: options.origin, host: new URL(options.origin).host, 'x-forwarded-proto': 'https', 'x-forwarded-for': '192.0.2.9' });
     assert.equal(response.status, 200);
+    assert.match(response.headers.get('set-cookie'), /; Secure/);
     return response.headers.get('set-cookie').split(';')[0];
   };
   try {
     const ownerCookie = await login('owner@test.example', password);
     const memberCookie = await login('member@test.example', 'test-only-member');
+    assert.equal((await send('/api/settings', { assistantName: 'Não salvar' }, memberCookie, { origin:'https://untrusted.example' })).status,403);
     const ownerDashboard = await (await send('/api/dashboard', undefined, ownerCookie)).json();
     assert.equal(ownerDashboard.settings.assistantName, 'Original');
     assert.equal(ownerDashboard.settings.aiKeys.length, 1);
@@ -142,7 +144,7 @@ test('VPS preserva a conta original, isola o novo login e reabre os dados persis
 test('migração confere identidade original pela Auth Admin API antes de atribuir os dados',async()=>{
   const f=fixture(), directory=await testDirectory(), key='c'.repeat(64), userId=randomUUID();
   await writeFile(join(directory,'auth.json'),JSON.stringify({provider:'supabase',username:'owner@test.example',userId}));
-  const backup=createStateBackup({client:{execute:async()=>({rows:[]})},dataDir:directory,cloud:f.cloud,key});
+  const backup=createStateBackup({client:{transaction:async()=>({execute:async()=>({rows:[]}),close(){}})},dataDir:directory,cloud:f.cloud,key});
   await backup.run(); await backup.close();
   let identity={id:userId,email:'another@test.example'};
   const cloud={request:(path,options)=>path.startsWith('/auth/v1/admin/users/') ? identity : f.cloud.request(path,options)};
@@ -151,6 +153,77 @@ test('migração confere identidade original pela Auth Admin API antes de atribu
   identity={id:userId,email:'OWNER@test.example'};
   assert.equal((await originalAccount(cloud,key)).userId,userId);
   assert.equal(f.calls.filter(call=>call.path.endsWith('zelo_claim_legacy')).length,1);
+});
+
+test('restauração com falha não publica banco parcial e pode tentar o mesmo snapshot novamente', async () => {
+  const f = fixture(), directory = await testDirectory(), source = await testDirectory();
+  const userId = randomUUID(), key = 'd'.repeat(64), snapshotId = 'workspace:' + userId;
+  const table = { name: 'marcador', sql: 'CREATE TABLE marcador(id TEXT)' };
+  await writeFile(join(source,'settings.json'), JSON.stringify({ assistantName: 'Valor de recuperação' }));
+  const backup = createStateBackup({ dataDir: source, cloud: f.cloud, key: workspaceKey(key,userId), snapshotId, client: {
+    transaction: async () => ({ execute: async sql => sql.includes('sqlite_master') ? { rows: [table] } : { columns: ['id'], rows: [{ id: 'valor' }] }, close() {} }),
+  } });
+  try { await backup.run(); } finally { await backup.close(); }
+  let launched = 0;
+  const manager = createWorkspaceManager({ directory, cloud: f.cloud, key, persistent: true, original: { userId: randomUUID() }, origin: 'https://zelo.test', start: async ({ dataDir }) => {
+    launched++;
+    assert.equal(JSON.parse(await readFile(join(dataDir,'settings.json'),'utf8')).assistantName,'Valor de recuperação');
+    return { settings: { update: async () => {} }, runtime: { flushBackup: async () => {} }, close: async () => {} };
+  } });
+  try {
+    const workspace = join(directory,userId), blocked = join(workspace,'settings.json');
+    await mkdir(blocked,{recursive:true});
+    await assert.rejects(manager.get(userId));
+    await assert.rejects(fileAccess(join(workspace,'wappy.db')), error => error.code === 'ENOENT');
+    assert.equal(launched,0);
+    await rmdir(blocked);
+    await manager.get(userId);
+    assert.equal(launched,1);
+    assert.equal(f.calls.filter(({path,method}) => method==='GET' && path.includes(encodeURIComponent(snapshotId))).length,2);
+  } finally { await manager.close(); }
+});
+
+test('pausa bloqueia dados atrasados e reativação reabre somente após encerrar o ambiente anterior', async () => {
+  const f = fixture(), directory = await testDirectory(), key = 'd'.repeat(64), userId = randomUUID();
+  const loading = Promise.withResolvers(), startup = Promise.withResolvers();
+  const closing = Promise.withResolvers(), shutdown = Promise.withResolvers();
+  let started = 0;
+  const manager = createWorkspaceManager({ directory, cloud:f.cloud, key, original:{ userId:randomUUID() }, origin:'https://zelo.test', start: async () => {
+    const number = ++started;
+    if (number === 1) { loading.resolve(); await startup.promise; }
+    return {
+      settings: { update: async () => {} }, runtime: { flushBackup: async () => {} },
+      close: async () => { if (number === 1) { closing.resolve(); await shutdown.promise; } },
+    };
+  } });
+  try {
+    const opened = manager.get(userId);
+    const rejected = assert.rejects(opened, error => error.status === 403);
+    await loading.promise;
+    const pause = manager.pause(userId);
+    await assert.rejects(manager.get(userId), error => error.status === 403);
+    const resumed = manager.resume(userId);
+    startup.resolve();
+    await rejected; await closing.promise;
+    assert.equal(started, 1);
+    shutdown.resolve(); await pause; await resumed;
+    assert.equal(started, 2);
+  } finally { startup.resolve(); shutdown.resolve(); await manager.close(); }
+});
+
+test('falha na inicialização de uma conta mantém as demais disponíveis', async () => {
+  const f = fixture(), directory = await testDirectory(), key = 'e'.repeat(64);
+  const bad = randomUUID(), healthy = randomUUID();
+  f.tables.get('zelo_runtime_snapshots').push({ id:'workspace:'+bad, version:0 });
+  const manager = createWorkspaceManager({ directory, cloud:f.cloud, key, original:{userId:randomUUID()}, origin:'https://zelo.test', start: async () => ({
+    settings: { update: async () => {} }, runtime: { flushBackup: async () => {} }, close: async () => {},
+  }) });
+  try {
+    await manager.warm([{enabled:true,user_id:bad},{enabled:true,user_id:healthy}]);
+    assert.equal((await manager.get(healthy)).id,healthy);
+    await assert.rejects(manager.get(bad),/Backup incompatível/);
+    assert.equal(f.tables.get('zelo_runtime_snapshots')[0].version,0);
+  } finally { await manager.close(); }
 });
 
 test('convites: uso único, expiração, senha, cadastro externo não autorizado e administrador protegido',async()=>{

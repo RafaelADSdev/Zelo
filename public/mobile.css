@@ -11,7 +11,7 @@
   .inbox-layout:not([data-contact-selected=true]) .chat-panel{display:none}.inbox-layout[data-contact-selected=true] .contacts-panel{display:none}
   .mobile-chat-back{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:8px 5px;border:0;background:transparent;color:#7041db;font-size:12px;font-weight:600;flex:none}.mobile-chat-back svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8}.chat-header{gap:12px}.chat-header>div{min-width:0}.chat-header h2{overflow-wrap:anywhere}.chat-header .hint{line-height:1.6}
   #wa-messages{height:clamp(220px,38dvh,380px);min-height:220px}.panel-form{padding:6px 16px max(18px,env(safe-area-inset-bottom))}.panel-form textarea{min-height:100px}.panel-form .dialog-footer button{min-height:46px}
-  .product-link-row{gap:8px}.product-file a{min-width:0}.access-account-controls button{min-height:44px}.workspace-account-row strong{overflow-wrap:anywhere}
+  .access-account-controls button{min-height:44px}.workspace-account-row strong{overflow-wrap:anywhere}
 }
 
 @media(max-width:380px){#view-settings .settings-tabs button{white-space:normal;min-width:0;padding:9px 4px;font-size:10px;line-height:1.4}#view-settings .settings-tabs{overflow:visible}}
@@ -205,10 +205,6 @@
   .shell .business-symbol { width:42px; height:42px; }
   .shell .business-symbol .icon { width:24px; height:24px; }
   .shell .business-heading h2 { font-size:18px; }
-  .shell #view-knowledge #product-editor { scroll-margin-top:80px; border-radius:12px; }
-  .shell .product-link-row { grid-template-columns:minmax(0,1fr); }
-  .shell .product-file { flex-wrap:wrap; }
-  .shell .product-file a { overflow-wrap:anywhere; }
 
   /* The inbox fills the remaining viewport; only the contact list scrolls. */
   .shell[data-view=whatsapp] .main-content {
@@ -301,4 +297,96 @@
   .shell #view-whatsapp .contact-filter { min-height:44px; padding-top:6px; padding-bottom:6px; }
   .shell #view-whatsapp .activity-panel > summary { min-height:44px; padding-top:6px; padding-bottom:6px; }
   .shell #view-whatsapp .activity-heading > strong { display:none; }
+}
+
+/* Shared page headings at touch widths. */
+@media (max-width:800px) {
+  .shell .page-heading, .shell[data-view=knowledge] .page-heading { padding:16px; border-radius:var(--radius); }
+  .shell .page-heading p { display:block; font-size:13px; line-height:1.5; }
+  .shell[data-view=knowledge] .page-heading {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px 12px;
+  }
+  .shell[data-view=knowledge] .page-heading > div { display:contents; }
+  .shell[data-view=knowledge] .page-heading h1 { grid-column:1; grid-row:1; }
+  .shell[data-view=knowledge] .page-heading #new-product { grid-column:2; grid-row:1; }
+  .shell[data-view=knowledge] .page-heading p { grid-column:1 / -1; grid-row:2; margin:0; }
+  .shell .account-menu > summary { font-size:12px; padding:6px 10px; }
+  .shell #view-knowledge .catalog-summary { margin:0; }
+}
+@media (max-width:580px) {
+  .shell[data-view=whatsapp] .page-heading { padding:10px 14px; margin-inline:16px; }
+  .shell[data-view=whatsapp] .page-heading p { display:none; }
+  .shell #view-knowledge .catalog-search { background:var(--workspace-subtle); }
+  .shell #view-knowledge .catalog-toolbar { align-items:flex-start; flex-direction:column; }
+  .shell #view-knowledge .catalog-summary { margin:0; color:var(--muted); }
+  .shell #view-knowledge .catalog-empty { padding:20px 4px; }
+}
+
+/* Conexões: reconhecimento da aba ativa, leitura do estado e formulários. */
+.shell #view-settings {
+  --settings-active: var(--accent-hover);
+  --settings-active-hint: #f0e6ff;
+  --settings-control-border: #91839f;
+}
+.shell #view-settings .settings-tabs { gap: 6px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.shell #view-settings .settings-tabs button { min-height: 64px; padding: 12px; }
+.shell #view-settings .settings-tabs button[aria-selected=true] { color: var(--surface); background: var(--settings-active); border-color: var(--settings-active); }
+#view-settings .settings-tabs button[aria-selected=true] small { color: var(--settings-active-hint); }
+#view-settings .settings-tabs strong { font-size: 14px; }
+.shell #view-settings .settings-card { border-radius: 12px; }
+.shell #view-settings .settings-section-heading h2 { font-size: 24px; overflow-wrap: break-word; }
+#view-settings .settings-section-heading > div { min-width: 0; }
+#view-settings .settings-section-heading p { color: var(--muted); }
+#view-settings .ai-purpose-tabs { gap: 4px; border: 1px solid var(--border); padding: 4px; border-radius: 9px; background: var(--page); }
+#view-settings .ai-purpose-tabs button { min-width: 0; margin: 0; min-height: 60px; border: 1px solid transparent; border-radius: 6px; padding: 10px 14px; }
+#view-settings .ai-purpose-tabs button[aria-selected=true] { color: var(--accent-hover); border-color: var(--border); background: var(--surface); }
+#view-settings .ai-purpose-tabs strong { line-height: 1.35; }
+#view-settings .ai-purpose-tabs span { color: var(--muted); }
+#view-settings .ai-rotation-option { border: 1px solid var(--border); border-radius: 8px; background: var(--page); padding: 12px 16px; margin-bottom: 20px; }
+#view-settings .ai-rotation-option p { color: var(--muted); }
+#view-settings .ai-list-heading { color: var(--muted); font-size: 12px; }
+#view-settings [role=tabpanel]:has(.ai-keys-empty) .ai-list-heading > span + span { visibility: hidden; }
+#view-settings .ai-keys-empty { justify-items: start; text-align: left; padding: 24px 16px; background: var(--page); }
+#view-settings .ai-keys-empty .icon { color: var(--accent-hover); }
+#view-settings .ai-keys-empty p { max-width: 54ch; }
+#view-settings .ai-key-editor { border-color: var(--settings-control-border); background: var(--page); }
+#view-settings .ai-key-editor h3 { font-size: 20px; }
+#view-settings :is(.settings-explanation, .connection-management) > summary { min-height: 44px; display: flex; align-items: center; }
+#view-settings :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { border-color: var(--settings-control-border); }
+#view-settings :is(button,summary,a,input,select,textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#view-settings .connection-options button { border-color: var(--settings-control-border); }
+#view-settings .connection-options strong { font-size: 15px; }
+#view-settings .connection-options small { color: var(--muted); font-size: 13px; }
+#view-settings .connection-options button[aria-pressed=true] { border-color: var(--accent); color: var(--accent-hover); background: var(--soft); }
+#view-settings .connection-state { font-size: 12px; }
+#view-settings .qr-instructions h3 { font-size: 20px; }
+#view-settings .assistant-form-layout { grid-template-columns: minmax(0,1fr) minmax(0,200px); align-items: start; }
+#view-settings .assistant-form-layout > div > label:first-child { margin-top: 0; }
+#view-settings .assistant-form-note { padding: 16px; border: 0; border-radius: 8px; background: var(--soft); }
+#view-settings .assistant-form-note .icon { display: block; color: var(--accent-hover); }
+#view-settings .assistant-form-note p { color: var(--muted); line-height: 1.55; }
+#view-settings .response-writing-guide { border: 0; border-radius: 8px; background: var(--page); padding: 16px; margin-bottom: 16px; }
+#view-settings #settings-form-privacy { margin: 16px 0 0; }
+@media (max-width: 800px) {
+  .shell #view-settings .settings-tabs button { min-height: 48px; padding: 6px 4px; }
+  #view-settings .settings-tabs strong { font-size: 13px; }
+}
+@media (max-width: 580px) {
+  .shell #view-settings .settings-card { padding: 16px; }
+  .shell #view-settings .settings-section-heading h2 { font-size: 22px; }
+  #view-settings .settings-section-heading { gap: 12px; margin-bottom: 16px; }
+  #view-settings .ai-purpose-tabs { margin-bottom: 16px; }
+  #view-settings .ai-purpose-tabs button { justify-content: center; min-height: 44px; padding: 8px; }
+  #view-settings .assistant-form-layout { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  #view-settings .assistant-form-note .icon { display: none; }
+  #view-settings .assistant-form-note > p:last-child { display: block; }
+  #view-settings .connection-options { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 16px; }
+  #view-settings .connection-options button { align-items: flex-start; flex-direction: column; gap: 8px; padding: 12px 10px; }
+  #view-settings .connection-options button > span:not(.mode-check) { min-width: 0; }
+  #view-settings .connection-options small { font-size: 12px; overflow-wrap: break-word; }
+  #view-settings .connection-options .mode-check { position: absolute; inset: 12px 10px auto auto; }
+  #view-settings .connection-options button { position: relative; }
+  #view-settings .qr-frame[data-state=disconnected]:has(#qr-image[hidden]) { display: none; }
 }

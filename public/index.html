@@ -9,17 +9,17 @@
     <details class="account-menu"><summary aria-label="Seu espaço e conexões"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>Seu espaço</span><svg class="icon account-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary><div class="account-popover"><div class="workspace"><span class="avatar">A</span><div><strong id="assistant-name">Assistente</strong><small id="workspace-email">Seu espaço de trabalho</small></div></div><section class="connection"><h2>Integrações</h2><div><span id="ai-provider-name">IA</span><span id="gemini-status">Carregando</span></div><div><span>WhatsApp</span><span id="whatsapp-status">Não configurado</span></div><div><span>Webhook</span><span id="webhook-status">Aguardando</span></div></section><div class="sidebar-bottom"><details class="privacy-note"><summary class="local-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><svg class="icon privacy-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>Ambiente privado</summary><p>Seu WhatsApp, suas APIs e seus materiais ficam separados das outras contas.</p></details><button type="button" id="logout" class="logout-button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5m5-12 4 4-4 4m-6-4h10"/></svg><span>Sair da conta</span></button></div></div></details>
   </header>
   <main id="main-content" tabindex="-1"><div class="main-topbar"><div class="breadcrumb"><span>Meu espaço</span><span>/</span><strong id="page-breadcrumb">Produtos e materiais</strong></div><span class="local-pill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Painel local</span></div><div class="main-content">
-    <header class="page-heading"><div><h1 id="page-title">Produtos e materiais</h1><p id="page-description">Organize os produtos e arquivos que a IA usa no atendimento.</p></div><span class="mode-badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Base de conhecimento</span><button class="secondary-button inbox-refresh" id="refresh-inbox">Atualizar</button><button type="button" id="new-product" class="primary-button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo produto</button></header>
+    <header class="page-heading"><div><h1 id="page-title">Produtos e materiais</h1><p id="page-description">Organize os produtos e arquivos que a IA usa no atendimento.</p></div><span class="mode-badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Base de conhecimento</span><button class="secondary-button inbox-refresh" id="refresh-inbox">Atualizar</button><button type="button" id="new-product" class="primary-button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo produto</button></header>
     <details class="connection-notice"><summary>Status da conexão</summary><div class="connection-notice-body"><span class="notice-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p id="connection-summary">Verificando configuração…</p></div></details>
     <p id="global-error" class="error" role="alert" hidden></p>
 
     <section id="view-broadcasts" class="view" hidden aria-label="Disparos de mensagens">
       <section class="settings-card broadcast-compose">
-        <div class="broadcast-heading"><div><h2>Novo disparo</h2><p class="hint">Uma mensagem, os contatos certos e o melhor momento para enviar.</p></div><span class="broadcast-limit">Até 500 contatos</span></div>
+        <div class="broadcast-heading"><div><h2>Preparar disparo</h2><p class="hint">Importe uma lista ou adicione os números dos destinatários.</p></div><span class="broadcast-limit">Até 500 contatos</span></div>
         <form id="broadcast-form">
           <label for="broadcast-name">Nome do disparo <span class="hint">· opcional</span></label><input id="broadcast-name" maxlength="100" placeholder="Ex.: Novidades de novembro">
           <fieldset class="broadcast-step"><legend>Destinatários</legend>
-          <div class="broadcast-import-zone"><div><p class="hint">CSV ou Excel · até 2 MB</p></div><label class="secondary-button broadcast-file-button" for="broadcast-file"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></svg>Importar lista<input id="broadcast-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label><button type="button" id="broadcast-model" class="quiet-button">Baixar modelo CSV</button></div>
+          <div class="broadcast-import-zone"><div><p class="hint" id="broadcast-import-hint">CSV ou Excel de até 2 MB</p></div><label class="secondary-button broadcast-file-button" for="broadcast-file"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></svg>Importar lista<input id="broadcast-file" type="file" aria-describedby="broadcast-import-hint" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label><button type="button" id="broadcast-model" class="quiet-button">Baixar modelo CSV</button></div>
           <p id="broadcast-import-status" class="hint" role="status" aria-live="polite"></p>
           <section id="broadcast-import-preview" class="broadcast-import-preview" hidden aria-label="Prévia da importação">
             <div class="broadcast-heading"><h3 id="broadcast-filename">Prévia do arquivo</h3><button id="broadcast-import-close" type="button" class="quiet-button">Fechar prévia</button></div>
@@ -29,7 +29,7 @@
             <p class="hint">A prévia mostra até 8 números. Apenas a coluna escolhida será importada. Linhas inválidas e duplicadas ficam de fora.</p>
             <div class="broadcast-actions"><button id="broadcast-import-apply" type="button" class="primary-button">Adicionar números válidos</button><button id="broadcast-import-errors" type="button" class="secondary-button" hidden>Baixar linhas inválidas</button></div>
           </section>
-          <label for="broadcast-phones">Ou cole os números · com DDI e DDD</label>
+          <label for="broadcast-phones">Números com DDI e DDD</label>
           <textarea id="broadcast-phones" rows="4" maxlength="25000" required placeholder="5511999999999&#10;5521988888888" aria-describedby="broadcast-list-summary"></textarea>
           <div class="broadcast-recipient-tools"><p id="broadcast-list-summary" class="hint" role="status" aria-live="polite">Adicione os contatos para começar.</p><button type="button" id="broadcast-clean" class="quiet-button">Organizar lista</button></div>
           <details><summary>Selecionar contatos das conversas</summary><div class="broadcast-actions"><button type="button" id="broadcast-load-contacts" class="secondary-button">Carregar contatos</button><button type="button" id="broadcast-select-all" class="quiet-button" hidden>Adicionar todos</button></div><div id="broadcast-contacts"></div></details>
@@ -55,7 +55,7 @@
         <section id="broadcast-review" hidden aria-label="Revisão do disparo"><h3 id="broadcast-review-title">Confira antes de enviar</h3><p class="hint broadcast-review-intro">Confira os destinatários, o produto e a mensagem. O envio só começa depois da sua confirmação.</p><dl id="broadcast-review-summary" class="broadcast-review-facts"></dl><details class="broadcast-review-details"><summary>Detalhes da lista e do envio</summary><p id="broadcast-review-list-details" class="hint"></p><p id="broadcast-review-estimate" class="hint"></p><p id="broadcast-review-window" class="hint"></p></details><label id="broadcast-window-only-label" class="broadcast-check" hidden><input id="broadcast-window-only" type="checkbox">Enviar texto somente aos contatos dentro da janela de 24 horas</label><p id="broadcast-review-exclusions" class="hint"></p><details><summary>Conferir destinatários</summary><p id="broadcast-review-phones"></p></details><h4 class="broadcast-review-message-title">Prévia da mensagem</h4><pre id="broadcast-review-message"></pre><label class="broadcast-check broadcast-consent"><input id="broadcast-consent" type="checkbox">Esta lista contém apenas pessoas que aceitaram receber minhas mensagens</label><p id="broadcast-review-status" role="alert"></p><div class="broadcast-actions"><button id="broadcast-edit" type="button" class="secondary-button">Voltar e editar</button><button id="broadcast-test" type="button" class="secondary-button">Enviar teste ao próprio número</button><button id="broadcast-confirm" type="button" class="primary-button">Confirmar e enviar</button></div></section>
       </section>
       <section class="settings-card broadcast-history-panel">
-        <div class="broadcast-heading"><div><h2>Histórico de disparos</h2><p class="hint">Seus envios organizados por empreendimento, com os resultados de cada campanha.</p></div><button id="broadcast-refresh" type="button" class="secondary-button">Atualizar</button></div>
+        <div class="broadcast-heading"><div><h2>Histórico de disparos</h2><p class="hint">Consulte envios, pendências e falhas por campanha ou empreendimento.</p></div><button id="broadcast-refresh" type="button" class="secondary-button">Atualizar</button></div>
         <dl id="broadcast-history-overview" class="broadcast-history-overview" aria-label="Resumo dos disparos exibidos"></dl>
         <div class="broadcast-history-tools">
           <div><label for="broadcast-search">Buscar disparo</label><input id="broadcast-search" type="search" placeholder="Nome, mensagem ou empreendimento…"></div>
@@ -90,10 +90,15 @@
     <section id="view-whatsapp" class="view" hidden>
       <div class="section-toolbar"><div><h2>Conversas do WhatsApp</h2><p class="hint">Mensagens recebidas no número conectado e respostas enviadas pelo WhatsApp.</p></div></div>
       <div class="inbox-layout">
-        <aside class="contacts-panel" aria-label="Lista de conversas"><div class="contacts-heading"><h3>Conversas</h3><button type="button" class="quiet-button new-conversation" id="new-wa-conversation" aria-label="Nova mensagem" title="Nova mensagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5H5a2 2 0 0 0-2 2v12l4-3h10a2 2 0 0 0 2-2v-3M17 3v6m-3-3h6"/></svg><span class="sr-only">Nova mensagem</span></button></div><div class="contact-search-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><label class="sr-only" for="contact-search">Buscar contato</label><input type="search" class="contact-search" id="contact-search" placeholder="Buscar conversa"></div><div id="contacts"><p class="hint">Nenhuma mensagem recebida.</p></div><p id="contact-search-empty" class="hint" role="status" hidden>Nenhuma conversa encontrada.</p></aside>
-        <section class="chat-panel"><header class="chat-header"><button type="button" class="mobile-chat-back" id="mobile-chat-back" aria-label="Voltar para lista de conversas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg><span class="sr-only">Voltar</span></button><span class="chat-avatar" id="wa-avatar" aria-hidden="true">Z</span><div class="chat-identity"><h2 id="wa-contact">Selecione um contato</h2><span class="hint" id="wa-window">Abra uma conversa para continuar o atendimento.</span></div></header><div class="messages" id="wa-messages" role="region" aria-label="Histórico da conversa" tabindex="0"><div class="conversation-empty"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8m-8 4h5"/></svg><h3>Suas conversas, por perto</h3><p>Escolha um contato ao lado para acompanhar o histórico e responder pelo WhatsApp.</p></div></div>
+        <aside class="contacts-panel" aria-label="Lista de conversas">
+          <div class="contacts-heading"><h3>Contatos</h3><button type="button" class="primary-button new-conversation" id="new-wa-conversation" aria-label="Nova mensagem" title="Nova mensagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5H5a2 2 0 0 0-2 2v12l4-3h10a2 2 0 0 0 2-2v-3M17 3v6m-3-3h6"/></svg><span>Nova mensagem</span></button></div>
+          <div class="contact-search-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><label class="sr-only" for="contact-search">Buscar por nome ou telefone</label><input type="search" class="contact-search" id="contact-search" placeholder="Buscar por nome ou telefone"></div>
+          <div id="contacts"><p class="hint" role="status">Carregando conversas…</p></div>
+          <p id="contact-search-empty" class="hint" role="status" hidden>Nenhuma conversa encontrada. Tente outro nome, telefone ou filtro.</p>
+        </aside>
+        <section class="chat-panel"><header class="chat-header"><button type="button" class="mobile-chat-back" id="mobile-chat-back" aria-label="Voltar para lista de conversas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg><span class="sr-only">Voltar</span></button><span class="chat-avatar" id="wa-avatar" aria-hidden="true">Z</span><div class="chat-identity"><h2 id="wa-contact">Conversa</h2><span class="hint" id="wa-window"></span></div></header><div class="messages" id="wa-messages" role="region" aria-label="Histórico da conversa" tabindex="0"><div class="conversation-empty"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 10h8m-8 4h5"/></svg><h3>Abra uma conversa</h3><p>Escolha um contato para ver o histórico e responder ou clique em <strong>Nova mensagem</strong> para falar com outro número.</p></div></div>
           <form id="wa-send-form" class="panel-form" aria-describedby="wa-send-form-privacy"><details class="message-options" open><summary title="Destinatário e opções de envio"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg><span>Destinatário e opções de envio</span></summary><div class="message-options-fields"><p class="privacy-field-note" id="wa-send-form-privacy">O destinatário e o conteúdo serão enviados ao WhatsApp para entregar a mensagem. Use somente dados necessários e contatos com quem você pode se comunicar legitimamente. <a href="/privacidade">Privacidade no atendimento</a>.</p>
-            <label for="wa-to">Destinatário com DDI e DDD ou contato selecionado</label><input id="wa-to" required maxlength="50" placeholder="Somente dígitos, com DDI e DDD">
+            <label for="wa-to">Número do destinatário</label><input id="wa-to" inputmode="tel" required maxlength="50" placeholder="Número com DDI e DDD">
             <label for="wa-kind">Tipo de mensagem</label><select id="wa-kind"><option value="text">Texto · dentro da janela de 24 horas</option><option value="template">Template aprovado pela Meta</option></select>
             </div></details><div id="text-fields"><label class="sr-only" for="wa-text">Mensagem</label><textarea id="wa-text" rows="1" maxlength="4000" placeholder="Digite uma mensagem" aria-describedby="wa-compose-hint"></textarea><span id="wa-compose-hint" class="sr-only">Enter para enviar. Shift e Enter para uma nova linha.</span></div>
             <div id="template-fields" hidden>
@@ -111,7 +116,7 @@
     </section>
 
     <section id="view-access" class="view" hidden aria-label="Gestão de acessos">
-      <div class="access-master-banner"><div class="access-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></div><div><span class="access-eyebrow">ADMINISTRADOR MASTER</span><h2>Você controla quem entra.</h2><p>Autorize pessoas e gerencie acessos. Cada conta mantém seu próprio WhatsApp, APIs e dados.</p></div><span class="access-exclusive">Exclusivo da sua conta</span></div>
+      <div class="access-master-banner"><div class="access-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></div><div><h2>Acesso reservado ao administrador master</h2><p>Cada conta mantém seu próprio WhatsApp, suas integrações e seus dados.</p></div></div>
       <div class="access-stats" aria-label="Resumo dos acessos"><div><span>Total de contas</span><strong id="access-total">—</strong></div><div><span>Contas ativas</span><strong id="access-active">—</strong></div><div><span>Convites pendentes</span><strong id="access-pending">—</strong></div><div><span>Acessos suspensos</span><strong id="access-suspended">—</strong></div></div>
       <section class="settings-card" id="workspace-access">
         <div class="ai-heading"><div><h2>Convidar uma pessoa</h2><p class="hint">Gere um link privado. A pessoa define a própria senha e começa com um ambiente vazio.</p></div><span class="access-tag">Convite por 48 horas</span></div>
@@ -129,12 +134,11 @@
           <button type="button" role="tab" id="tab-whatsapp" aria-selected="false" aria-controls="settings-whatsapp-panel" tabindex="-1" data-settings-tab="whatsapp"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 10h8m-8 4h5"/></svg><span><strong>WhatsApp</strong><small>Número e conexão</small></span></button>
           <button type="button" role="tab" id="tab-assistant" aria-selected="false" aria-controls="settings-assistant-panel" tabindex="-1" data-settings-tab="assistant"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span><strong>Seu assistente</strong><small>Identidade e instruções</small></span></button>
         </nav>
-        <p class="settings-sidebar-note">Tudo para o seu atendimento funcionar do seu jeito.</p>
       </aside>
       <div id="settings-ai-panel" role="tabpanel" aria-labelledby="tab-ai">
       <section id="provider-settings" class="settings-card ai-rotation-card">
-        <div class="settings-section-heading"><div><h2>Prioridade das chaves de IA</h2><p>Escolha quem atende primeiro e quem assume quando a cota acabar.</p></div><button id="add-ai-key" type="button" class="primary-button">+ Adicionar chave</button></div>
-        <div class="ai-rotation-option"><div><strong>Troca automática</strong><p>Ao atingir o limite, tenta a próxima chave disponível.</p></div><label class="inline-switch"><input id="ai-rotation-enabled" type="checkbox" aria-label="Trocar automaticamente quando atingir limite ou créditos"><span aria-hidden="true"></span></label></div>
+          <div class="settings-section-heading"><div><h2>Prioridade das chaves de IA</h2><p>Organize qual modelo responde primeiro e quais ficam como reserva.</p></div><button id="add-ai-key" type="button" class="primary-button">+ Adicionar chave</button></div>
+        <div class="ai-rotation-option"><div><strong>Troca automática</strong><p>Use a próxima chave disponível quando a atual atingir o limite.</p></div><label class="inline-switch"><input id="ai-rotation-enabled" type="checkbox" aria-label="Trocar automaticamente quando atingir limite ou créditos"><span aria-hidden="true"></span></label></div>
         <div class="ai-list-heading"><span id="ai-key-count">Suas conexões</span><span>Arraste para definir a prioridade</span></div>
         <p id="ai-reorder-help" class="sr-only">Segure a alça e arraste para mudar a posição. Pelo teclado, pressione Espaço ou Enter, use as setas para cima e para baixo e confirme com Espaço ou Enter. Escape cancela.</p>
         <div id="ai-key-list" class="ai-key-list"></div>
@@ -155,11 +159,11 @@
         </div>
 
       </section></div>
-      <form id="settings-form" hidden novalidate aria-describedby="settings-form-privacy"><p class="privacy-field-note" id="settings-form-privacy">Cadastre apenas as informações necessárias ao atendimento. Instruções e contexto podem ser usados por modelos de IA. <a href="/privacidade">Uso das configurações e dos dados</a>.</p>
+      <form id="settings-form" hidden novalidate aria-describedby="settings-form-privacy">
         <div id="settings-assistant-panel" role="tabpanel" aria-labelledby="tab-assistant" hidden>
-        <section class="settings-card assistant-card" id="assistant-settings"><div class="settings-section-heading"><div><h2>Um assistente com a sua voz</h2><p>Defina como ele se apresenta e como deve conversar com seus clientes.</p></div></div><div class="assistant-form-layout"><aside class="assistant-form-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 10h8m-8 4h5"/></svg><h3>Uma orientação para todas as IAs</h3><p>Estas instruções acompanham cada modelo da sua lista, inclusive após uma troca automática.</p><p>Inclua o tom de voz, as regras do atendimento e o que precisa ser confirmado com você.</p></aside><div><label for="assistantName">Nome do assistente</label><input name="assistantName" id="assistantName" required maxlength="80"><label for="instructions">Instruções globais do assistente</label><textarea name="instructions" id="instructions" rows="10" required maxlength="6000"></textarea><p class="field-caption">Valem para todas as chaves de IA deste ambiente.</p></div></div></section>
+        <section class="settings-card assistant-card" id="assistant-settings"><div class="settings-section-heading"><div><h2>Identidade e instruções</h2><p>Defina o nome e as regras de atendimento do assistente.</p></div></div><div class="assistant-form-layout"><div><label for="assistantName">Nome do assistente</label><input name="assistantName" id="assistantName" required maxlength="80"><label for="instructions">Instruções globais do assistente</label><textarea name="instructions" id="instructions" rows="8" required maxlength="6000" aria-describedby="assistant-instructions-help"></textarea><p id="assistant-instructions-help" class="field-caption">Inclua o tom de voz, as regras do atendimento e o que o assistente deve confirmar com você.</p></div><aside class="assistant-form-note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 10h8m-8 4h5"/></svg><h3>Para todos os modelos</h3><p>As instruções continuam valendo quando o Zelo troca de modelo automaticamente.</p></aside></div></section>
         <section class="settings-card response-writing" aria-labelledby="response-writing-title">
-          <div class="settings-section-heading"><div><h2 id="response-writing-title">Estrutura das respostas</h2><p>Defina o tamanho dos textos, as quebras de linha e o jeito de organizar cada mensagem.</p></div></div>
+          <div class="settings-section-heading"><div><h2 id="response-writing-title">Estrutura das respostas</h2><p>Defina o tamanho, os parágrafos e as quebras de linha das mensagens.</p></div></div>
           <div class="response-writing-guide"><p><strong>Direto ao ponto</strong><span>Responda ao que foi perguntado.</span></p><p><strong>Blocos curtos</strong><span>Uma ou duas frases por parágrafo.</span></p><p><strong>Mais espaço</strong><span>Uma linha em branco entre os blocos.</span></p></div>
           <label for="responseInstructions">Orientações de escrita</label>
           <textarea id="responseInstructions" name="responseInstructions" rows="8" maxlength="3000" aria-describedby="response-writing-help" placeholder="Ex.: responda com objetividade e separe os parágrafos com uma linha em branco."></textarea>
@@ -171,11 +175,18 @@
         </div>
         <div id="settings-whatsapp-panel" role="tabpanel" aria-labelledby="tab-whatsapp" hidden>
         <section class="settings-card whatsapp-card" id="whatsapp-settings">
-          <div class="settings-section-heading"><div><h2>Conectar seu WhatsApp</h2><p>Escolha como seu número vai receber e enviar mensagens.</p></div><span id="qr-connection-badge" class="connection-state" role="status">Não conectado</span></div>
+          <div class="settings-section-heading"><div><h2>Conectar WhatsApp</h2><p>Escolha o método para enviar e receber mensagens.</p></div><span id="qr-connection-badge" class="connection-state" role="status">Não conectado</span></div>
           <div class="connection-options" role="group" aria-label="Modo de conexão"><button type="button" data-whatsapp-mode="qr" aria-pressed="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5"/><path d="M8 8h2v2H8zm6 0h2v2h-2zM8 14h2v2H8zm6 0h2v2h-2z"/></svg><span><strong>QR Code</strong><small>Vincule pelo seu celular</small></span><span class="mode-check" aria-hidden="true"></span></button><button type="button" data-whatsapp-mode="cloud" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17H6a4 4 0 0 1-.4-8A6.5 6.5 0 0 1 18 8a4.5 4.5 0 0 1 0 9h-1M9 14l-3 3 3 3m6-6 3 3-3 3"/></svg><span><strong>Cloud API</strong><small>Conecte pela API da Meta</small></span><span class="mode-check" aria-hidden="true"></span></button></div>
           <select name="whatsappMode" id="whatsappMode" hidden aria-label="Modo de conexão"><option value="qr">QR Code · vincular meu WhatsApp</option><option value="cloud">Cloud API · API oficial da Meta</option></select>
           <div id="qr-section" hidden>
-            <div class="qr-layout"><div class="qr-frame"><img id="qr-image" alt="QR Code para vincular seu WhatsApp" width="320" height="320" hidden><div id="qr-placeholder"><svg class="qr-idle-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M21 9h6m-6 29h6M19 19v-3h3m4 0h3v3m-10 7v3h3m4 0h3v-3"/></svg><svg class="qr-success-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="18"/><path d="m15 24 6 6 12-13"/></svg><strong id="qr-placeholder-text">Pronto para conectar</strong><span id="qr-placeholder-help">Gere um código e escaneie com o celular.</span></div></div><div class="qr-instructions"><h3>Seu atendimento começa aqui.</h3><p class="hint">Vincule o número que você usa para falar com seus clientes.</p><ol><li><strong>Abra o WhatsApp no celular</strong><span>Use o aparelho onde seu número já está conectado.</span></li><li><strong>Entre em Aparelhos conectados</strong><span>Toque em Conectar aparelho.</span></li><li><strong>Escaneie o QR Code</strong><span>A conexão será reconhecida automaticamente.</span></li></ol><button type="button" class="primary-button" id="qr-connect">Gerar QR Code</button><p id="qr-status" role="status" class="hint">Desconectado</p></div></div>
+            <div class="qr-layout">
+              <div class="qr-frame"><img id="qr-image" alt="QR Code para vincular seu WhatsApp" width="320" height="320" hidden><div id="qr-placeholder"><svg class="qr-idle-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M21 9h6m-6 29h6M19 19v-3h3m4 0h3v3m-10 7v3h3m4 0h3v-3"/></svg><svg class="qr-success-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="18"/><path d="m15 24 6 6 12-13"/></svg><strong id="qr-placeholder-text">Pronto para conectar</strong><span id="qr-placeholder-help">Gere um código e escaneie com o celular.</span></div></div>
+              <div class="qr-instructions">
+                <h3>Vincular com QR Code</h3><p class="hint">Use o número com que você atende seus clientes.</p>
+                <button type="button" class="primary-button" id="qr-connect">Gerar QR Code</button><p id="qr-status" role="status" class="hint">Desconectado</p>
+                <ol><li><strong>Abra o WhatsApp no celular</strong><span>Use o aparelho em que seu número está conectado.</span></li><li><strong>Abra Aparelhos conectados</strong><span>Toque em Conectar aparelho.</span></li><li><strong>Escaneie o QR Code</strong><span>O Zelo confirma a conexão automaticamente.</span></li></ol>
+              </div>
+            </div>
             <div class="connection-footer"><p>A sessão é mantida no seu ambiente. Este modo usa uma integração não oficial com o WhatsApp Web.</p><details class="connection-management"><summary>Gerenciar conexão</summary><div class="button-row"><button type="button" class="secondary-button" id="qr-disconnect">Pausar conexão</button><button type="button" class="secondary-button" id="qr-logout">Desvincular e apagar sessão</button></div></details></div>
           </div>
         </section>
@@ -193,27 +204,84 @@
 
         <div class="dialog-footer settings-save-bar"><span id="settings-status" role="status">Suas credenciais são salvas apenas neste ambiente.</span><button id="save-settings" class="primary-button">Salvar configurações</button></div>
         </div>
+        <p class="privacy-field-note" id="settings-form-privacy">Cadastre apenas as informações necessárias ao atendimento. Instruções e contexto podem ser usados por modelos de IA. <a href="/privacidade">Uso das configurações e dos dados</a>.</p>
+      </form>
+    </section>
+
+    <section id="view-product" class="view" aria-labelledby="product-editor-title" hidden>
+      <header class="product-editor-heading">
+        <button id="close-product" class="quiet-button" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Voltar ao catálogo</button>
+        <h1 id="product-editor-title" tabindex="-1">Novo produto</h1>
+      </header>
+      <p id="product-unavailable" class="product-panel error" role="alert" hidden>Produto indisponível. Volte ao catálogo e escolha outra ficha.</p>
+      <form id="product-form">
+        <fieldset id="product-fields">
+          <legend class="sr-only">Dados e materiais do produto</legend>
+          <div class="product-editor-layout">
+            <section class="product-panel" aria-labelledby="product-details-title">
+              <h2 id="product-details-title">Informações do produto</h2>
+              <div class="product-basics">
+                <div><label for="product-name">Nome do produto (obrigatório)</label><input id="product-name" required maxlength="120" placeholder="Sopro"></div>
+                <div><label for="product-price">Preço ou condições de referência</label><input id="product-price" maxlength="160" placeholder="A partir de R$ 319.900"></div>
+              </div>
+              <div class="product-description-field">
+                <label for="product-description">Descrição para a IA</label>
+                <textarea id="product-description" rows="6" maxlength="12000" aria-describedby="product-description-help"></textarea>
+                <p id="product-description-help" class="product-note">Inclua características, condições e respostas às dúvidas frequentes dos clientes.</p>
+              </div>
+              <div class="product-availability">
+                <label for="product-active"><input type="checkbox" id="product-active" checked aria-describedby="product-active-help"> Disponível para consulta da IA</label>
+                <p id="product-active-help" class="product-note">Desmarque e salve para arquivar. O catálogo guarda os dados e os arquivos.</p>
+              </div>
+            </section>
+            <div class="product-materials">
+              <section class="product-panel" aria-labelledby="product-links-title">
+                <h2 id="product-links-title">Links para clientes</h2>
+                <p class="product-note">Use endereços públicos em HTTPS. A IA pode enviá-los no atendimento.</p>
+                <div id="product-links"></div>
+                <button id="add-product-link" type="button" class="secondary-button"><span aria-hidden="true">+</span> Adicionar link</button>
+              </section>
+              <section class="product-panel" aria-labelledby="product-files-title">
+                <h2 id="product-files-title">Imagens e PDFs</h2>
+                <p class="product-note">A IA pode enviar os arquivos quando o cliente pedir.</p>
+                <div class="product-upload-area">
+                  <label for="product-upload" class="secondary-button product-upload-button">
+                    Selecionar arquivos
+                    <input id="product-upload" class="sr-only" aria-describedby="product-upload-help product-cloud-help" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+                  </label>
+                  <p class="product-note" id="product-upload-help"><strong>Até 100 arquivos por produto.</strong> Envie imagens JPG, PNG ou WebP de até 10 MB e PDFs de até 50 MB.</p>
+                  <p class="product-note" id="product-cloud-help">Na Cloud API, use imagens JPG ou PNG de até 5 MB.</p>
+                </div>
+                <div id="product-pending" class="product-file-list" aria-live="polite" aria-relevant="additions removals"></div>
+                <div id="product-files" class="product-file-list"></div>
+                <details class="product-material-details">
+                  <summary>Uso dos arquivos e privacidade</summary>
+                  <p>Você pode selecionar arquivos mais de uma vez. O envio começa ao salvar.</p>
+                  <p>A IA responde com base na descrição do produto. Inclua ali o que ela precisa saber das imagens e dos PDFs.</p>
+                  <p>Anexe apenas materiais que você tem autorização para usar e compartilhar. Inclua dados pessoais de terceiros só quando forem necessários.</p>
+                  <p>Na nuvem, os arquivos ficam no Supabase privado. Na instalação local, ficam no computador do servidor. O acesso e o envio exigem autorização.</p>
+                  <a href="/privacidade" target="_blank" rel="noopener">Privacidade dos materiais</a>
+                </details>
+              </section>
+            </div>
+          </div>
+        </fieldset>
+        <div class="product-actions">
+          <p id="product-status" role="status" tabindex="-1"></p>
+          <div class="product-action-buttons">
+            <button id="cancel-product" class="quiet-button" type="button">Cancelar</button>
+            <button id="save-product" class="primary-button" type="submit">Salvar produto</button>
+          </div>
+        </div>
       </form>
     </section>
 
     <section id="view-knowledge" class="view">
       <section class="settings-card catalog-library">
-        <div class="catalog-toolbar"><div><h2>Seus produtos</h2><p id="catalog-count" class="hint"></p></div></div>
-        <div class="catalog-tools"><div class="catalog-search-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><label for="product-search" class="sr-only">Buscar produto</label><input id="product-search" class="catalog-search" type="search" placeholder="Buscar produto"></div></div>
-        <div class="catalog-table-scroll" tabindex="0" role="region" aria-label="Catálogo de produtos"><table class="product-table"><thead><tr><th scope="col">Produto</th><th scope="col">Status</th><th scope="col">Materiais</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead><tbody id="product-list" class="product-grid"></tbody></table></div><p class="catalog-summary" id="catalog-summary" aria-live="polite"></p>
-      </section>
-      <section id="product-editor" class="settings-card" hidden>
-        <div class="product-editor-heading"><h2 id="product-editor-title">Novo produto</h2><button id="close-product" class="quiet-button" type="button">Fechar ficha</button></div>
-        <form id="product-form" aria-describedby="product-form-privacy"><p class="privacy-field-note" id="product-form-privacy">Inclua materiais que você tem autorização para usar e compartilhar. Evite documentos ou dados pessoais de terceiros sem necessidade. <a href="/privacidade">Privacidade dos materiais</a>.</p>
-          <div class="form-grid"><div><label for="product-name">Nome do produto</label><input id="product-name" required maxlength="120" placeholder="Ex.: Sopro"></div><div><label for="product-price">Preço ou condições de referência</label><input id="product-price" maxlength="160" placeholder="Ex.: A partir de R$ 319.900, sujeito a confirmação"></div></div>
-          <label for="product-description">Informações que o assistente deve conhecer</label><textarea id="product-description" rows="8" maxlength="12000" placeholder="Descreva características, localização, benefícios, condições e perguntas frequentes deste produto."></textarea>
-          <label class="checkbox-row"><input type="checkbox" id="product-active" checked> Produto ativo · disponível para consulta da IA</label><p class="hint">Desmarque e salve para arquivar sem perder a ficha e os materiais.</p>
-          <div class="editor-section"><h3>Links e endereços</h3><p class="hint">Adicione site, galeria, vídeo ou PDF hospedado. A IA pode enviar esses endereços ao cliente. Use links HTTPS acessíveis ao público.</p><div id="product-links"></div><button id="add-product-link" type="button" class="secondary-button">+ Adicionar link</button>
-          </div><div class="editor-section"><h3>Imagens e documentos</h3><label for="product-upload">Adicionar imagens e PDFs</label><input id="product-upload" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf"><p class="hint">Até 100 arquivos por produto. Imagens de até 10 MB e PDFs de até 50 MB. Na Cloud API, imagens devem ser JPG/PNG de até 5 MB.</p>
-          <p class="hint product-help">A IA usa a descrição acima para responder. Ela pode enviar os arquivos quando o cliente pedir, mas não lê automaticamente o conteúdo dos PDFs nem interpreta as imagens. Na versão em nuvem, os anexos são armazenados no Supabase privado; na instalação local, ficam no computador do servidor. O acesso e o envio exigem autorização.</p>
-          <p id="product-pending" class="hint"></p><div id="product-files" class="product-files"></div></div>
-          <div class="dialog-footer"><span id="product-status" role="status" aria-live="polite"></span><button id="save-product" class="primary-button">Salvar produto e anexos</button></div>
-        </form>
+        <div class="catalog-toolbar"><h2>Catálogo de produtos</h2><p class="catalog-summary" id="catalog-summary" role="status">Carregando catálogo…</p></div>
+        <p id="catalog-feedback" role="status"></p>
+        <div class="catalog-tools"><div class="catalog-search-wrap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><label for="product-search" class="sr-only">Buscar produto</label><input id="product-search" class="catalog-search" type="search" placeholder="Nome ou descrição"></div></div>
+        <div class="catalog-table-scroll" tabindex="0" role="region" aria-label="Resultados do catálogo"><table class="product-table"><thead><tr><th scope="col">Produto</th><th scope="col">Status</th><th scope="col">Materiais</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead><tbody id="product-list" class="product-grid"></tbody></table></div>
       </section>
       <aside class="settings-card general-knowledge"><div class="business-heading"><span class="business-symbol"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l10-3v19M14 8h6v13M2 21h20M7 7h3m-3 4h3m-3 4h3m7-4h1m-1 4h1M8 21v-3h2v3"/></svg></span><div><h2>Informações gerais do negócio</h2><p>Conte à IA o que ela precisa saber sobre seu negócio.</p></div></div><form id="knowledge-form" aria-describedby="knowledge-form-privacy"><label for="knowledge-business-name">Nome do negócio</label><input id="knowledge-business-name" maxlength="120" placeholder="Seu negócio" readonly><label for="knowledge">Sobre o negócio</label><textarea id="knowledge" rows="5" maxlength="20000" placeholder="Adicione informações para orientar as respostas da IA." readonly></textarea><details class="business-privacy"><summary>Privacidade das informações</summary><p class="privacy-field-note" id="knowledge-form-privacy">Esta base pode ser enviada às IAs configuradas para responder aos contatos. Não inclua senhas, chaves ou dados pessoais desnecessários. <a href="/privacidade">Tratamento da base de informações</a>.</p></details><div class="dialog-footer"><span id="knowledge-status" role="status"></span><button class="quiet-button" id="edit-business" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14v6Z"/></svg>Editar informações</button><button class="primary-button" id="save-business" hidden>Salvar informações</button></div></form><p class="business-help">Estas informações ajudam a manter o atendimento consistente.</p></aside>
     </section>

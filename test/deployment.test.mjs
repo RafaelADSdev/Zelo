@@ -82,6 +82,34 @@ test('lease impede dois workers e permite assumir após expiração',async()=>{
   await assert.rejects(a.renew());await b.release();assert.equal(row,null);
 });
 
+test('renovação passa enquanto snapshot está pendente e snapshot atrasado perde a posse',async()=>{
+  let row, now=100000, publishes=0;
+  const started=Promise.withResolvers(), finish=Promise.withResolvers();
+  const cloud={request:async(path,options={})=>{
+    if(path.endsWith('/rpc/zelo_publish_worker_snapshot')) {
+      publishes++; started.resolve(); await finish.promise;
+      return row?.sha256===options.body.lease_digest && now-row.updated<45000;
+    }
+    if(options.method==='POST'){row ||= options.body;return null;}
+    if(options.method==='PATCH'){
+      const query=new URL('https://test'+path).searchParams;
+      if(query.get('sha256')!=='eq.'+row.sha256 || query.get('updated')!=='eq.'+row.updated)return [];
+      row=options.body;return [row];
+    }
+    return row?[row]:[];
+  }};
+  const first=createLease(cloud,'b'.repeat(64),()=>now), second=createLease(cloud,'b'.repeat(64),()=>now);
+  assert.equal(await first.acquire(),true);
+  const pending=first.publish({id:'gateway'}), rejected=assert.rejects(pending,error=>error.leaseLost===true);
+  await started.promise;
+  now+=10000; await first.renew(); assert.equal(row.updated,now);
+  now+=46000; assert.throws(()=>first.assertActive(),error=>error.leaseLost===true);
+  assert.equal(await second.acquire(),true);
+  finish.resolve(); await rejected;
+  await assert.rejects(first.publish({id:'gateway'}),error=>error.leaseLost===true);
+  assert.equal(publishes,1);
+});
+
 test('restauração do backup confere GCM e hash antes de usar dados ou chaves',()=>{
   const key=randomBytes(32),iv=randomBytes(12),value=Buffer.from(JSON.stringify({version:1,tables:[],files:{'settings.json':'{"secret":"test"}'}}));
   const cipher=createCipheriv('aes-256-gcm',key,iv);

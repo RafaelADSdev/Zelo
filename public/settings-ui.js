@@ -5,7 +5,7 @@ export function syncConnectionMode(mode) {
 export function initSettingsUi() {
   const mobileQrHelp = document.createElement('p');
   mobileQrHelp.className = 'mobile-qr-help';
-  mobileQrHelp.textContent = 'Está usando o próprio celular? Abra o Zelo em outro dispositivo para escanear o QR Code com este WhatsApp.';
+  mobileQrHelp.textContent = 'Se o WhatsApp está neste celular, abra o Zelo em outro dispositivo para escanear o código.';
   $('#qr-status').after(mobileQrHelp);
   const tabs = [...document.querySelectorAll('[data-settings-tab]')];
   function selectTab(tab) {
@@ -38,7 +38,7 @@ export function initSettingsUi() {
 export function renderConnectionPresentation(qr, config) {
   const mode = $('#whatsappMode').value, connected = qr.status === 'connected';
   const badge = $('#qr-connection-badge');
-  badge.textContent = mode === 'cloud' ? (config.validatedAt ? 'Número validado' : 'Configurar Meta') : connected ? 'WhatsApp conectado' : ['connecting','reconnecting','qr'].includes(qr.status) ? 'Aguardando conexão' : 'Não conectado';
+  badge.textContent = mode === 'cloud' ? (config.validatedAt ? 'Número validado' : 'Não validado na Meta') : connected ? 'WhatsApp conectado' : ['connecting','reconnecting','qr'].includes(qr.status) ? 'Aguardando conexão' : 'Não conectado';
   badge.dataset.state = mode === 'cloud' ? (config.validatedAt ? 'connected' : 'disconnected') : qr.status;
   $('.qr-frame').dataset.state = qr.status;
   $('#qr-placeholder-help').textContent = connected ? 'Número vinculado a este ambiente.' : 'Gere um código e escaneie com o celular.';

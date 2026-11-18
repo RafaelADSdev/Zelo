@@ -10,6 +10,9 @@ import { createSupabase } from "../lib/supabase/supabase-client.mjs";
 import { createSupabaseCatalog } from "../lib/supabase/supabase-catalog.mjs";
 import { createStateBackup } from "../lib/supabase/supabase-state.mjs";
 import { createAuth } from "../lib/auth/auth.mjs";
+import { createRuntime } from "../lib/core/runtime.mjs";
+import { createSettings } from "../lib/core/settings.mjs";
+import { decodeSnapshot } from "../deployment/restore.mjs";
 import { testDirectory, releaseDirectory } from "./helpers.mjs";
 
 test("Supabase usa segredo só no servidor e oculta erros externos; autenticação usa chave pública", async () => {
@@ -51,6 +54,60 @@ test("cópia de runtime é criptografada, preserva bytes e não repete envio sem
     assert.equal(JSON.parse(decoded.files["settings.json"]).apiKey,"never-public-secret");
     assert.equal(decoded.tables[0].rows[0][1].$bytes,Buffer.from([0,128,255]).toString("base64"));
   } finally { await backup?.close();client.close();await releaseDirectory(directory); }
+});
+test("backup registra a campanha e os destinatários no mesmo ponto do banco", async () => {
+  const dataDir = await testDirectory(), url = pathToFileURL(join(dataDir, "state.db")).href;
+  const reader = createClient({ url }), writer = createClient({ url }), writes = [], key = "a".repeat(64);
+  let backup;
+  try {
+    await writer.executeMultiple("PRAGMA journal_mode=WAL; CREATE TABLE wa_broadcast_items (id TEXT, campaign TEXT); CREATE TABLE wa_broadcasts (id TEXT);");
+    let inserted = false;
+    const client = { async transaction(mode) {
+      const tx = await reader.transaction(mode);
+      return {
+        async execute(sql) {
+          const result = await tx.execute(sql);
+          if (!inserted && sql.includes('FROM "wa_broadcast_items"')) {
+            inserted = true;
+            await writer.batch(["INSERT INTO wa_broadcasts VALUES ('campanha')", "INSERT INTO wa_broadcast_items VALUES ('destinatario','campanha')"], "write");
+          }
+          return result;
+        },
+        close: () => tx.close(),
+      };
+    } };
+    backup = createStateBackup({ client, dataDir, key, cloud: { request: async (_, { body }) => writes.push(body) } });
+    await backup.run(); await backup.run();
+    assert.equal(inserted, true);
+    assert.deepEqual(writes.map(row => decodeSnapshot(row,key).tables.map(table => table.rows.length)), [[0,0],[1,1]]);
+  } finally { await backup?.close(); reader.close(); writer.close(); await releaseDirectory(dataDir); }
+});
+test("encerramento espera o backup em curso e captura alterações mais recentes", async () => {
+  const dataDir = await testDirectory(), key = "b".repeat(64), records = [];
+  const started = Promise.withResolvers(), finish = Promise.withResolvers();
+  const cloud = { request: async (_, { body }) => { records.push(body); started.resolve(); await finish.promise; } };
+  const runtime = await createRuntime(dataDir, await createSettings(dataDir), { cloud, backupKey: key });
+  try {
+    await started.promise;
+    await runtime.client.execute("CREATE TABLE alteracao_confirmada (id TEXT)");
+    const closing = runtime.close();
+    finish.resolve(); await closing;
+    assert.equal(records.length, 2);
+    assert.equal(decodeSnapshot(records[0],key).tables.some(table=>table.name==='alteracao_confirmada'),false);
+    assert.equal(decodeSnapshot(records[1],key).tables.some(table=>table.name==='alteracao_confirmada'),true);
+  } finally { finish.resolve(); await releaseDirectory(dataDir); }
+});
+test("um snapshot capturado antes de perder a posse não começa a publicação", async () => {
+  const dataDir = await testDirectory(), key = "b".repeat(64);
+  let active = true, publishes = 0;
+  const backup = createStateBackup({
+    dataDir, key,
+    client: { transaction: async () => ({ execute: async () => ({ rows: [] }), close() { active = false; } }) },
+    assertActive() { if (!active) throw Object.assign(new Error("Posse perdida"), { leaseLost:true }); },
+    publishSnapshot: async () => { publishes++; },
+  });
+  try { await assert.rejects(backup.run(), error => error.leaseLost === true); assert.equal(publishes,0); }
+  finally { await backup.close(); await releaseDirectory(dataDir); }
 });
 test("administrador Supabase mantém vínculo único e não grava senha ou hash local", async () => {
   const directory=await testDirectory(), password="test-only-long-password-2026"; let created=0;

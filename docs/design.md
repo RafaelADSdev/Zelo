@@ -4,12 +4,14 @@ description: Espaço de trabalho para atendimento e materiais do negócio.
 colors:
   primary: "#7041db"
   primary-hover: "#5c2cc5"
-  page: "#faf9fc"
+  page: "#f6f4f9"
   surface: "#ffffff"
   ink: "#18151e"
-  muted: "#6c6577"
-  border: "#e5e1ec"
-  soft: "#f2edfc"
+  muted: "#655b72"
+  border: "#e5dfed"
+  soft: "#f1ebfc"
+  workspace-heading: "#291a40"
+  workspace-caption: "#ded4ee"
   conversation-history: "#f0ede8"
   conversation-outgoing: "#e7dcf8"
 typography:
@@ -51,7 +53,7 @@ components:
 
 **Mesa aberta.** Navegação superior clara, conteúdo amplo e controles de contexto compactos. A identidade em roxo, branco e preto permanece. A composição substitui a antiga barra lateral escura.
 
-A tela inicial é Produtos e materiais por escolha explícita do usuário. Conversas e Disparos continuam acessíveis diretamente. A referência vigente inclui a captura do próprio sistema aceita pelo usuário em 30/10/2026.
+A tela inicial é Produtos e materiais por escolha explícita do usuário. Conversas e Disparos continuam acessíveis diretamente. Cada área usa uma faixa de título roxa escura com texto claro e a ação principal quando houver. Conversas mantém as versões compactas quando precisa de mais espaço para mensagens.
 
 ## Colors
 
@@ -91,9 +93,9 @@ Controles e superfícies têm cantos discretamente arredondados. Ícones SVG seg
 
 ## Components
 
-- Navegação: no computador, item ativo com texto roxo e sublinhado; até 800 px, ícone e rótulo roxos sobre lavanda na faixa inferior. Conta e integrações continuam acessíveis no cabeçalho. Áreas participam do histórico e têm links diretos por fragmentos em português.
+- Navegação: item ativo com texto roxo sobre lavanda. Até 800 px, ícone e rótulo ficam na faixa inferior. Conta e integrações continuam acessíveis no cabeçalho. Áreas participam do histórico e têm links diretos por fragmentos em português.
 - Automação: estado textual e ação disponível diferenciados. Quando desligada, Ligar é a ação roxa; o comando redundante de desligar fica recolhido. Até 800 px, Ajustar expande as ações e a explicação, mantendo estado e comando de expansão na mesma linha. A mensagem de sucesso é limpa ao trocar de área; erros permanecem visíveis.
-- Catálogo: tabela semântica com Produto, Status, Materiais e ações acessíveis por nome. A ficha conserva descrições, preços, links e anexos.
+- Catálogo: tabela semântica com Produto, Status, Materiais e ações acessíveis por nome. Mostra preço quando preenchido, contagem junto ao título e um botão no catálogo vazio. A ficha conserva descrições, preços, links e anexos.
 - Negócio: nome e descrição são inicialmente somente leitura; Editar informações habilita os campos e Salvar confirma. O nome é persistido nas configurações; a descrição usa a base existente.
 - Formulários: rótulos explícitos, foco visível e controles principais com altura mínima de 44 px. Metadados do destinatário ficam acessíveis por expansão ao responder uma conversa.
 - Contatos: linhas planas e uniformes de 76 px, separadas por divisórias discretas. Avatares de 44 px mostram até duas iniciais, com paleta estável por telefone e símbolo de pessoa quando não há nome; o avatar selecionado fica branco. A seleção mantém estado acessível e usa prévia e horário em #675d70 sobre #eee9f7 (contraste medido de 5,22:1). O horário indica a última mensagem recebida, com data completa no título. O bloqueio aparece como cadeado junto ao nome, com descrição acessível. Busca curta por nome ou telefone e filtros Todas / IA bloqueada, com contagens, funcionam por clique direto.

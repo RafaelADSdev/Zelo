@@ -3,3 +3,12 @@
 .privacy-field-note{font-size:12px;line-height:1.7;color:#62576e;border-left:2px solid #d2bdef;padding:4px 0 4px 12px;margin:12px 0 20px;overflow-wrap:anywhere}.privacy-field-note a{color:#6031bd;text-underline-offset:3px}.privacy-field-note a:focus-visible{outline:3px solid #7041db;outline-offset:3px}
 
 .app-skip-link{position:fixed;top:8px;left:8px;z-index:1000;padding:10px 16px;min-height:44px;background:#fff;color:#6031bd;border:2px solid #7041db;border-radius:6px;transform:translateY(-180%)}.app-skip-link:focus{transform:translateY(0)}
+
+.legal-document {
+  --document-ink:#291a40;
+  --document-paper:#fff;
+  --document-rule:#e5dfed;
+}
+.legal-document header { background:var(--document-ink); }
+.legal-document main { background:var(--document-paper); border:1px solid var(--document-rule); border-radius:12px; padding:clamp(18px, 4vw, 36px); }
+.legal-document h1 { text-wrap:balance; }

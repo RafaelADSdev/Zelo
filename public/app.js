@@ -1,7 +1,7 @@
 import { initSettingsUi, syncConnectionMode, renderConnectionPresentation } from "/settings-ui.js";
 import { initWorkspace } from "/workspace.js";
 import { initReplySchedule, renderReplySchedule } from "/reply-schedule.js";
-import { initCatalog, refreshCatalog } from "/catalog.js";
+import { initCatalog, refreshCatalog, showProductEditor, canLeaveProductEditor, returnCatalogFocus } from "/catalog.js";
 import { initAiKeys, renderAiKeys } from "/ai-keys.js";
 import { audioStatus, audioPreview, canRetryJob } from "/audio-status.js";
 import { bindPhoneFormatting, phoneNumber } from "/broadcast-import.js";
@@ -9,7 +9,15 @@ let refreshBroadcasts = async () => {};
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let workspace, dashboard, view = "knowledge", currentPhone = "", waBusy = false, pollBusy = false;
-let lastContacts = "", lastWaHistory = "", templates = [], sendIntent;
+let lastContacts = "", lastWaHistory = "", templates = [];
+let historyRequest = 0, sendRequest = 0, historyReady = true;
+let dashboardRequest = 0, appliedDashboardRequest = 0, conversationAccount = "", connectionGeneration = 0;
+const settingsValues = new WeakMap();
+const waDrafts = new Map(), sendIntents = new Map();
+const templateFields = ["approved-template", "template-name", "template-language", "template-params", "template-components"];
+const draftFields = ["wa-to", "wa-kind", "wa-text", ...templateFields];
+const readDraft = () => Object.fromEntries(draftFields.map(id => [id, document.getElementById(id).value]));
+const emptyDraft = readDraft();
 let providers = {};
 const activeAi = () => dashboard?.settings.aiRotationEnabled ? dashboard.settings.aiLastUsed || dashboard.settings.aiKeys.find(key => key.enabled && key.cooldownUntil <= Date.now()) || {} : dashboard?.settings.aiListOnly ? dashboard.settings.aiKeys.find(key => key.enabled) || {} : { provider: dashboard?.settings.aiProvider, model: dashboard?.settings.model };
 const aiName = () => providers[activeAi().provider]?.name || "Lista de IAs";
@@ -101,9 +109,12 @@ function messageBox(container, role, text, at, status) {
 function fillSettings(scope) {
   const config = dashboard.settings;
   for (const input of $$(scope ? `#settings-${scope}-panel [name]` : "#settings-form [name]")) {
+    const property = input.type === "checkbox" ? "checked" : "value";
+    if (!scope && settingsValues.has(input) && settingsValues.get(input) !== input[property]) continue;
     if (["apiKey", "accessToken", "appSecret"].includes(input.name)) { input.value = ""; input.placeholder = config[input.name + "Configured"] ? "Salvo no servidor · deixe vazio para manter" : "Ainda não configurado"; }
     else if (input.type === "checkbox") input.checked = config[input.name];
     else input.value = config[input.name] || "";
+    settingsValues.set(input, input[property]);
   }
   updateCallback();
   connectionFields();
@@ -154,9 +165,9 @@ function renderDashboard() {
     lastContacts = signature; const contacts = $("#contacts"); contacts.replaceChildren();
     blockFilter.querySelector('[data-filter="all"] .contact-filter-count').textContent = dashboard.conversations.length;
     blockFilter.querySelector('[data-filter="blocked"] .contact-filter-count').textContent = dashboard.conversations.filter(contact => contact.blocked).length;
-    if (!dashboard.conversations.length) contacts.append(node("p", "hint", "Nenhum contato recebido ou envio realizado. Conecte o WhatsApp e envie uma mensagem para ele usando outro celular."));
+    if (!dashboard.conversations.length) contacts.append(node("p", "hint", "Ainda não há conversas. Com o WhatsApp conectado, use Nova mensagem ou aguarde uma mensagem de um contato."));
     dashboard.conversations.forEach(contact => {
-      const button = node("button", "contact-button"); button.type = "button"; button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
+      const button = node("button", "contact-button"); button.type = "button"; button.dataset.phone = contact.phone; button.setAttribute("aria-pressed", String(currentPhone === contact.phone));
       button.dataset.blocked = String(Boolean(contact.blocked));
       button.title = `${contact.name} · ${contact.phone}`;
       button.dataset.search = `${contact.name} ${contact.phone}`;
@@ -178,7 +189,12 @@ function renderDashboard() {
       }
       const preview = node("p", "contact-preview", audioPreview(contact.last_text, dashboard.jobs.find(job => job.phone === contact.phone)) || "Sem mensagem de texto");
       content.append(headline, preview); button.append(avatar, content);
-      button.addEventListener("click", async () => { currentPhone = contact.phone; $(".message-options").open = false; openChat(); $("#wa-contact").focus({ preventScroll: true }); document.querySelectorAll("#contacts .contact-button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); $("#wa-to").value = currentPhone; lastWaHistory = ""; try { await loadConversation(); } catch (failure) { error(failure.message); } }); contacts.append(button);
+      button.addEventListener("click", () => {
+        selectConversation(contact.phone, contact.name);
+        $("#wa-contact").focus({ preventScroll: true });
+        loadConversation().catch(failure => error(failure.message));
+      });
+      contacts.append(button);
     });
   }
   filterContacts();
@@ -212,12 +228,41 @@ function renderDashboard() {
   dashboard.outbox.forEach(item => jobs.append(node("p", "hint", `${item.phone} · ${labels[item.state]} · ${item.error || ""}`)));
   const events = $("#events"); events.replaceChildren(); if (!dashboard.events.length) events.append(node("p", "hint", "Nenhum evento recente.")); dashboard.events.slice(0, 10).forEach(item => events.append(node("p", "event-row", `${date(item.at)} · ${item.detail}`)));
 }
-async function loadDashboard(refreshForm = false) { dashboard = await api("/api/dashboard"); renderDashboard(); if (refreshForm) fillSettings(); }
+async function loadDashboard(refreshForm = false) {
+  const request = ++dashboardRequest;
+  const next = await api("/api/dashboard");
+  if (request > appliedDashboardRequest) {
+    appliedDashboardRequest = request;
+    dashboard = next;
+    const mode = dashboard.settings.whatsappMode;
+    const number = mode === "qr" ? dashboard.qr.account : dashboard.settings.phoneNumberId;
+    const account = `${mode}:${number || ""}`;
+    if (account !== conversationAccount) {
+      const changing = Boolean(conversationAccount);
+      conversationAccount = account;
+      connectionGeneration++;
+      if (changing) resetConversationAccount();
+    }
+    renderDashboard();
+  }
+  if (refreshForm) fillSettings();
+}
 async function loadConversation() {
   if (!currentPhone) return;
-  const phone = currentPhone;
-  const result = await api("/api/conversation?phone=" + encodeURIComponent(phone));
-  if (phone !== currentPhone) return;
+  const request = ++historyRequest;
+  let result;
+  try {
+    result = await api("/api/conversation?phone=" + encodeURIComponent(currentPhone));
+  } catch (failure) {
+    if (request !== historyRequest) return;
+    if (historyReady) throw failure;
+    $("#wa-window").textContent = "Não foi possível carregar a conversa.";
+    $("#wa-messages").replaceChildren(node("p", "hint", "Na lista de conversas, use Atualizar para carregar o histórico antes de responder."));
+    return;
+  }
+  if (request !== historyRequest) return;
+  historyReady = true;
+  updateSendAvailability();
   const audioJobs = dashboard.jobs.filter(job => job.phone === currentPhone && job.audio && !["done", "blocked"].includes(job.state)).slice(0, 5);
   const signature = JSON.stringify([result, audioJobs, dashboard.replyStatus.active, dashboard.settings.whatsappMode]); if (signature === lastWaHistory) return;
   const container = $("#wa-messages");
@@ -264,12 +309,19 @@ async function loadConversation() {
   container.scrollTop = followLatest ? container.scrollHeight : previousScroll;
 }
 function updatePage(next) {
-  const pages = { knowledge: ["Produtos e materiais", "Organize os produtos e arquivos que a IA usa no atendimento.", "Base de conhecimento"], whatsapp: ["Conversas", "Acompanhe seus contatos e continue o atendimento pelo WhatsApp.", "Caixa de entrada"], access: ["Gestão de acessos", "Gerencie as contas autorizadas a usar o Zelo.", "Admin master"], settings: ["Conexões e IA", "Suas IAs, seu WhatsApp e o jeito de atender.", "Configurações"] };
-  pages.broadcasts = ['Disparos', 'Prepare sua mensagem, escolha os contatos e envie no momento certo.', 'Mensagens em lote'];
-  const [title, description, badge] = pages[next];
-  $("#page-title").replaceChildren(node('span', 'page-title-full', title), node('span', 'page-title-mobile', next === 'knowledge' ? 'Produtos' : title)); $("#page-description").textContent = description; $("#page-breadcrumb").textContent = next === "settings" ? "Conexões e IA" : title;
+  const pages = {
+    knowledge: ["Produtos e materiais", "O catálogo que a IA consulta para responder aos clientes.", "Base de conhecimento"],
+    whatsapp: ["Conversas", "Leia e responda às mensagens dos seus contatos no WhatsApp.", "Caixa de entrada"],
+    broadcasts: ["Disparos", "Prepare campanhas, revise os destinatários e acompanhe os envios.", "Mensagens em lote"],
+    access: ["Gestão de acessos", "Convide pessoas e acompanhe quem tem acesso ao Zelo.", "Admin master"],
+    settings: ["Conexões e IA", "Conecte o WhatsApp e configure os modelos e as instruções da IA.", "Configurações"],
+  };
+  const section = next === 'product' ? 'knowledge' : next;
+  const [title, description, badge] = pages[section];
+  $("#page-title").replaceChildren(node('span', 'page-title-full', title), node('span', 'page-title-mobile', section === 'knowledge' ? 'Produtos' : title)); $("#page-description").textContent = description; $("#page-breadcrumb").textContent = title;
   $(".mode-badge").textContent = badge;
-  document.querySelectorAll(".nav-button[data-view]").forEach(button => { button.classList.toggle("active", button.dataset.view === next); if (button.dataset.view === next) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
+  $(".page-heading").hidden = next === 'product';
+  document.querySelectorAll(".nav-button[data-view]").forEach(button => { button.classList.toggle("active", button.dataset.view === section); if (button.dataset.view === section) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
 }
 function filterContacts() {
   const query = $("#contact-search").value.toLocaleLowerCase("pt-BR");
@@ -289,44 +341,160 @@ function closeChat({ focus = true } = {}) {
   if (focus) ($('#contacts .contact-button[aria-pressed="true"]') || $('.contacts-heading h3')).focus({ preventScroll: true });
 }
 $('#mobile-chat-back').onclick = () => { if (history.state?.chat) history.back(); else closeChat(); };
-$('#new-wa-conversation').onclick = () => {
-  $('.message-options').open = true;
+function updateSendAvailability() { $("#wa-send").disabled = waBusy || !historyReady; }
+function sendStatus(message, state = "") {
+  const status = $("#wa-send-status");
+  status.textContent = message;
+  status.dataset.state = state;
+}
+function fillDraft(draft) {
+  for (const id of draftFields) document.getElementById(id).value = draft[id];
+  if (dashboard?.settings.whatsappMode === "qr") $("#wa-kind").value = "text";
+  updateMessageKind();
+  renderTemplatePreview();
+  resizeComposer();
+}
+function showConversation(phone, name, open) {
+  currentPhone = phone;
+  historyRequest++;
+  historyReady = !phone;
+  lastWaHistory = "";
+  sendStatus("");
   blockContactButton.hidden = true;
-  currentPhone = ''; lastWaHistory = ''; openChat();
-  $$('#contacts .contact-button').forEach(button => button.setAttribute('aria-pressed','false'));
-  $('#wa-contact').textContent = 'Nova mensagem'; $('#wa-window').textContent = 'Informe o destinatário e escreva sua mensagem.';
-  $('#wa-avatar').textContent = '+';
-  $('#wa-to').value = ''; $('#wa-messages').replaceChildren(node('p','hint','Sua nova conversa aparecerá aqui após o envio.')); $('#wa-to').focus();
-};
+  $(".message-options").open = !phone;
+  $("#wa-to").readOnly = Boolean(phone);
+  if (phone) $("#wa-to").value = phone;
+  $("#wa-contact").textContent = name;
+  $("#wa-avatar").textContent = phone ? name.trim().slice(0, 1).toLocaleUpperCase("pt-BR") : "+";
+  $("#wa-window").textContent = phone ? "Carregando conversa…" : "Informe o destinatário e escreva sua mensagem.";
+  $("#wa-messages").replaceChildren(node("p", "hint", phone ? "Carregando histórico…" : "Sua nova conversa aparecerá aqui após o envio."));
+  $$("#contacts .contact-button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.phone === phone)));
+  if (open) openChat();
+  else closeChat({ focus: false });
+  updateSendAvailability();
+}
+function selectConversation(phone, name = phone || "Nova mensagem") {
+  if (phone !== currentPhone) {
+    waDrafts.set(currentPhone, readDraft());
+    fillDraft(waDrafts.get(phone) || emptyDraft);
+  }
+  showConversation(phone, name, true);
+}
+function resetConversationAccount() {
+  waDrafts.clear();
+  sendIntents.clear();
+  lastContacts = "";
+  templates = [];
+  $("#approved-template").replaceChildren(new Option("Selecione ou preencha abaixo", ""));
+  fillDraft(emptyDraft);
+  showConversation("", "Nova mensagem", false);
+  $("#wa-window").textContent = "A conexão mudou. Escolha um contato desta conexão ou inicie outra mensagem.";
+}
+$('#new-wa-conversation').onclick = () => { selectConversation(""); $("#wa-to").focus(); };
 
-const viewHashes = { knowledge: '', whatsapp: '#conversas', broadcasts: '#disparos', settings: '#conexoes', access: '' };
-async function showView(next, { record = true } = {}) {
+const viewHashes = { knowledge: '', whatsapp: '#conversas', broadcasts: '#disparos', settings: '#conexoes', access: '', product: '#produtos/novo' };
+const productEditHash = '#produtos/editar/';
+let productRoute;
+function viewFromLocation() {
+  if (location.pathname === '/admin/access' && workspace?.isMaster) return { view: 'access' };
+  if (location.hash.startsWith(productEditHash)) {
+    const id = location.hash.slice(productEditHash.length);
+    try { return { view: 'product', productId: decodeURIComponent(id) }; }
+    catch { return { view: 'product', productId: id }; }
+  }
+  const next = Object.keys(viewHashes).find(name => name !== 'access' && viewHashes[name] === location.hash);
+  return next ? { view: next } : null;
+}
+function recordView(route, replace = false) {
+  const { view: next, productId } = route;
+  const hash = next === 'product' && productId !== null ? productEditHash + encodeURIComponent(productId) : viewHashes[next];
+  history[replace ? 'replaceState' : 'pushState'](route, '', next === 'access' ? '/admin/access' : '/' + hash);
+}
+function closeProductView() {
+  if (productRoute.fromCatalog) history.back();
+  else showView('knowledge', { navigation: 'replace' });
+}
+function updateProductRoute(productId) {
+  productRoute = { ...productRoute, productId };
+  recordView(productRoute, true);
+}
+async function showView(next, { navigation = 'push', productId = null, fromCatalog = false } = {}) {
   $('.account-menu').open = false;
   if (next === "access" && !workspace?.isMaster) return;
-  if (next !== view && !$('#reply-feedback').classList.contains('reply-feedback-error')) $('#reply-feedback').textContent = '';
-  updatePage(next); window.scrollTo(0, 0);
+  const previousProduct = productRoute;
+  if (previousProduct) {
+    if (next === 'product' && previousProduct.productId === productId) return;
+    if (!canLeaveProductEditor()) {
+      if (navigation === 'pop') {
+        productRoute = { ...previousProduct, fromCatalog: next === 'knowledge' };
+        recordView(productRoute);
+      }
+      return;
+    }
+  }
+  const route = { zelo: true, view: next, chat: false };
+  if (next === 'product') {
+    Object.assign(route, { productId, fromCatalog: navigation === 'push' ? history.state?.view === 'knowledge' : fromCatalog });
+  }
+  productRoute = next === 'product' ? route : null;
+  const replyFeedback = $("#reply-feedback");
+  if (next !== view && replyFeedback && !replyFeedback.classList.contains('reply-feedback-error')) replyFeedback.textContent = '';
+  updatePage(next);
   view = next; document.querySelector(".shell").dataset.view = next; $$(".view").forEach(item => { item.hidden = item.id !== "view-" + next; });
-  document.querySelectorAll(".nav-button[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === next)); error();
-  if (record && (history.state?.view !== next || history.state?.chat)) {
-    history.pushState({ zelo: true, view: next, chat: false }, '', next === 'access' ? '/admin/access' : '/' + viewHashes[next]);
+  window.scrollTo(0, 0);
+  error();
+  if (navigation === 'replace' || navigation === 'push' && (history.state?.view !== next || history.state?.chat || next === 'product')) {
+    recordView(route, navigation === 'replace');
     if (next === 'whatsapp' && matchMedia('(max-width:580px)').matches) closeChat({ focus: false });
   }
-  $(".reply-control").hidden = next === "access";
-  $(".connection-notice").hidden = ["access", "settings"].includes(next);
-  try { if (next === 'broadcasts') await refreshBroadcasts(); if (next === "settings") await loadDashboard(true); if (next === "knowledge") await refreshCatalog(); if (next === "whatsapp") { await loadDashboard(); await loadConversation(); } } catch (failure) { error(failure.message); }
+  const replyControl = $(".reply-control");
+  if (replyControl) replyControl.hidden = next === "access" || next === "product";
+  $(".connection-notice").hidden = ["access", "settings", "product"].includes(next);
+  if (next === 'product') showProductEditor(productId);
+  if (next === 'knowledge' && previousProduct) returnCatalogFocus(previousProduct.productId);
+  try {
+    if (next === 'broadcasts') await refreshBroadcasts();
+    if (next === 'settings') await loadDashboard(true);
+    if (next === 'knowledge' && !previousProduct && navigation !== 'replace') await refreshCatalog();
+    if (next === 'whatsapp') { await loadDashboard(); await loadConversation(); }
+  } catch (failure) { error(failure.message); }
 }
-$$('[data-view]').forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
+$$('.nav-button[data-view]').forEach(button => button.addEventListener("click", () => {
+  if (button.dataset.view === 'knowledge' && productRoute) closeProductView();
+  else showView(button.dataset.view);
+}));
 window.addEventListener('popstate', event => {
-  if (!event.state?.zelo || !Object.hasOwn(viewHashes, event.state.view)) return;
-  if (event.state.view === 'whatsapp') {
-    $('.inbox-layout').dataset.contactSelected = String(Boolean(event.state.chat));
-    if (!event.state.chat) closeChat();
+  const route = event.state?.zelo ? event.state : viewFromLocation();
+  if (!route || !Object.hasOwn(viewHashes, route.view)) return;
+  if (route.view === 'whatsapp') {
+    $('.inbox-layout').dataset.contactSelected = String(Boolean(route.chat));
+    if (!route.chat) closeChat();
   }
-  showView(event.state.view, { record: false });
+  showView(route.view, { ...route, navigation: 'pop' });
 });
 async function action(button, statusSelector, task) {
-  button.disabled = true; error(); $(statusSelector).textContent = "Aguarde…";
-  try { $(statusSelector).textContent = await task() || "Concluído."; } catch (failure) { $(statusSelector).textContent = failure.message; error(failure.message); } finally { button.disabled = false; }
+  const status = $(statusSelector);
+  const generation = connectionGeneration, recipient = currentPhone;
+  const sameContext = () => statusSelector !== "#wa-send-status" || generation === connectionGeneration && recipient === currentPhone;
+  button.disabled = true;
+  error();
+  status.dataset.state = "pending";
+  status.textContent = "Aguarde…";
+  try {
+    const result = await task();
+    if (sameContext()) {
+      status.textContent = result || "Concluído.";
+      status.dataset.state = "success";
+    }
+  } catch (failure) {
+    if (sameContext()) {
+      status.textContent = failure.message;
+      status.dataset.state = "error";
+      error(failure.message);
+    }
+  } finally {
+    button.disabled = false;
+  }
 }
 blockContactButton.addEventListener("click", () => {
   if (!currentPhone) return;
@@ -372,6 +540,7 @@ $('#knowledge-form').addEventListener('submit', event => { event.preventDefault(
   dashboard.settings.businessName = businessName;
   $('#knowledge-business-name').readOnly = true; $('#knowledge').readOnly = true;
   $('#edit-business').hidden = false; $('#save-business').hidden = true;
+  $('#edit-business').focus();
   return 'Informações salvas. As próximas respostas consultarão esta base.';
 }); });
 $("#refresh-inbox").addEventListener("click", async event => {
@@ -379,48 +548,107 @@ $("#refresh-inbox").addEventListener("click", async event => {
   try { await loadDashboard(); await loadConversation(); } catch (failure) { error(failure.message); }
   finally { button.disabled = false; button.removeAttribute("aria-busy"); }
 });
-$("#wa-kind").addEventListener("change", () => { $("#text-fields").hidden = $("#wa-kind").value !== "text"; $("#template-fields").hidden = $("#wa-kind").value !== "template"; });
+function updateMessageKind() {
+  const useTemplate = $("#wa-kind").value === "template";
+  $("#text-fields").hidden = useTemplate;
+  $("#template-fields").hidden = !useTemplate;
+}
+$("#wa-kind").addEventListener("change", updateMessageKind);
 function resizeComposer() {
   const field = $("#wa-text"); field.style.height = "auto";
   field.style.height = Math.min(field.scrollHeight, 144) + "px";
 }
 $("#wa-text").addEventListener("input", resizeComposer);
 $("#wa-text").addEventListener("keydown", event => {
-  if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !waBusy && $("#wa-text").value.trim()) {
-    event.preventDefault(); $("#wa-send-form").requestSubmit($("#wa-send"));
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing && $("#wa-text").value.trim()) {
+    event.preventDefault();
+    if (!$("#wa-send").disabled) $("#wa-send-form").requestSubmit($("#wa-send"));
   }
 });
+const templateKey = template => `${template.name}:${template.language}`;
+function renderTemplatePreview() {
+  const template = templates.find(item => templateKey(item) === $("#approved-template").value);
+  $("#template-preview").textContent = template?.components?.map(component => component.text || component.type).join("\n") || "";
+  return template;
+}
 $("#load-templates").addEventListener("click", event => action(event.currentTarget, "#wa-send-status", async () => {
-  templates = (await api("/api/templates")).templates; const select = $("#approved-template"); select.replaceChildren(new Option("Selecione um template", ""));
-  templates.forEach((template, index) => select.append(new Option(`${template.name} · ${template.language}`, String(index)))); return `${templates.length} template(s) aprovado(s) encontrado(s).`;
+  const generation = connectionGeneration;
+  const result = await api("/api/templates");
+  if (generation !== connectionGeneration) return;
+  templates = result.templates;
+  const select = $("#approved-template"), previous = select.value;
+  select.replaceChildren(new Option("Selecione um template", ""));
+  templates.forEach(template => select.append(new Option(`${template.name} · ${template.language}`, templateKey(template))));
+  select.value = templates.some(template => templateKey(template) === previous) ? previous : "";
+  renderTemplatePreview();
+  return `${templates.length} template(s) aprovado(s) encontrado(s).`;
 }));
 $("#approved-template").addEventListener("change", () => {
-  if ($("#approved-template").value === "") return; const template = templates[Number($("#approved-template").value)];
-  $("#template-name").value = template.name; $("#template-language").value = template.language;
-  $("#template-preview").textContent = template.components?.map(component => component.text || component.type).join("\n") || "";
+  const template = renderTemplatePreview();
+  if (!template) return;
+  $("#template-name").value = template.name;
+  $("#template-language").value = template.language;
 });
 bindPhoneFormatting($("#wa-to"));
+const composePhone = value => phoneNumber(value, '55') || value.trim();
 $("#wa-send-form").addEventListener("submit", async event => {
-  event.preventDefault(); if (waBusy) return;
+  event.preventDefault();
+  if (waBusy || !historyReady) return;
+  const origin = currentPhone, account = conversationAccount, generation = connectionGeneration, submitted = readDraft();
+  const phone = origin || composePhone(submitted["wa-to"]);
+  const sameRecipient = value => Boolean(origin) || composePhone(value) === phone;
+  const visible = () => view === "whatsapp" && generation === connectionGeneration && origin === currentPhone && sameRecipient($("#wa-to").value)
+    && (!matchMedia('(max-width:580px)').matches || $('.inbox-layout').dataset.contactSelected === 'true');
   let input;
   try {
-    input = { phone: phoneNumber($("#wa-to").value, '55') || $("#wa-to").value.trim() };
-    if ($("#wa-kind").value === "template") {
+    input = { phone };
+    if (account && !account.endsWith(":")) input.expectedAccount = account;
+    if (submitted["wa-kind"] === "template") {
       let components = [];
-      if ($("#template-components").value.trim()) components = JSON.parse($("#template-components").value);
-      else if ($("#template-params").value.trim()) components = [{ type: "body", parameters: $("#template-params").value.split("\n").filter(line => line.trim()).map(line => { const match = line.match(/^([a-zA-Z_][\w]*)=(.*)$/); return match ? { type: "text", parameter_name: match[1], text: match[2] } : { type: "text", text: line }; }) }];
-      input.template = { name: $("#template-name").value.trim(), language: { code: $("#template-language").value.trim() }, components };
-    } else input.text = $("#wa-text").value.trim();
-  } catch { error("O JSON dos componentes do template é inválido."); return; }
-  const intent = JSON.stringify(input); if (!sendIntent || sendIntent.intent !== intent) sendIntent = { intent, requestId: crypto.randomUUID() };
-  input.requestId = sendIntent.requestId; waBusy = true;
-  await action($("#wa-send"), "#wa-send-status", async () => {
-    await api("/api/whatsapp/send", input); sendIntent = null; currentPhone = input.phone;
-    await loadDashboard(); lastWaHistory = ""; await loadConversation(); $("#wa-text").value = "";
-    resizeComposer(); $(".message-options").open = false;
-    if (view === "whatsapp") $("#wa-text").focus();
-    return "Enviada ao WhatsApp. Aguarde a confirmação de entrega.";
-  }); waBusy = false;
+      if (submitted["template-components"].trim()) components = JSON.parse(submitted["template-components"]);
+      else if (submitted["template-params"].trim()) components = [{ type: "body", parameters: submitted["template-params"].split("\n").filter(line => line.trim()).map(line => { const match = line.match(/^([a-zA-Z_][\w]*)=(.*)$/); return match ? { type: "text", parameter_name: match[1], text: match[2] } : { type: "text", text: line }; }) }];
+      input.template = { name: submitted["template-name"].trim(), language: { code: submitted["template-language"].trim() }, components };
+    } else input.text = submitted["wa-text"].trim();
+  } catch { sendStatus("O JSON dos componentes do template é inválido.", "error"); return; }
+  if (!input.template && !input.text) { sendStatus("Escreva uma mensagem antes de enviar.", "error"); return; }
+  const intent = JSON.stringify(input), previous = sendIntents.get(origin);
+  input.requestId = previous?.intent === intent ? previous.requestId : crypto.randomUUID();
+  sendIntents.set(origin, { intent, requestId: input.requestId });
+  const attempt = ++sendRequest;
+  waBusy = true;
+  updateSendAvailability();
+  sendStatus("Enviando mensagem…", "pending");
+  try {
+    await api("/api/whatsapp/send", input);
+  } catch (failure) {
+    if (visible()) sendStatus(failure.message, "error");
+    return;
+  } finally {
+    waBusy = false;
+    updateSendAvailability();
+  }
+  if (generation !== connectionGeneration) return;
+  sendIntents.delete(origin);
+  const here = visible(), fields = input.template ? templateFields : ["wa-text"];
+  const draft = origin === currentPhone ? readDraft() : waDrafts.get(origin);
+  const unchanged = draft && sameRecipient(draft["wa-to"]) && fields.every(id => draft[id] === submitted[id]);
+  if (unchanged) {
+    for (const id of fields) draft[id] = emptyDraft[id];
+    if (!origin) draft["wa-to"] = "";
+    if (origin === currentPhone) fillDraft(draft);
+  }
+  if (!here) return;
+  if (!origin && unchanged) selectConversation(input.phone);
+  sendStatus("Enviada ao WhatsApp. Aguarde a confirmação de entrega.", "success");
+  const sentContact = currentPhone;
+  const stillHere = () => view === "whatsapp" && generation === connectionGeneration && sentContact === currentPhone;
+  loadDashboard().then(() => {
+    if (stillHere()) return loadConversation();
+  }).catch(() => {
+    if (stillHere() && attempt === sendRequest && $("#wa-send-status").dataset.state === "success") {
+      sendStatus("Enviada ao WhatsApp. Use Atualizar na lista de conversas para consultar o histórico.", "success");
+    }
+  });
 });
 try {
   try {
@@ -435,11 +663,11 @@ try {
   initReplySchedule({ api, changed: () => loadDashboard() });
   await initAiKeys({ providers, api, changed: () => loadDashboard() });
   await loadDashboard(true); $("#knowledge").value = (await api("/api/state")).knowledge; $("#knowledge-business-name").value = dashboard.settings.businessName || "";
-  await initCatalog();
+  await initCatalog({ openEditor: productId => showView('product', { productId }), closeEditor: closeProductView, productCreated: updateProductRoute });
   workspace = await initWorkspace({ api });
-  const initialView = location.pathname === '/admin/access' && workspace?.isMaster ? 'access' : Object.keys(viewHashes).find(name => viewHashes[name] && viewHashes[name] === location.hash) || 'knowledge';
-  history.replaceState({ zelo: true, view: initialView, chat: false }, '', initialView === 'access' ? '/admin/access' : '/' + viewHashes[initialView]);
-  await showView(initialView, { record: false });
+  const initial = viewFromLocation() || { view: 'knowledge' };
+  const fromCatalog = initial.view === 'product' && history.state?.view === 'product' && Boolean(history.state.fromCatalog);
+  await showView(initial.view, { ...initial, fromCatalog, navigation: 'replace' });
 } catch (failure) { error("Não foi possível carregar o painel. " + failure.message); }
 setInterval(async () => {
   if (pollBusy || document.hidden) return; pollBusy = true;

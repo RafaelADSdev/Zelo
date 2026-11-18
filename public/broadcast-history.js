@@ -13,7 +13,7 @@ function render() {
   const filters = {search:$('broadcast-search').value, state:$('broadcast-filter').value, product:$('broadcast-product-filter').value};
   const {visible, groups:productGroups} = historyView(campaigns, filters);
   $('broadcast-clear-filters').hidden = !filters.search && filters.state === 'all' && filters.product === 'all';
-  $('broadcast-history-status').textContent = `${visible.length} disparo${visible.length === 1 ? '' : 's'} ${visible.length === 1 ? 'exibido' : 'exibidos'} de ${campaigns.length} no histórico recente.`;
+  $('broadcast-history-status').textContent = campaigns.length ? `${visible.length} disparo${visible.length === 1 ? '' : 's'} ${visible.length === 1 ? 'exibido' : 'exibidos'} de ${campaigns.length} no histórico recente.` : '';
   const overview = $('broadcast-history-overview'); overview.replaceChildren();
   for (const [label, value] of [
     ['Disparos', visible.length], ['Envios aceitos', visible.reduce((n,c) => n + (c.counts.sent || 0), 0)],
@@ -32,7 +32,8 @@ function render() {
   }
   if (!visible.length) {
     const empty = el('div', '', 'broadcast-empty');
-    empty.append(el('h3', campaigns.length ? 'Nenhum disparo encontrado' : 'Seus disparos vão aparecer aqui'), el('p', campaigns.length ? 'Altere a busca ou limpe os filtros de produto e situação.' : 'Crie um novo disparo para acompanhar o progresso e os resultados.'));
+    if (!campaigns.length) empty.dataset.state = 'first-use';
+    empty.append(el('h3', campaigns.length ? 'Nenhum disparo encontrado' : 'Nenhum disparo registrado'), el('p', campaigns.length ? 'Altere a busca ou limpe os filtros de empreendimento e situação.' : 'Use a aba Novo disparo para preparar sua primeira campanha.'));
     container.append(empty); return;
   }
   if (groupByProduct) for (const [index, group] of productGroups.entries()) {

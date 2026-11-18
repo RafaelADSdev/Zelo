@@ -7,7 +7,7 @@ export function initBroadcastLayout({ refreshHistory }) {
   const history = root.querySelector(':scope > section.settings-card:not(.broadcast-compose):not(.broadcast-suppression)'), suppression = root.querySelector(':scope > .broadcast-suppression');
   const suppressionPanel = node('section', ''); suppression.before(suppressionPanel); suppressionPanel.append(suppression);
   const form = $('broadcast-form'), steps = [...form.querySelectorAll(':scope > .broadcast-step')], names = ['Contatos', 'Mensagem', 'Envio'];
-  const description = ['Escolha os contatos que vão receber sua mensagem.', 'Prepare o conteúdo e confira como ele vai aparecer.', 'Defina quando enviar e revise antes de confirmar.'];
+  const description = ['Importe uma lista ou adicione os números dos destinatários.', 'Escreva o texto ou escolha um template aprovado.', 'Escolha quando enviar. A próxima etapa é a revisão.'];
   let current = 0;
   const tabs = node('nav', '', 'broadcast-workspace-tabs'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Áreas de disparos');
   const panels = { compose, history, suppression: suppressionPanel }, tabButtons = new Map();

@@ -1,1 +1,48 @@
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#292132;background:#f7f7fa}*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:28px}main{max-width:440px}img{display:block;margin-bottom:30px}h1{font-size:32px;line-height:1.2;letter-spacing:-.8px;margin:0 0 18px}p{font-size:15px;line-height:1.8;color:#74677e;margin:0 0 24px}a{display:inline-flex;align-items:center;min-height:46px;background:#7041db;color:white;text-decoration:none;padding:12px 20px;border-radius:9px;font-size:14px;font-weight:600}a:focus-visible{outline:3px solid #b89aef;outline-offset:4px}.note{font-size:12px;margin:30px 0 0;padding-top:22px;border-top:1px solid #e3dbe9}::selection{background:#decfff;color:#31164e}
+/* Hallmark: built: the project; redesign: polish; scope: app. */
+:root {
+  --font: "Segoe UI", Arial, sans-serif;
+  --page: #f6f4f9;
+  --surface: #fff;
+  --text: #291a40;
+  --muted: #655b72;
+  --border: #e5dfed;
+  --accent: #7041db;
+  --accent-hover: #5c2cc5;
+}
+* { box-sizing:border-box; }
+html, body { overflow-x:clip; }
+body {
+  margin:0;
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:var(--page);
+  color:var(--text);
+  font:16px/1.6 var(--font);
+}
+main {
+  width:min(100%, 440px);
+  padding:clamp(24px, 6vw, 40px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+}
+img { display:block; margin-bottom:24px; }
+h1 { font-size:28px; line-height:1.2; margin:0 0 12px; text-wrap:balance; overflow-wrap:break-word; }
+p { color:var(--muted); margin:0 0 24px; }
+a {
+  display:inline-flex;
+  align-items:center;
+  min-height:46px;
+  background:var(--accent);
+  color:var(--surface);
+  text-decoration:none;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:650;
+}
+a:hover, a:active { background:var(--accent-hover); }
+a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.note { font-size:13px; margin:24px 0 0; padding-top:16px; border-top:1px solid var(--border); }

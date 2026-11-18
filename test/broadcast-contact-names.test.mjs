@@ -39,7 +39,7 @@ test('disparo usa nome das conversas, respeita nome importado e preserva a alter
 test('Cloud usa o nome do perfil da conta correta sem alterar a regra da janela de atendimento', async () => {
   const db = createClient({ url: ':memory:' }), now = Date.parse('2026-10-30T15:00:00Z');
   try {
-    await db.execute('CREATE TABLE wa_contacts(phone TEXT,account_id TEXT,name TEXT,last_inbound INTEGER)');
+    await db.execute('CREATE TABLE wa_contacts(phone TEXT,account_id TEXT NOT NULL,name TEXT,last_inbound INTEGER NOT NULL,PRIMARY KEY(account_id,phone))');
     await db.batch([
       { sql:'INSERT INTO wa_contacts VALUES(?,?,?,?)',args:['5511988887777','123','Marina',now-1000] },
       { sql:'INSERT INTO wa_contacts VALUES(?,?,?,?)',args:['5511988887777','456','Outro nome',now-1000] },

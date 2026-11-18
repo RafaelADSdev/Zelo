@@ -27,10 +27,8 @@ export async function startVpsServer({ directory, cloudConfig, key, origin, port
     start: options => startServer({ ...options, webhookPort: options.ownerId === original.userId ? webhookPort : 0 }),
   });
   try {
-    for (const member of await access.list()) {
-      if (member.enabled && member.user_id) await manager.get(member.user_id);
-    }
-    return await createWorkspaceRouter({ access, manager, original, origin, port, streamFiles: true });
+    await manager.warm(await access.list());
+    return await createWorkspaceRouter({ access, manager, original, origin, port, streamFiles: true, trustedProxy: true });
   } catch (error) {
     await manager.close();
     throw error;

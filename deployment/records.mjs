@@ -12,7 +12,4 @@ export function decryptRecord(row,key) {
   return JSON.parse(Buffer.concat([cipher.update(Buffer.from(row.ciphertext,'base64')),cipher.final()]).toString());
 }
 export const snapshotPath = '/rest/v1/zelo_runtime_snapshots';
-export async function saveRecord(cloud,row) {
-  await cloud.request(snapshotPath+'?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates'},body:row});
-}
 export async function readRecord(cloud,id) { return (await cloud.request(snapshotPath+`?id=eq.${encodeURIComponent(id)}&select=*`))[0]; }

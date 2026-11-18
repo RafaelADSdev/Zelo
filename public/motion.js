@@ -60,7 +60,7 @@ document.addEventListener('click', event => {
   });
 }, true);
 
-const panels = '.view,[role="tabpanel"],#product-editor,#ai-key-editor,#reply-program-form,#login-error,#global-error';
+const panels = '.view,[role="tabpanel"],#ai-key-editor,#reply-program-form,#login-error,#global-error';
 new MutationObserver(records => {
   const revealed = new Set();
   for (const record of records) {
