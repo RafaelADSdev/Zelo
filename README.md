@@ -200,11 +200,7 @@ O Git ignora `.wappy/` e `.env`, onde ficam dados locais, sessões e credenciais
 | Publicar a Function e o Daemon | [Implantação na Vercel](docs/vercel.md) |
 | Consultar a identidade visual e os componentes | [Design do Zelo](docs/design.md) · [Conexões e IA](docs/settings/DESIGN.md) |
 
-## Créditos
-
-O Zelo usa [SDK da Wappy](https://github.com/csr1010/whatsapp-ai-agent-sdk), [Baileys](https://github.com/WhiskeySockets/Baileys) e [Supabase](https://supabase.com/). Os ícones dos provedores vêm de [Lobe Icons](https://github.com/lobehub/lobe-icons). [Origem e licença dos ícones](public/brand/providers/README.md)
-
----
+-
 
 <div align="center">
 
