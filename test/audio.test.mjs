@@ -114,6 +114,7 @@ test("áudio QR: transcrição vira contexto e histórico, sem duplicar; pausa n
     },
   });
   try {
+    await app.runtime.catalog.save({ name: "Sopro" });
     await app.settings.update({ whatsappMode: "qr", autoReply: true }); await app.qr.connect();
     socket.ev.emit("connection.update", { connection: "open" }); await app.qr.idle();
     const incoming = id => ({ key: { remoteJid: "5511888888888@s.whatsapp.net", id }, messageTimestamp: Math.floor(Date.now() / 1000), message: { audioMessage: { mimetype: mimeType, mediaKey: Buffer.alloc(32, 1), fileSha256: createHash("sha256").update(bytes).digest(), directPath: "/v/test", fileLength: bytes.length } } });
@@ -153,6 +154,7 @@ test("áudio Cloud: webhook assinado baixa mídia autenticada, transcreve e resp
     return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ formatRationale: "Resposta em texto", message: { text: "Vamos falar sobre o Sopro." } }) }] } }] });
   } });
   try {
+    await app.runtime.catalog.save({ name: "Sopro" });
     await app.settings.update({ ...config, autoReply: true });
     const raw = Buffer.from(JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: config.businessAccountId, changes: [{ field: "messages", value: { metadata: { phone_number_id: config.phoneNumberId }, messages: [{ id: "audio-cloud", from: "5511888888888", timestamp: String(Math.floor(Date.now() / 1000)), type: "audio", audio: { id: "12345", voice: true, mime_type: mimeType } }] } }] }] }));
     const signature = "sha256=" + createHmac("sha256", config.appSecret).update(raw).digest("hex");
